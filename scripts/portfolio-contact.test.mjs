@@ -15,7 +15,7 @@ test('site navigation and contact links use only the supplied destinations', () 
   assert(html.includes('href="https://www.zhihu.com/people/shi-he-yuan-fang-48-94"'));
   assert(html.includes('href="mailto:ttaohe828@gmail.com"'));
   assert(html.includes('aria-haspopup="dialog" aria-controls="wechat-dialog" aria-label="微信二维码"'));
-  assert.match(css, /\.profile-social a\{[^}]*width:36px;height:36px/);
+  assert.match(css, /\.profile-social a\{[^}]*width:32px;height:32px/);
 });
 
 test('QR dialog keeps a local no-JavaScript fallback and accessible native close control', async () => {
@@ -46,4 +46,27 @@ test('dialog repeated open, backdrop close and focus return remain safe', () => 
   clicks(event); dialog.close(); assert.equal(focusReturns, 2);
   assert.doesNotThrow(() => initContactDialog({getElementById() { return null; }}));
   assert.doesNotThrow(() => initContactDialog({getElementById() { return {}; }}));
+});
+
+
+test('contact icons keep the standard brand paths, a shared filled style and heading alignment', () => {
+  assert(!html.includes('zhihu-symbol'));
+  assert.match(html, /class="profile-heading"><h1>TaoHe<span>何涛<\/span><\/h1>\s*<nav class="profile-social"/);
+  assert(html.includes('M5.721 0C2.251 0 0 2.25 0 5.719'));
+  assert(html.includes('M8.691 2.188C3.891 2.188 0 5.476'));
+  assert(css.includes('.profile-social svg{display:block;fill:currentColor;flex:none}'));
+  assert(css.includes('.social-icon-zhihu{width:18px;height:18px}'));
+  assert(css.includes('.social-icon-wechat{width:22px;height:22px}'));
+  assert(css.includes('.social-icon-mail{width:22px;height:22px}'));
+  assert(css.includes('.profile-heading{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 18px;'));
+});
+
+
+test('mobile identity keeps both names together with its own compact contact row', () => {
+  assert(html.includes('<div class="profile-identity"><p class="code-comment">// profile</p>'));
+  assert(css.includes('.hero .profile-heading h1{font-size:clamp(28px,8.4vw,36px);line-height:1.2;white-space:nowrap}'));
+  assert(css.includes('.hero .profile-heading h1 span{display:inline-block;'));
+  assert(css.includes('.hero .profile-social{transform:none;margin:8px 0 0 -7px}'));
+  assert(css.includes('.profile-avatar{grid-column:2;grid-row:1;'));
+  assert(!css.includes('.hero h1 span{display:block'));
 });

@@ -43,7 +43,7 @@ test('research count is quiet title metadata and the introduction uses the full 
 test('profile portrait preserves the supplied pixels and has an intrinsic responsive size', async () => {
   assert.match(html, /<img class="profile-avatar" src="\/assets\/portfolio-avatar.jpg" width="1254" height="1254" alt="何涛的头像：夕阳下的男生与猫"/);
   assert(css.includes('clamp(148px,16vw,216px)'));
-  assert(css.includes('.profile-avatar{grid-column:2;grid-row:1/3;'));
+  assert(css.includes('.profile-avatar{grid-column:2;grid-row:1;'));
   assert(css.includes('.hero .intro,.hero .focus-code,.hero .actions{grid-column:1/-1}'));
   const avatar = await readFile(new URL('../portfolio/avatar.jpg', import.meta.url));
   assert.equal(avatar.length, 288808);
