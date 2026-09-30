@@ -9,8 +9,8 @@ export const metadata: Metadata = {
   title: "Tao · AI Infra 研究笔记",
   description: "Tao 的 AI Infra 技术研究笔记：知识地图、源码分析、机制图解与可验证的设计思考。",
   icons: {
-    icon: sitePath("/favicon.svg"),
-    shortcut: sitePath("/favicon.svg"),
+    icon: sitePath("/favicon.svg?v=walnut-1"),
+    shortcut: sitePath("/favicon.svg?v=walnut-1"),
   },
 };
 

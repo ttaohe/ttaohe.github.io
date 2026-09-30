@@ -7,7 +7,7 @@
   <script>try{const theme=localStorage.getItem("taohe-portfolio-theme-v1");if(["dark","light","soft"].includes(theme))document.documentElement.dataset.theme=theme}catch{/* Storage is optional. */}</script>
   <title>TaoHe · 何涛</title>
   <meta name="description" content="TaoHe / 何涛的个人主页。NWPU EE 本科，WHU CS 硕士；AI Infra 研究笔记、源码分析与持续整理的工程记录。">
-  <link rel="icon" href="/ai-infra-daily-notes/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/ai-infra-daily-notes/favicon.svg?v=walnut-1" type="image/svg+xml">
   <link rel="canonical" href="https://ttaohe.github.io/">
   <link rel="stylesheet" href="/assets/portfolio.css">
 </head>
@@ -53,7 +53,27 @@
         </section>
         <section tabindex="-1" id="research" class="section" aria-labelledby="research-title">
           <div class="section-heading"><span class="hash" aria-hidden="true">#</span><h2 id="research-title">研究笔记</h2><span class="filename">infra-notes/</span></div>
-          <div class="research-header"><div><h3>AI Infra Daily Notes</h3><p>从问题出发，记录机制、依据与尚待验证的判断。包含知识地图、研究文章、每日简报和实验设想。</p></div><span class="research-tag">{{NOTE_COUNT}} NOTES</span></div>
+          <div class="research-grid">
+            <div class="research-reading">
+              <div class="research-header"><div><h3>AI Infra Daily Notes</h3><p>从问题出发，记录机制、依据与尚待验证的判断。把源码里的细节，连成可追溯的研究路径。</p></div><span class="research-tag">{{NOTE_COUNT}} NOTES</span></div>
+              <div class="research-subheading"><h4>最近的研究笔记</h4><span>RECENT WRITING</span></div>
+              <ol class="notes"><!-- SELECTED_NOTES --></ol>
+              <a class="all-notes" href="/ai-infra-daily-notes/">阅读全部笔记 <span aria-hidden="true">↗</span></a>
+            </div>
+            <aside class="research-context" aria-label="知识地图与近期关注">
+              <section class="research-panel mini-map" aria-labelledby="mini-map-title">
+                <div class="panel-heading"><h4 id="mini-map-title">知识地图</h4><a href="/ai-infra-daily-notes/" aria-label="展开完整知识地图">展开 <span aria-hidden="true">↗</span></a></div>
+                <div class="topic-tree">
+                  <a class="topic-root" href="/ai-infra-daily-notes/">AI Infra<span>问题 · 机制 · 验证</span></a>
+                  <ul class="topic-branches"><!-- TOPIC_LINKS --></ul>
+                </div>
+                <p class="panel-caption">沿着主题，进入相关笔记</p>
+              </section>
+              <section class="research-panel recent-focus" aria-labelledby="recent-focus-title">
+                <div class="panel-heading"><h4 id="recent-focus-title">近期关注</h4><!-- FOCUS_DATE --></div>
+                <ul class="focus-items"><!-- RECENT_FOCUS --></ul>
+                <a class="panel-more" href="/ai-infra-daily-notes/daily/">查看每日简报 <span aria-hidden="true">↗</span></a>
+              </section>
           <section class="countdown" data-review-countdown data-updated-at="{{CONTENT_UPDATED_AT}}" aria-label="资料更新计划">
             <div class="countdown-top">
               <div class="clock-face">
@@ -76,8 +96,8 @@
             </div>
             <p class="cadence">计划每 4 小时检查，实际发布可能延迟；没有实质新内容时不会更新。</p>
           </section>
-          <ol class="notes"><!-- SELECTED_NOTES --></ol>
-          <a class="all-notes" href="/ai-infra-daily-notes/">查看完整知识地图与笔记</a>
+            </aside>
+          </div>
         </section>
         <section tabindex="-1" id="resume" class="section" aria-labelledby="resume-title">
           <div class="section-heading"><span class="hash" aria-hidden="true">#</span><h2 id="resume-title">简历</h2><span class="filename">resume.tex</span></div>

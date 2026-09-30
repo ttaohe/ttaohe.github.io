@@ -12,12 +12,34 @@ await mkdir(publish, { recursive: true });
 await cp(path.join(root, 'out'), path.join(publish, config.basePath), { recursive: true });
 const escapeHtml = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#x27;');
 const selected = [...content.posts].reverse().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3);
-const noteMarkup = selected.map((post, index) => `<li class="note"><span class="note-number">0${index + 1}</span><div><a href="${config.basePath}/notes/${post.slug}/">${escapeHtml(post.title)}</a><p class="note-meta">${escapeHtml(post.category)} · ${escapeHtml(post.date)}</p></div></li>`).join('');
+const noteMarkup = selected.map((post, index) => `<li class="note"><span class="note-number">0${index + 1}</span><article><a href="${config.basePath}/notes/${post.slug}/">${escapeHtml(post.title)}</a><p class="note-meta">${escapeHtml(post.category)} · <time datetime="${escapeHtml(post.date)}">${escapeHtml(post.date)}</time></p><p class="note-summary">${escapeHtml(post.summary)}</p><div class="note-tags">${post.tags.slice(0, 3).map(tag => `<span>${escapeHtml(tag)}</span>`).join('')}</div></article></li>`).join('');
+// Topic shortcuts lead to real related articles. A missing article falls back to the full map.
+const topics = [
+  ['引擎与调度', 'pd-c2c-coordination'],
+  ['缓存与状态', 'state-recovery'],
+  ['通信与流水', 'pd-c2c-coordination'],
+  ['异构内存', 'pd-c2c-coordination'],
+  ['混合注意力', 'direct-linker'],
+  ['MoE 与算子', 'vllm-fp4-moe-live-rows'],
+];
+const topicMarkup = topics.map(([label, slug]) => {
+  const post = content.posts.find(post => post.slug === slug);
+  const href = post ? `${config.basePath}/notes/${post.slug}/` : `${config.basePath}/`;
+  const accessibleLabel = post ? `${label}：${post.title}` : `${label}：查看完整知识地图`;
+  return `<li><a href="${href}" aria-label="${escapeHtml(accessibleLabel)}">${label}</a></li>`;
+}).join('');
+const daily = content.daily;
+const latestDaily = daily && [...daily.dates].sort((a, b) => b.key.localeCompare(a.key)).find(date => daily.reports[date.key]?.length);
+const focusDate = latestDaily ? `${daily.year}-${latestDaily.key.replace('.', '-')}` : '';
+const focusMarkup = latestDaily ? daily.reports[latestDaily.key].slice(0, 2).map(item => `<li><a class="focus-title" href="${escapeHtml(item.source)}">${escapeHtml(item.title)} <span aria-hidden="true">↗</span></a><span class="focus-source">${escapeHtml(item.sourceLabel)} · 简报收录</span></li>`).join('') : '<li class="panel-caption">暂未收录每日简报</li>';
 const landing = (await readFile(path.join(root, 'portfolio/index.html'), 'utf8'))
   .replaceAll('{{CONTENT_UPDATED_AT}}', escapeHtml(content.updatedAt))
   .replaceAll('{{LAST_CONTENT_UPDATE}}', escapeHtml(shanghaiTimestamp(content.updatedAt)))
   .replaceAll('{{NOTE_COUNT}}', String(content.posts.length).padStart(2, '0'))
-  .replace('<!-- SELECTED_NOTES -->', noteMarkup);
+  .replace('<!-- FOCUS_DATE -->', focusDate ? `<time datetime="${escapeHtml(focusDate)}">${escapeHtml(focusDate)}</time>` : '')
+  .replace('<!-- SELECTED_NOTES -->', noteMarkup)
+  .replace('<!-- TOPIC_LINKS -->', topicMarkup)
+  .replace('<!-- RECENT_FOCUS -->', focusMarkup);
 await writeFile(path.join(publish, 'index.html'), landing);
 await mkdir(path.join(publish, 'assets'), { recursive: true });
 const scheduleModel = await readFile(path.join(root, 'lib/update-schedule.ts'), 'utf8');

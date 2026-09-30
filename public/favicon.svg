@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="18" fill="#10222b"/>
-  <circle cx="32" cy="32" r="18" fill="none" stroke="#c7ff5e" stroke-width="5"/>
-  <path d="M32 14v18l13-8" fill="none" stroke="#c7ff5e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="32" cy="32" r="4" fill="#72e6ff"/>
+<title>核桃 · Tao He</title>
+<rect x="2" y="2" width="60" height="60" rx="16" fill="#F4EBDD"/>
+<path d="M32 8C26 5 21 10 18 13C12 15 11 22 9 27C7 33 10 38 11 43C13 50 18 52 23 55C28 60 36 59 41 55C48 53 52 48 54 42C58 36 55 30 54 25C54 18 49 14 44 12C41 7 36 6 32 8Z" fill="#B87B43" stroke="#68452D" stroke-width="3" stroke-linejoin="round"/>
+<path d="M32 9C28 15 35 18 31 24C27 30 35 34 31 40C28 46 34 49 32 56" fill="none" stroke="#68452D" stroke-width="3.2" stroke-linecap="round"/>
+<path d="M23 14C16 18 22 23 17 28C13 34 20 36 17 43M25 28C20 32 25 36 23 41C20 46 24 48 25 51M40 15C47 19 40 23 47 28C52 33 45 37 48 41M39 28C44 32 38 37 42 42C45 47 39 49 38 52" fill="none" stroke="#E1B079" stroke-width="3.2" stroke-linecap="round"/>
 </svg>

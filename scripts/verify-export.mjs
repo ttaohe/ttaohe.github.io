@@ -34,6 +34,18 @@ assert(landing.includes(`href="${basePath}/"`), 'Portfolio landing page does not
 assert(!landing.includes('知识地图 <'), 'Root must remain the portfolio landing page');
 for (const text of ['TaoHe', '何涛', '2019–2023', '2023–2026', 'NWPU', 'WHU', 'EE · 本科', 'CS · 硕士', '经历与项目', '整理中，后续补充', '距离下次资料检查', '上次内容更新']) assert(landing.includes(text), `Missing confirmed portfolio content: ${text}`);
 assert(!landing.includes('{{'), 'Unresolved portfolio template marker');
+assert(landing.includes('class="research-grid"') && landing.includes('class="research-context"'), 'Research two-column layout is missing');
+assert(landing.includes('/favicon.svg?v=walnut-1'), 'Homepage must use the walnut favicon');
+const topicLinks = landing.match(/<ul class="topic-branches">([^]*?)<\/ul>/)?.[1] ?? '';
+assert.equal([...topicLinks.matchAll(/<li>/g)].length, 6, 'Homepage must contain six linked topic shortcuts');
+const latestFocusDate = content.daily && [...content.daily.dates].sort((a, b) => b.key.localeCompare(a.key)).find(date => content.daily.reports[date.key]?.length);
+if (latestFocusDate) {
+  assert(landing.includes(`datetime="${content.daily.year}-${latestFocusDate.key.replace('.', '-')}"`), 'Focus panel must date the actual Daily issue');
+  const focus = decodeText(landing.match(/<ul class="focus-items">([^]*?)<\/ul>/)?.[1] ?? '');
+  for (const item of content.daily.reports[latestFocusDate.key].slice(0, 2)) {
+    assert(focus.includes(item.title) && focus.includes(item.source) && focus.includes(item.sourceLabel), 'Focus content must retain its exact source and title');
+  }
+}
 assert(!landing.includes('冯开宇') && !landing.includes('北京理工大学') && !landing.includes('GPA:'), 'Upstream sample resume content must never appear on the personal homepage');
 assert(!/href="[^"]*\.pdf/i.test(landing), 'No personal PDF resume has been supplied');
 assert(landing.includes(content.updatedAt), 'Homepage countdown must use the authoritative content timestamp');
