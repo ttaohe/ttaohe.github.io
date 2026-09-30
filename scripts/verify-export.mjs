@@ -33,7 +33,8 @@ for (const route of routes) {
 const landing = await readFile(path.join(output, 'index.html'), 'utf8');
 assert(landing.includes(`href="${basePath}/"`), 'Portfolio landing page does not link to the notes section');
 assert(!landing.includes('知识地图 <'), 'Root must remain the portfolio landing page');
-for (const text of ['TaoHe', '何涛', 'Northwestern Polytechnical University', 'Wuhan University', '西北工业大学 · 本科 · 电子信息工程', '武汉大学 · 硕士 · 计算机应用技术', 'Electronic Information Engineering', 'Computer Application Technology', '经历与项目', '整理中，后续补充', '距离下次资料检查', '上次内容更新']) assert(landing.includes(text), `Missing confirmed portfolio content: ${text}`);
+for (const text of ['TaoHe', '何涛', 'Northwestern Polytechnical University', 'Wuhan University', '西北工业大学 · 本科 · 电子信息工程', '武汉大学 · 硕士 · 计算机应用技术', 'Electronic Information Engineering', 'Computer Application Technology', '经历与项目', 'MLA L2 Host Cache Deduplication', '完整研究记录待补充', '距离下次资料检查', '上次内容更新']) assert(landing.includes(text), `Missing confirmed portfolio content: ${text}`);
+assert(landing.includes('id="mla-tp-l2-cache-deduplication"') && landing.includes('href="#mla-tp-l2-cache-deduplication"'), 'Project index must resolve to its stable on-page summary');
 for (const years of [['2019', '2023'], ['2023', '2026']]) assert(landing.includes(`<time datetime="${years[0]}">${years[0]}</time>–<time datetime="${years[1]}">${years[1]}</time>`), `Missing confirmed education years ${years.join('–')}`);
 for (const [school, extension] of [['nwpu', 'gif'], ['whu', 'png']]) assert(new RegExp(`src="/assets/${school}-emblem\\.[a-f0-9]{16}\\.${extension}"`).test(landing), `Missing fingerprinted official ${school} emblem`);
 for (const [company, extension] of [['xiaomi', 'png'], ['ant-group', 'png'], ['infinigence-ai', 'ico']]) assert(new RegExp(`src="/assets/${company}-logo\\.[a-f0-9]{16}\\.${extension}"`).test(landing), `Missing fingerprinted official ${company} logo`);

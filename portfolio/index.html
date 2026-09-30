@@ -75,7 +75,20 @@
         </section>
         <section tabindex="-1" id="experience" class="section" aria-labelledby="experience-title">
           <div class="section-heading"><span class="hash" aria-hidden="true">#</span><h2 id="experience-title">经历与项目</h2><span class="filename">experience.md</span></div>
-          <div class="placeholder"><div><p class="todo">// TODO</p><p>整理中，后续补充</p></div></div>
+          <p class="experience-intro">在第一份正式工作中，聚焦 KV Cache 的容量与复用效率优化。</p>
+          <article tabindex="-1" id="mla-tp-l2-cache-deduplication" class="project-card" aria-labelledby="mla-project-title">
+            <div class="project-header"><p class="project-index"><span>01</span> / KV CACHE OPTIMIZATION</p><a class="project-permalink" href="#mla-tp-l2-cache-deduplication" aria-label="项目 01 固定链接">固定链接 <span aria-hidden="true">↗</span></a></div>
+            <h3 id="mla-project-title" lang="en">MLA L2 Host Cache Deduplication</h3>
+            <p class="project-context" lang="en">Kimi 2.6 / 2.7 · MLA Prefill · Tensor Parallelism</p>
+            <p class="project-summary">针对 MLA Prefill 的 TP 部署中，多 Rank 重复保存 Host KV Cache 导致的容量瓶颈，在 HiCache L2 采用 TP0 单副本管理与命中判定；命中后由 TP0 加载到 L1，再广播至其他 Rank。</p>
+            <dl class="project-metrics">
+              <div><dt>L2 有效缓存容量</dt><dd><strong>8×</strong><span>该项目配置下</span></dd></div>
+              <div><dt>缓存命中率</dt><dd><strong>≈94%</strong><span>优化前 80% 多 · 理论约 95%</span></dd></div>
+              <div><dt>高峰期一小时吞吐</dt><dd><strong>≈+40%</strong><span>相同并发下</span></dd></div>
+            </dl>
+            <p class="project-evidence">项目实测摘要；完整负载、硬件与统计口径待补充。</p>
+            <div class="project-record"><span>完整研究记录待补充</span><span>背景 / 方案 / 实验</span></div>
+          </article>
         </section>
         <section tabindex="-1" id="research" class="section" aria-labelledby="research-title">
           <div class="section-heading"><span class="hash" aria-hidden="true">#</span><h2 id="research-title">研究笔记</h2><span class="filename">infra-notes/</span></div>
