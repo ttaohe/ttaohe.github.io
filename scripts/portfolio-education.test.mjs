@@ -35,3 +35,13 @@ test('education keeps a shrinkable text column and smaller emblems on phones', (
   assert.match(css, /\.school-emblem\{[^}]*object-fit:contain/);
   assert.match(css, /\.school h3\{[^}]*overflow-wrap:anywhere/);
 });
+
+test('education pairs equal cards only when its own reading area has enough space', () => {
+  assert.match(css, /#education\{container:education \/ inline-size\}/);
+  assert.match(css, /\.education\{[^}]*grid-template-columns:minmax\(0,1fr\)/);
+  assert.match(css, /@container education \(min-width:800px\)\{\s*\.education\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\);align-items:stretch\}/);
+  assert.match(css, /@container education[^]*?\.education li\{grid-template-columns:64px minmax\(0,1fr\);align-items:start;gap:18px;padding:21px\}/);
+  assert.match(css, /@container education[^]*?\.school h3\{min-block-size:3em\}/);
+  assert.doesNotMatch(css, /\.school h3\{[^}]*(?:max-height|overflow:hidden|white-space:nowrap)/);
+  assert.match(css, /\.education li\{[^}]*min-width:0/);
+});

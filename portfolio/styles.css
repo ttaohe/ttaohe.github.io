@@ -228,8 +228,9 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--green);outline-offs
 .section-heading .hash{color:var(--green);font:22px var(--mono)}
 .section-heading h2{font-size:20px;letter-spacing:-.02em;line-height:1.4;margin:0;font-weight:600}
 .section-heading .filename{font:12px var(--mono);color:var(--dim);margin-left:auto}
-.education{list-style:none;margin:0;padding:0;display:grid;gap:14px}
-.education li{display:grid;grid-template-columns:80px minmax(0,1fr);align-items:center;gap:24px;padding:21px 23px;border:1px solid var(--line);border-radius:7px;background:var(--card)}
+#education{container:education / inline-size}
+.education{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+.education li{display:grid;grid-template-columns:80px minmax(0,1fr);min-width:0;align-items:center;gap:24px;padding:21px 23px;border:1px solid var(--line);border-radius:7px;background:var(--card)}
 /* The neutral backing keeps the official emblem colors legible in every theme. */
 .school-emblem{display:block;width:80px;height:80px;object-fit:contain;padding:5px;border-radius:50%;background:#fff}
 .school{min-width:0}
@@ -237,6 +238,15 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--green);outline-offs
 .school-detail{margin:0;font-size:14px;line-height:1.8;color:var(--fg)}
 .school-major{margin:2px 0 0;font-size:13px;line-height:1.7;color:var(--muted);overflow-wrap:anywhere}
 .school .years{margin:9px 0 0;font:12px/1.8 var(--mono);color:var(--blue)}
+/* Use the reading area's width, after the sidebar and gutters. Each paired
+   card keeps at least 393px; the two-line title slot aligns the details without
+   clipping longer names. Unsupported container queries retain the single column. */
+@container education (min-width:800px){
+  .education{grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch}
+  .education li{grid-template-columns:64px minmax(0,1fr);align-items:start;gap:18px;padding:21px}
+  .school-emblem{width:64px;height:64px;padding:4px;margin-top:3px}
+  .school h3{min-block-size:3em}
+}
 .placeholder{min-height:158px;border:1px dashed var(--dashed-line);border-radius:8px;display:flex;align-items:center;justify-content:center;padding:28px;text-align:center;background:linear-gradient(120deg,var(--placeholder-glow),var(--surface))}
 .placeholder .todo{font:13px var(--mono);color:var(--purple);margin:0 0 10px}
 .placeholder p{margin:0;color:var(--muted);font-size:16px}
