@@ -355,10 +355,17 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--green);outline-offs
 .note a:hover{color:var(--green)}
 .note-meta{font:11px/1.8 var(--mono);color:var(--dim);margin:6px 0 0}
 .all-notes{display:inline-block;align-self:flex-start;margin-top:auto;padding-top:12px;font-size:14px;color:var(--green);border-bottom:1px solid var(--link-line)}
-.resume-box{display:flex;align-items:center;justify-content:space-between;gap:24px;border:1px solid var(--line);background:var(--card);padding:20px;border-radius:7px}
-.resume-box h3{font:500 17px var(--mono);margin:0 0 10px;color:var(--heading)}
-.resume-box p{font-size:14px;color:var(--muted);margin:0;max-width:430px}
-.resume-box a{font-size:13px;white-space:nowrap;border-bottom:1px solid var(--button-line);color:var(--link)}
+.resume-preview{min-width:0;border:1px solid var(--line);border-radius:7px;overflow:hidden;background:var(--card)}
+.resume-preview-heading{display:flex;align-items:start;justify-content:space-between;gap:16px;padding:18px 20px}
+.resume-preview-heading h3{font:500 16px/1.6 var(--mono);margin:0 0 7px;color:var(--heading)}
+.resume-preview-heading p{font-size:12px;line-height:1.8;color:var(--muted);margin:0;max-width:650px}
+.resume-preview-heading>a,.resume-preview-toolbar a{font-size:12px;white-space:nowrap;color:var(--link);border-bottom:1px solid var(--button-line)}
+.resume-preview-toolbar{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 16px;padding:10px 20px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--raised)}
+.resume-preview-toolbar>span{color:var(--muted);font-size:11px;line-height:1.8}
+.resume-preview-toolbar>div{display:flex;flex-wrap:wrap;gap:16px}
+.resume-pdf{display:block;width:100%;height:clamp(560px,78vh,1000px);border:0;background:#fff;color-scheme:light}
+.resume-preview-note{margin:0;padding:10px 20px;color:var(--dim);font-size:11px;line-height:1.8}
+@media(max-width:650px){.resume-preview-heading{flex-direction:column;padding:16px}.resume-preview-toolbar{padding:10px 16px}.resume-preview-note{padding:10px 16px}.resume-pdf{height:640px}}
 .disclosure{padding-top:24px;border-top:1px solid var(--line);font-size:12px;line-height:1.9;color:var(--dim)}
 .disclosure p{margin:0}
 .disclosure .visit-counter{display:flex;flex-wrap:wrap;align-items:baseline;gap:3px 12px;margin-top:12px}
@@ -375,7 +382,6 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--green);outline-offs
 .school h3{font-size:17px}
 .hero{grid-template-columns:minmax(0,1fr) 120px;gap:24px}
 .hero h1 span{display:block;margin:12px 0 0;font-size:20px}
-.resume-box{align-items:start;flex-direction:column;gap:14px}
 }
 @media(max-width:650px){body{font-size:16px}
 .shell{margin:12px 10px 20px;border-radius:9px}

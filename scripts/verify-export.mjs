@@ -56,17 +56,18 @@ if (latestFocusDate) {
   }
 }
 assert(!landing.includes('冯开宇') && !landing.includes('北京理工大学') && !landing.includes('GPA:'), 'Upstream sample resume content must never appear on the personal homepage');
-assert(!/href="[^"]*\.pdf/i.test(landing), 'No personal PDF resume has been supplied');
+assert(landing.includes('LaTeX 模板预览') && landing.includes('不代表个人经历；个人 LaTeX 版本待补充'), 'Example PDF must be explicitly identified as a template, never a personal resume');
+assert(/<iframe class="resume-pdf" src="\/assets\/resume-ng-template\.[a-f0-9]{16}\.pdf#toolbar=1/.test(landing), 'Template must have a real fingerprinted interactive PDF embed');
 assert(landing.includes(content.updatedAt), 'Homepage countdown must use the authoritative content timestamp');
 assert(landing.includes('data-visit-counter') && landing.includes('统计首页加载次数，不是独立访客人数'), 'Homepage counter must disclose its pageview scope');
 assert(/src="\/assets\/portfolio-visits\.[a-f0-9]{16}\.js"/.test(landing), 'Homepage counter must use a fingerprinted asset');
-const assetUrls = [...landing.matchAll(/(?:href|src)="(\/assets\/[^"?#]+)"/g)].map(match => match[1]);
-assert.equal(assetUrls.length, 10, 'Homepage must load its portrait, two school emblems, three company logos, stylesheet and three modules');
+const assetUrls = [...landing.matchAll(/(?:href|src)="(\/assets\/[^"?#]+)[^"]*"/g)].map(match => match[1]);
+assert.equal(assetUrls.length, 13, 'Homepage must load its existing 10 assets plus 3 template PDF references');
 for (const assetUrl of assetUrls) {
-  assert(/\.[a-f0-9]{16}\.(?:css|js|jpg|gif|png|ico)$/.test(assetUrl), `Unversioned homepage asset ${assetUrl}`);
+  assert(/\.[a-f0-9]{16}\.(?:css|js|jpg|gif|png|ico|pdf)$/.test(assetUrl), `Unversioned homepage asset ${assetUrl}`);
 }
 for (const filename of await readdir(path.join(output, 'assets'))) {
-  const match = filename.match(/\.([a-f0-9]{16})\.(?:css|js|jpg|gif|png|ico)$/);
+  const match = filename.match(/\.([a-f0-9]{16})\.(?:css|js|jpg|gif|png|ico|pdf)$/);
   if (!match) continue; // Compatibility aliases are not referenced by fresh HTML.
   const bytes = await readFile(path.join(output, 'assets', filename));
   assert.equal(createHash('sha256').update(bytes).digest('hex').slice(0, 16), match[1], `Asset hash mismatch: ${filename}`);
