@@ -181,6 +181,9 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--green);outline-offs
 .file-symbol.green{color:var(--green)}
 .file-symbol.gold{color:var(--gold)}
 .sidebar-foot{margin:36px 12px 0;padding-top:20px;border-top:1px solid var(--line);font:12px/1.9 var(--mono);color:var(--dim)}
+.sidebar-quote{font:12px/1.9 var(--sans);color:var(--muted);margin:0 0 8px}
+.quote-credit{font:10px/1.8 var(--mono);margin:0 0 22px}
+.quote-credit a:hover{color:var(--green)}
 .editor{min-width:0}
 .tabs{min-height:43px;border-bottom:1px solid var(--line);display:flex;background:var(--tabs)}
 .tab{border-right:1px solid var(--line);border-top:2px solid var(--blue);padding:10px 20px 9px;background:var(--surface);font:12px var(--mono);color:var(--strong)}

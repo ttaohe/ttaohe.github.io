@@ -1,6 +1,7 @@
 import { readFile, readdir, access } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -15,7 +16,7 @@ for (const route of routes) {
   const html = await readFile(path.join(appOutput, route, 'index.html'), 'utf8');
   const text = decodeText(html);
   assert(html.includes('<html'), `Missing static HTML for ${basePath}/${route}`);
-  assert(!html.includes('portfolio-visits.js'), `Homepage-only counter must not load on ${basePath}/${route}`);
+  assert(!/portfolio-visits(?:\.[a-f0-9]+)?\.js/.test(html), `Homepage-only counter must not load on ${basePath}/${route}`);
   assert(html.includes('内容源暂时无法更新') === status.stale, `Incorrect stale-data notice on ${basePath}/${route}`);
   if (route.startsWith('notes/')) {
     const post = content.posts.find(post => route.endsWith(post.slug));
@@ -49,8 +50,24 @@ if (latestFocusDate) {
 assert(!landing.includes('冯开宇') && !landing.includes('北京理工大学') && !landing.includes('GPA:'), 'Upstream sample resume content must never appear on the personal homepage');
 assert(!/href="[^"]*\.pdf/i.test(landing), 'No personal PDF resume has been supplied');
 assert(landing.includes(content.updatedAt), 'Homepage countdown must use the authoritative content timestamp');
-assert(landing.includes('data-visit-counter') && landing.includes('自启用起；非独立人数'), 'Homepage counter must disclose its pageview scope');
-assert(landing.includes('src="/assets/portfolio-visits.js"'), 'Homepage counter asset is not loaded');
+assert(landing.includes('data-visit-counter') && landing.includes('统计首页加载次数，不是独立访客人数'), 'Homepage counter must disclose its pageview scope');
+assert(/src="\/assets\/portfolio-visits\.[a-f0-9]{16}\.js"/.test(landing), 'Homepage counter must use a fingerprinted asset');
+const assetUrls = [...landing.matchAll(/(?:href|src)="(\/assets\/[^"?#]+)"/g)].map(match => match[1]);
+assert.equal(assetUrls.length, 4, 'Homepage must load the stylesheet and three modules');
+for (const assetUrl of assetUrls) {
+  assert(/\.[a-f0-9]{16}\.(?:css|js)$/.test(assetUrl), `Unversioned homepage asset ${assetUrl}`);
+}
+for (const filename of await readdir(path.join(output, 'assets'))) {
+  const match = filename.match(/\.([a-f0-9]{16})\.(?:css|js)$/);
+  if (!match) continue; // Compatibility aliases are not referenced by fresh HTML.
+  const bytes = await readFile(path.join(output, 'assets', filename));
+  assert.equal(createHash('sha256').update(bytes).digest('hex').slice(0, 16), match[1], `Asset hash mismatch: ${filename}`);
+  if (filename.startsWith('portfolio-countdown.')) {
+    const schedule = bytes.toString().match(/from '\.\/(update-schedule\.[a-f0-9]{16}\.js)'/);
+    assert(schedule, 'Countdown must import a fingerprinted schedule module');
+    await access(path.join(output, 'assets', schedule[1]));
+  }
+}
 assert(!/首页累计访问\s*\d/.test(landing), 'A pageview count must come from the live API, never a seeded HTML value');
 if (content.daily) {
   const dailyHtml = decodeText(await readFile(path.join(appOutput, 'daily/index.html'), 'utf8'));

@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const html = await readFile(path.join(root, 'portfolio/index.html'), 'utf8');
@@ -12,11 +13,12 @@ const css = await readFile(path.join(root, 'portfolio/styles.css'), 'utf8');
 const source = JSON.parse(await readFile(path.join(root, 'lib/blog/content.json'), 'utf8'));
 const decode = value => value.replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&quot;', '"').replaceAll('&#x27;', "'").replaceAll('&amp;', '&');
 
-async function render(content) {
+async function render(content, { cssSuffix = '', verifyAssets = false } = {}) {
   const fixture = await mkdtemp(path.join(tmpdir(), 'portfolio-research-'));
   try {
     for (const dir of ['scripts', 'lib/blog', 'out']) await mkdir(path.join(fixture, dir), { recursive: true });
     await cp(path.join(root, 'portfolio'), path.join(fixture, 'portfolio'), { recursive: true });
+    if (cssSuffix) await writeFile(path.join(fixture, 'portfolio/styles.css'), css + cssSuffix);
     await cp(path.join(root, 'scripts/prepare-publish.mjs'), path.join(fixture, 'scripts/prepare-publish.mjs'));
     await cp(path.join(root, 'lib/update-schedule.ts'), path.join(fixture, 'lib/update-schedule.ts'));
     await symlink(path.join(root, 'node_modules'), path.join(fixture, 'node_modules'), 'dir');
@@ -24,7 +26,22 @@ async function render(content) {
     await writeFile(path.join(fixture, 'lib/blog/content.json'), JSON.stringify(content));
     await writeFile(path.join(fixture, 'out/404.html'), '<!doctype html><title>Not found</title>');
     execFileSync(process.execPath, [path.join(fixture, 'scripts/prepare-publish.mjs')], { encoding: 'utf8' });
-    return await readFile(path.join(fixture, 'publish/index.html'), 'utf8');
+    const landing = await readFile(path.join(fixture, 'publish/index.html'), 'utf8');
+    if (verifyAssets) {
+      const assetDir = path.join(fixture, 'publish/assets');
+      const filenames = await readdir(assetDir);
+      const hashed = filenames.filter(name => /\.[a-f0-9]{16}\.(css|js)$/.test(name));
+      assert.equal(hashed.length, 5);
+      for (const name of hashed) {
+        const bytes = await readFile(path.join(assetDir, name));
+        assert.equal(name.match(/\.([a-f0-9]{16})\./)[1], createHash('sha256').update(bytes).digest('hex').slice(0, 16));
+      }
+      const countdownName = hashed.find(name => name.startsWith('portfolio-countdown.'));
+      const countdown = await readFile(path.join(assetDir, countdownName), 'utf8');
+      const scheduleName = countdown.match(/from '\.\/(update-schedule\.[a-f0-9]{16}\.js)'/)?.[1];
+      assert(scheduleName && filenames.includes(scheduleName));
+    }
+    return landing;
   } finally {
     await rm(fixture, { recursive: true, force: true });
   }
@@ -69,7 +86,7 @@ test('homepage panels render full sourced content and six working topic shortcut
   }
   assert(!rendered.includes('{{'));
   assert(!rendered.includes('<!-- RECENT_FOCUS -->'));
-  assert(rendered.includes('portfolio-visits.js'));
+  assert(/portfolio-visits\.[a-f0-9]{16}\.js/.test(rendered));
 });
 
 test('focus uses the latest populated issue even when the archive order changes', async () => {
@@ -107,4 +124,30 @@ test('feed titles, summaries, tags and original source attributes are escaped', 
   assert(rendered.includes('&lt;unsafe&gt;'));
   assert(rendered.includes('&lt;unsafe title&gt;'));
   assert(rendered.includes('href="https://example.test/?a=1&amp;b=&quot;quote&quot;"'));
+});
+
+
+test('fresh HTML references exact content hashes and CSS edits change only its asset URL', async () => {
+  const initial = await render(source, { verifyAssets: true });
+  const changed = await render(source, { cssSuffix: '\n/* changed layout fixture */\n', verifyAssets: true });
+  const cssUrl = html => html.match(/href="(\/assets\/portfolio\.[a-f0-9]{16}\.css)"/)?.[1];
+  assert(cssUrl(initial));
+  assert(cssUrl(changed));
+  assert.notEqual(cssUrl(initial), cssUrl(changed));
+  const modules = html => [...html.matchAll(/src="(\/assets\/[^"?#]+\.js)"/g)].map(match => match[1]);
+  assert.deepEqual(modules(initial), modules(changed));
+  assert.equal(modules(initial).length, 3);
+  for (const url of modules(initial)) assert(/\.[a-f0-9]{16}\.js$/.test(url));
+  assert(!initial.includes('href="/assets/portfolio.css"'));
+});
+
+
+test('sidebar quote is attributed and the redundant visible counter note is removed', () => {
+  assert(html.includes('抽象不是为了模糊，而是为了在新的层次上做到精确。'));
+  assert(html.includes('https://www.cs.utexas.edu/~EWD/transcriptions/EWD03xx/EWD340.html'));
+  assert(html.includes('E. W. Dijkstra'));
+  assert(html.includes('中文为意译'));
+  assert(!html.includes('A notebook for'));
+  assert(!html.includes('<small>自启用起；非独立人数</small>'));
+  assert(html.includes('统计首页加载次数，不是独立访客人数'));
 });

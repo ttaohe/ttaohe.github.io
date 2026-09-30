@@ -1,6 +1,7 @@
 import { cp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import ts from 'typescript';
 import { shanghaiTimestamp } from '../lib/update-schedule.ts';
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -32,7 +33,27 @@ const daily = content.daily;
 const latestDaily = daily && [...daily.dates].sort((a, b) => b.key.localeCompare(a.key)).find(date => daily.reports[date.key]?.length);
 const focusDate = latestDaily ? `${daily.year}-${latestDaily.key.replace('.', '-')}` : '';
 const focusMarkup = latestDaily ? daily.reports[latestDaily.key].slice(0, 2).map(item => `<li><a class="focus-title" href="${escapeHtml(item.source)}">${escapeHtml(item.title)} <span aria-hidden="true">↗</span></a><span class="focus-source">${escapeHtml(item.sourceLabel)} · 简报收录</span></li>`).join('') : '<li class="panel-caption">暂未收录每日简报</li>';
-const landing = (await readFile(path.join(root, 'portfolio/index.html'), 'utf8'))
+// Content-addressed filenames keep fresh HTML from reusing an older cached asset.
+await mkdir(path.join(publish, 'assets'), { recursive: true });
+async function publishAsset(name, content) {
+  const extension = path.extname(name);
+  const hash = createHash('sha256').update(content).digest('hex').slice(0, 16);
+  const filename = `${name.slice(0, -extension.length)}.${hash}${extension}`;
+  await writeFile(path.join(publish, 'assets', filename), content);
+  // Retain aliases so previously cached HTML and module imports still resolve.
+  await writeFile(path.join(publish, 'assets', name), content);
+  return `/assets/${filename}`;
+}
+const scheduleModel = await readFile(path.join(root, 'lib/update-schedule.ts'), 'utf8');
+const schedulePath = await publishAsset('update-schedule.js', ts.transpileModule(scheduleModel, { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.ES2020 } }).outputText);
+const countdownSource = (await readFile(path.join(root, 'portfolio/countdown.mjs'), 'utf8')).replace("'./update-schedule.js'", `'./${path.basename(schedulePath)}'`);
+const assets = {
+  '/assets/portfolio.css': await publishAsset('portfolio.css', await readFile(path.join(root, 'portfolio/styles.css'))),
+  '/assets/portfolio-ui.js': await publishAsset('portfolio-ui.js', await readFile(path.join(root, 'portfolio/ui.mjs'))),
+  '/assets/portfolio-countdown.js': await publishAsset('portfolio-countdown.js', countdownSource),
+  '/assets/portfolio-visits.js': await publishAsset('portfolio-visits.js', await readFile(path.join(root, 'portfolio/visits.mjs'))),
+};
+let landing = (await readFile(path.join(root, 'portfolio/index.html'), 'utf8'))
   .replaceAll('{{CONTENT_UPDATED_AT}}', escapeHtml(content.updatedAt))
   .replaceAll('{{LAST_CONTENT_UPDATE}}', escapeHtml(shanghaiTimestamp(content.updatedAt)))
   .replaceAll('{{NOTE_COUNT}}', String(content.posts.length).padStart(2, '0'))
@@ -40,14 +61,8 @@ const landing = (await readFile(path.join(root, 'portfolio/index.html'), 'utf8')
   .replace('<!-- SELECTED_NOTES -->', noteMarkup)
   .replace('<!-- TOPIC_LINKS -->', topicMarkup)
   .replace('<!-- RECENT_FOCUS -->', focusMarkup);
+for (const [unversioned, versioned] of Object.entries(assets)) landing = landing.replaceAll(unversioned, versioned);
 await writeFile(path.join(publish, 'index.html'), landing);
-await mkdir(path.join(publish, 'assets'), { recursive: true });
-const scheduleModel = await readFile(path.join(root, 'lib/update-schedule.ts'), 'utf8');
-await writeFile(path.join(publish, 'assets/update-schedule.js'), ts.transpileModule(scheduleModel, { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.ES2020 } }).outputText);
-await cp(path.join(root, 'portfolio/countdown.mjs'), path.join(publish, 'assets/portfolio-countdown.js'));
-await cp(path.join(root, 'portfolio/ui.mjs'), path.join(publish, 'assets/portfolio-ui.js'));
-await cp(path.join(root, 'portfolio/visits.mjs'), path.join(publish, 'assets/portfolio-visits.js'));
-await cp(path.join(root, 'portfolio/styles.css'), path.join(publish, 'assets/portfolio.css'));
 await cp(path.join(root, 'out/404.html'), path.join(publish, '404.html'));
 await writeFile(path.join(publish, '.nojekyll'), '');
 // Keep the first publication's direct article links useful after moving the section.
