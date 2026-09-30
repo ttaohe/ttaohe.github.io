@@ -31,6 +31,11 @@ for (const route of routes) {
 const landing = await readFile(path.join(output, 'index.html'), 'utf8');
 assert(landing.includes(`href="${basePath}/"`), 'Portfolio landing page does not link to the notes section');
 assert(!landing.includes('知识地图 <'), 'Root must remain the portfolio landing page');
+for (const text of ['TaoHe', '何涛', '2019–2023', '2023–2026', 'NWPU', 'WHU', 'EE · 本科', 'CS · 硕士', '经历与项目', '整理中，后续补充', '距离下次资料检查', '上次内容更新']) assert(landing.includes(text), `Missing confirmed portfolio content: ${text}`);
+assert(!landing.includes('{{'), 'Unresolved portfolio template marker');
+assert(!landing.includes('冯开宇') && !landing.includes('北京理工大学') && !landing.includes('GPA:'), 'Upstream sample resume content must never appear on the personal homepage');
+assert(!/href="[^"]*\.pdf/i.test(landing), 'No personal PDF resume has been supplied');
+assert(landing.includes(content.updatedAt), 'Homepage countdown must use the authoritative content timestamp');
 if (content.daily) {
   const dailyHtml = decodeText(await readFile(path.join(appOutput, 'daily/index.html'), 'utf8'));
   const latest = content.daily.dates[0].key;

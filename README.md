@@ -4,7 +4,7 @@ A public portfolio section at **https://ttaohe.github.io/ai-infra-daily-notes/**
 
 ## Published routes
 
-- `/`: minimal personal portfolio landing page
+- `/`: code-style personal homepage with confirmed education and an experience/project placeholder
 - `/ai-infra-daily-notes/`: interactive knowledge map and research notes
 - `/ai-infra-daily-notes/notes/<slug>/`: complete native articles
 - `/ai-infra-daily-notes/daily/`: current reports, all historical issues, topic filters and browser-local bookmarks
@@ -66,3 +66,9 @@ Start articles with a clear question outline, followed by matching sections, evi
 Keep each SVG figure with its editable `.drawio` source. Built-in figures are `state-boundary`, `pd-critical-path` and `direct-linker`; new remote figures require HTTPS links verified in an actual browser. Drive download URLs may serve valid SVG bytes while blocking image embedding; publish a static SVG mirror and retain the editable Drive source link. All deployed material is public. Never include credentials, private conversations or unrelated personal data.
 
 This project is separate from `ttaoai-homepage` and does not use the `infra-daily` repository.
+
+## Personal homepage and update countdown
+
+`portfolio/index.html` is the code-style homepage template. It includes only user-confirmed education (NWPU, EE, 2019–2023; WHU, CS, 2023–2026), established research interests, and placeholders for future experiences and a personal PDF resume. The `resume-ng` link is explicitly a template source; its upstream sample history is never reused as personal information.
+
+Recent writing links and the last-content timestamp are generated from the authoritative content snapshot. `lib/update-schedule.ts` is shared by the React blog countdown and the small root-page module. Checks are planned for four-hour UTC boundaries, which also correspond to four-hour boundaries in Asia/Shanghai. The countdown keeps a fixed deadline in session-local storage; at zero it displays “等待更新检查” and only a strictly newer content timestamp allows a new deadline. It does not report actual execution, completion, or guaranteed publication.
