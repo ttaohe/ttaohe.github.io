@@ -2,6 +2,8 @@
 
 Stable public index: `https://ttaohe.github.io/#mla-tp-l2-cache-deduplication`
 
+Stable document URL: `https://ttaohe.github.io/projects/mla-tp-l2-cache-deduplication/`
+
 ## Project-specific evidence
 
 The portfolio owner supplied this project summary and explicitly approved public disclosure on 2026-09-30. The mechanism and measurements are the owner's account of their work, not independently reproduced benchmarks. The summary concerns Kimi 2.6 / 2.7 MLA Prefill with tensor parallelism and HiCache L2 host-cache duplication.
@@ -10,7 +12,7 @@ Reported mechanism: TP0 owns the real host allocation and canonical radix-tree h
 
 Reported outcomes in the project's configuration: effective L2 capacity 8×; cache hit rate approximately 94%, versus more than 80% before and approximately 95% theoretical; approximately 40% higher throughput during a one-hour peak window at equal concurrency. The TP degree, hardware, precise workload, throughput unit, hit-rate denominator and experimental protocol were not supplied. Do not infer these, interpret the numbers as universal results, or claim an increase in physical DRAM/GPU cache capacity.
 
-The homepage intentionally has a short summary and stable anchor, not an empty article link. The complete background, design and experiment record is pending.
+The homepage intentionally has a compact title, keywords, one paragraph with inline emphasis, and a stable anchor, not large metric cards. On 2026-09-30 the owner additionally requested a separate preview document with a pending-content label and hourglass animation. That document has a stable URL, explicitly pending background/design/experiment sections, and reduced-motion support. The complete research record has not been supplied yet.
 
 ## Public technical background checked on 2026-09-30
 

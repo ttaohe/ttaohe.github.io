@@ -70,6 +70,14 @@ let landing = (await readFile(path.join(root, 'portfolio/index.html'), 'utf8'))
   .replace('<!-- RECENT_FOCUS -->', focusMarkup);
 for (const [unversioned, versioned] of Object.entries(assets)) landing = landing.replaceAll(unversioned, versioned);
 await writeFile(path.join(publish, 'index.html'), landing);
+// Project documents have stable, independent URLs and share the same theme assets.
+for (const slug of ['mla-tp-l2-cache-deduplication']) {
+  let document = await readFile(path.join(root, 'portfolio/projects', slug, 'index.html'), 'utf8');
+  for (const [unversioned, versioned] of Object.entries(assets)) document = document.replaceAll(unversioned, versioned);
+  const directory = path.join(publish, 'projects', slug);
+  await mkdir(directory, { recursive: true });
+  await writeFile(path.join(directory, 'index.html'), document);
+}
 await cp(path.join(root, 'out/404.html'), path.join(publish, '404.html'));
 await writeFile(path.join(publish, '.nojekyll'), '');
 // Keep the first publication's direct article links useful after moving the section.
