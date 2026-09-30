@@ -11,10 +11,19 @@ test('first project has a stable accessible index and links to its real document
   assert(project);
   assert(project.includes('aria-labelledby="mla-project-title"'));
   assert(project.includes('id="mla-project-title"'));
-  assert(project.includes('<span class="project-index">01 /</span>'));
+  assert(project.includes('<span class="project-index" aria-hidden="true">01</span>'));
   assert.deepEqual([...project.matchAll(/href="([^"]+)"/g)].map(m => m[1]), ['/projects/mla-tp-l2-cache-deduplication/']);
   assert(!project.includes('project-record'));
   assert(!html.includes('整理中，后续补充'));
+});
+
+test('project index aligns with the title and compact keywords wrap as a semantic list', () => {
+  const keywords = project.match(/<ul class="project-keywords"[^]*?<\/ul>/)?.[0];
+  assert(keywords?.includes('aria-label="项目关键词"'));
+  assert.equal((keywords.match(/<li>/g) ?? []).length, 4);
+  assert(css.includes('.project-card h3 a{display:flex;align-items:baseline;gap:10px;'));
+  assert(css.includes('.project-card .project-keywords{display:flex;flex-wrap:wrap;'));
+  assert(css.includes('.project-card h3 a>span[lang]{min-width:0}'));
 });
 
 test('project document is explicitly pending, navigable and respects reduced motion', () => {
