@@ -226,9 +226,11 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--green);outline-offs
   .company-list{grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
 }
 .hero p strong{color:var(--strong);font-weight:500}
-.focus-line{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;font:13px/1.7 var(--mono);color:var(--muted);margin-top:24px}
-.focus-line .key{color:var(--purple)}
-.focus-line .value{color:var(--value)}
+.focus-code{width:100%;max-width:520px;min-width:0;margin:24px 0 0;padding:16px 20px;border:1px solid var(--line);border-left:2px solid var(--blue);border-radius:7px;background:var(--raised);color:var(--muted);font:17px/1.75 var(--mono);white-space:pre;overflow-x:auto;tab-size:2}
+.focus-code code{font:inherit}
+.focus-code .key{color:var(--purple)}
+.focus-code .value{color:var(--value)}
+.focus-code .punctuation{color:var(--blue)}
 .actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
 .button{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:9px 17px;border:1px solid var(--button-line);border-radius:5px;font-size:14px;font-weight:600;color:var(--button-fg);background:var(--button-bg)}
 .button.primary{background:var(--green);color:var(--primary-fg);border-color:var(--green)}
@@ -365,12 +367,12 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--green);outline-offs
 .hero .code-comment{grid-column:1;margin-bottom:8px}
 .hero h1{grid-column:1;margin-bottom:0}
 .profile-avatar{grid-column:2;grid-row:1/3;border-radius:9px}
-.hero .intro,.hero .focus-line,.hero .actions{grid-column:1/-1}
+.hero .intro,.hero .focus-code,.hero .actions{grid-column:1/-1}
 .hero .profile-experience{grid-column:1/-1;margin-top:0;padding-top:16px}
-.hero .focus-line,.hero .actions{margin-top:0}
+.hero .focus-code,.hero .actions{margin-top:0}
 .hero h1{font-size:42px}
 .hero p{font-size:15px}
-.focus-line{font-size:11px;gap:5px 10px}
+.focus-code{font-size:16px;padding:14px 16px}
 .section{padding:25px 0}
 .section-heading{gap:9px}
 .section-heading h2{font-size:19px}

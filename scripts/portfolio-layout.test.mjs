@@ -36,8 +36,27 @@ test('profile portrait preserves the supplied pixels and has an intrinsic respon
   assert.match(html, /<img class="profile-avatar" src="\/assets\/portfolio-avatar.jpg" width="1254" height="1254" alt="何涛的头像：夕阳下的男生与猫"/);
   assert(css.includes('clamp(148px,16vw,216px)'));
   assert(css.includes('.profile-avatar{grid-column:2;grid-row:1/3;'));
-  assert(css.includes('.hero .intro,.hero .focus-line,.hero .actions{grid-column:1/-1}'));
+  assert(css.includes('.hero .intro,.hero .focus-code,.hero .actions{grid-column:1/-1}'));
   const avatar = await readFile(new URL('../portfolio/avatar.jpg', import.meta.url));
   assert.equal(avatar.length, 288808);
   assert.equal(createHash('sha256').update(avatar).digest('hex'), '3dfd3eb916cf2eb9467a093f852c3bac2a9386bf33ad252a7bcf23a6f17d3989');
+});
+
+test('focus is a semantic, copyable Python list with only the confirmed directions', () => {
+  const block = html.match(/<pre class="focus-code" aria-label="研究方向"><code>([^]*?)<\/code><\/pre>/)?.[1];
+  assert(block);
+  const plain = block.replace(/<[^>]*>/g, '');
+  assert.equal(plain, 'focus = [\n  "Inference",\n  "KV Cache",\n  "Systems",\n]');
+  assert(!html.includes('class="focus-line"'));
+});
+
+test('focus code uses readable theme-aware type without mobile shrinkage or clipped lines', () => {
+  assert.match(css, /\.focus-code\{[^}]*max-width:520px;min-width:0/);
+  assert.match(css, /\.focus-code\{[^}]*font:17px\/1\.75 var\(--mono\)/);
+  assert.match(css, /\.focus-code\{font-size:16px;padding:14px 16px\}/);
+  assert.match(css, /\.focus-code code\{font:inherit\}/);
+  assert.match(css, /\.focus-code\{[^}]*background:var\(--raised\)/);
+  assert.match(css, /\.focus-code\{[^}]*white-space:pre;overflow-x:auto/);
+  for (const [token, color] of [['key','purple'], ['value','value'], ['punctuation','blue']]) assert(css.includes(`.focus-code .${token}{color:var(--${color})}`));
+  assert(!css.includes('.focus-line'));
 });

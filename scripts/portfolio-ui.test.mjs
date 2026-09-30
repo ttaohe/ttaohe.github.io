@@ -63,7 +63,7 @@ const luminance = hex => {
   return values[0] * .2126 + values[1] * .7152 + values[2] * .0722;
 };
 test('text and controls meet 4.5:1 contrast in every palette', () => {
-  const pairs = [['fg','surface'],['muted','surface'],['dim','surface'],['dim','bg'],['dim','sidebar'],['muted','sidebar'],['muted','tabs'],['folder','sidebar'],['active-fg','active'],['green','surface'],['blue','surface'],['purple','surface'],['gold','sidebar'],['strong','surface'],['value','surface'],['button-fg','button-bg'],['primary-fg','green'],['heading','card'],['clock-fg','clock-face'],['clock-muted','clock-bg'],['clock-label','clock-bg'],['link','surface'],['status-fg','status-bg']];
+  const pairs = [['purple','raised'],['value','raised'],['blue','raised'],['muted','raised'],['fg','surface'],['muted','surface'],['dim','surface'],['dim','bg'],['dim','sidebar'],['muted','sidebar'],['muted','tabs'],['folder','sidebar'],['active-fg','active'],['green','surface'],['blue','surface'],['purple','surface'],['gold','sidebar'],['strong','surface'],['value','surface'],['button-fg','button-bg'],['primary-fg','green'],['heading','card'],['clock-fg','clock-face'],['clock-muted','clock-bg'],['clock-label','clock-bg'],['link','surface'],['status-fg','status-bg']];
   for (const [theme, palette] of Object.entries(palettes)) for (const [fg, bg] of pairs) {
     const values = [luminance(palette[fg]), luminance(palette[bg])].sort((a,b) => b-a);
     const ratio = (values[0]+.05)/(values[1]+.05);

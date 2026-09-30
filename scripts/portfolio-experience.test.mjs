@@ -13,7 +13,7 @@ test('profile Experience contains only the approved companies and inference dire
   assert.match(experience, /aria-labelledby="profile-experience-title" lang="en"/);
   assert.match(experience, /id="profile-experience-title">Experience<\/h2>/);
   assert(html.indexOf('class="intro"') < html.indexOf('class="profile-experience"'));
-  assert(html.indexOf('class="profile-experience"') < html.indexOf('class="focus-line"'));
+  assert(html.indexOf('class="profile-experience"') < html.indexOf('class="focus-code"'));
   const items = [...experience.matchAll(/<li>([^]*?)<\/li>/g)].map(match => match[1]);
   for (const [index, company, direction] of [
     [0, 'Xiaomi', 'On-device Inference Infrastructure'],
