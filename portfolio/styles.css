@@ -363,7 +363,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--green);outline-offs
 }
 
 /* Research context stays beside the reading column only when both have room. */
-.research-context .countdown{display:block;width:100%;max-width:min(100%,440px);margin:0;justify-self:end;padding:16px;border-radius:9px}
+.research-context .countdown{display:block;width:100%;max-width:none;margin:0;justify-self:stretch;padding:16px;border-radius:9px}
 .research-context .countdown-top{grid-template-columns:100px minmax(0,1fr);gap:16px}
 .research-context .clock-face{width:100px}
 .research-context .clock{font-size:15px}
@@ -375,7 +375,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--green);outline-offs
 @media(max-width:1150px){
   .research-grid{grid-template-columns:minmax(0,1fr)}
   .research-context{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
-  .research-context .countdown{grid-column:1/-1;justify-self:end}
+  .research-context .countdown{grid-column:1/-1}
 }
 @media(max-width:900px){
   .research-context{grid-template-columns:minmax(0,1fr)}

@@ -49,6 +49,7 @@ async function render(content, { cssSuffix = '', verifyAssets = false } = {}) {
 
 test('research reading precedes the supporting rail and clock in semantic order', () => {
   assert(html.includes('class="research-grid"'));
+  assert(css.includes('.research-context .countdown{display:block;width:100%;max-width:none;margin:0;justify-self:stretch;'));
   assert(html.indexOf('class="research-reading"') < html.indexOf('class="research-context"'));
   assert(html.indexOf('RECENT_FOCUS') < html.indexOf('data-review-countdown'));
   for (const id of ['mini-map-title', 'recent-focus-title']) {
