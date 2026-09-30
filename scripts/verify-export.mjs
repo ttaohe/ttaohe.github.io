@@ -53,12 +53,12 @@ assert(landing.includes(content.updatedAt), 'Homepage countdown must use the aut
 assert(landing.includes('data-visit-counter') && landing.includes('统计首页加载次数，不是独立访客人数'), 'Homepage counter must disclose its pageview scope');
 assert(/src="\/assets\/portfolio-visits\.[a-f0-9]{16}\.js"/.test(landing), 'Homepage counter must use a fingerprinted asset');
 const assetUrls = [...landing.matchAll(/(?:href|src)="(\/assets\/[^"?#]+)"/g)].map(match => match[1]);
-assert.equal(assetUrls.length, 4, 'Homepage must load the stylesheet and three modules');
+assert.equal(assetUrls.length, 5, 'Homepage must load its portrait, stylesheet and three modules');
 for (const assetUrl of assetUrls) {
-  assert(/\.[a-f0-9]{16}\.(?:css|js)$/.test(assetUrl), `Unversioned homepage asset ${assetUrl}`);
+  assert(/\.[a-f0-9]{16}\.(?:css|js|jpg)$/.test(assetUrl), `Unversioned homepage asset ${assetUrl}`);
 }
 for (const filename of await readdir(path.join(output, 'assets'))) {
-  const match = filename.match(/\.([a-f0-9]{16})\.(?:css|js)$/);
+  const match = filename.match(/\.([a-f0-9]{16})\.(?:css|js|jpg)$/);
   if (!match) continue; // Compatibility aliases are not referenced by fresh HTML.
   const bytes = await readFile(path.join(output, 'assets', filename));
   assert.equal(createHash('sha256').update(bytes).digest('hex').slice(0, 16), match[1], `Asset hash mismatch: ${filename}`);

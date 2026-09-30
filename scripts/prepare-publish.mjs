@@ -48,6 +48,7 @@ const scheduleModel = await readFile(path.join(root, 'lib/update-schedule.ts'), 
 const schedulePath = await publishAsset('update-schedule.js', ts.transpileModule(scheduleModel, { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.ES2020 } }).outputText);
 const countdownSource = (await readFile(path.join(root, 'portfolio/countdown.mjs'), 'utf8')).replace("'./update-schedule.js'", `'./${path.basename(schedulePath)}'`);
 const assets = {
+  '/assets/portfolio-avatar.jpg': await publishAsset('portfolio-avatar.jpg', await readFile(path.join(root, 'portfolio/avatar.jpg'))),
   '/assets/portfolio.css': await publishAsset('portfolio.css', await readFile(path.join(root, 'portfolio/styles.css'))),
   '/assets/portfolio-ui.js': await publishAsset('portfolio-ui.js', await readFile(path.join(root, 'portfolio/ui.mjs'))),
   '/assets/portfolio-countdown.js': await publishAsset('portfolio-countdown.js', countdownSource),
