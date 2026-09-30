@@ -31,3 +31,7 @@ The compact Experience strip uses the standalone marks with adjacent English com
 - SHA-256: `842ac62536485a88cca2e9722c7d6090c4a18501839be6f5540efa5a4a90c901`
 - Evidence: asset explicitly linked as the official homepage icon (Ant Group verified in the rendered head; Infinigence also identifies it as the publisher logo)
 
+
+## User-confirmed experience periods
+
+On 2026-09-30 the profile owner supplied these periods for public display: Xiaomi Dec 2025–Mar 2026, Intern; Ant Group May 2026–Sep 2026, Intern; Infinigence AI Jun 2026–Present. Their overlap is preserved exactly as supplied. No internship classification or additional role title is inferred for Infinigence AI. These employment details are user-provided, not assertions derived from the company logo sources.

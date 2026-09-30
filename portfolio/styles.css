@@ -245,11 +245,14 @@ html.contact-open{overflow:hidden}
 .profile-experience{margin-top:22px;padding-top:16px;border-top:1px solid var(--line)}
 .profile-experience h2{margin:0 0 13px;font:500 11px/1.7 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
 .company-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:minmax(0,1fr);gap:15px}
-.company-list li{display:grid;grid-template-columns:36px minmax(0,1fr);align-items:start;gap:11px;min-width:0}
+.company-list li{display:grid;grid-template-columns:36px minmax(0,1fr);align-items:stretch;gap:11px;min-width:0}
 .company-logo{display:block;width:36px;height:36px;object-fit:contain;padding:3px;border-radius:7px;background:#fff}
 .company-copy{min-width:0}
+.company-heading{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 2ch;font:14px/1.5 var(--sans)}
 .company-name{display:block;font:600 14px/1.5 var(--sans);color:var(--strong)}
 .company-direction{display:block;margin-top:3px;font:12px/1.6 var(--sans);color:var(--muted);text-wrap:pretty;overflow-wrap:anywhere}
+.company-dates{font:11px/1.6 var(--sans);color:var(--dim);white-space:nowrap}
+.company-dates time{white-space:nowrap}
 @container profile (min-width:540px){
   .company-list{grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
 }

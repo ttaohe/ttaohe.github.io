@@ -23,7 +23,7 @@ test('profile Experience contains only the approved companies and inference dire
     assert(items[index].includes(`class="company-name">${company}</span>`));
     assert(items[index].includes(`class="company-direction">${direction}</span>`));
   }
-  assert.doesNotMatch(experience, /\b(?:Current|Internship|Intern|Engineer|Present|20\d\d)\b/i);
+  assert.doesNotMatch(experience, /\b(?:Current|Internship|Engineer)\b/i);
   assert.match(html, /id="experience"[^]*?经历与项目[^]*?id="mla-tp-l2-cache-deduplication"/);
 });
 
@@ -49,4 +49,21 @@ test('company strip responds to its own available width and stacks with the mobi
   assert.match(css, /\.company-list li\{[^}]*grid-template-columns:36px minmax\(0,1fr\)/);
   assert.match(css, /\.hero \.profile-experience\{grid-column:1\/-1;margin-top:0/);
   assert.doesNotMatch(css, /\.company-direction\{[^}]*(?:height|white-space:nowrap|overflow:hidden)/);
+});
+
+
+test('company dates and internship labels preserve the user-provided overlapping periods', () => {
+  const items = [...experience.matchAll(/<li>([^]*?)<\/li>/g)].map(match => match[1]);
+  const expected = [
+    '<time datetime="2025-12">2025.12</time>–<time datetime="2026-03">2026.03</time> · Intern',
+    '<time datetime="2026-05">2026.05</time>–<time datetime="2026-09">2026.09</time> · Intern',
+    '<time datetime="2026-06">2026.06</time>–Present',
+  ];
+  for (const [index, dates] of expected.entries()) assert(items[index].includes(`class="company-dates">${dates}</span>`));
+  assert.equal([...experience.matchAll(/ · Intern/g)].length, 2);
+  assert.doesNotMatch(items[2], /Intern/);
+  assert(css.includes('.company-heading{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 2ch;font:14px/1.5 var(--sans)}'));
+  for (const item of items) assert.match(item, /class="company-heading"><span class="company-name">[^]*?<span class="company-dates">[^]*?<\/span><\/div><span class="company-direction">/);
+  assert(css.includes('.company-dates{font:11px/1.6 var(--sans);color:var(--dim);white-space:nowrap}'));
+  assert(css.includes('.company-dates time{white-space:nowrap}'));
 });
