@@ -40,6 +40,7 @@ test('research reading precedes the supporting rail and clock in semantic order'
   }
   assert(css.includes('grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr)'));
   assert(css.includes('@media(max-width:1150px)'));
+  assert(css.includes('@media(max-width:900px){\n  .research-context{grid-template-columns:minmax(0,1fr)}'));
   assert(css.includes('.research-context{grid-template-columns:minmax(0,1fr)'));
 });
 
