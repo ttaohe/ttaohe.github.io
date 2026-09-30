@@ -160,6 +160,19 @@ html{scroll-behavior:smooth;scroll-padding-top:0}
 body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.8 var(--sans)}
 a{color:inherit;text-decoration:none}
 a:focus-visible,button:focus-visible{outline:2px solid var(--green);outline-offset:5px}
+/* Native fragment navigation focuses these reading regions. Replace the
+   browser's full-section ring with a compact keyboard cue on the heading. */
+@supports selector(:focus-visible) {
+  .content > :is(.hero, .section)[tabindex="-1"]:focus {
+    outline: none;
+  }
+  .content > .hero:focus-visible h1,
+  .content > .section:focus-visible > .section-heading h2 {
+    outline: 2px solid var(--green);
+    outline-offset: 6px;
+    border-radius: 2px;
+  }
+}
 ::selection{background:var(--selection);color:var(--selection-fg)}
 .shell{margin:var(--page-gutter) var(--page-gutter) 24px;border:1px solid var(--line);border-radius:12px;overflow:clip;background:var(--surface);box-shadow:0 28px 90px var(--shadow)}
 .titlebar{min-height:43px;display:flex;align-items:center;gap:15px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding:6px 17px;background:var(--chrome)}

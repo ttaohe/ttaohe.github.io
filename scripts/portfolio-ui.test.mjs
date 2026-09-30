@@ -101,6 +101,15 @@ test('desktop and mobile links target all real focusable chapters', () => {
   assert(css.includes('.content>.section:last-of-type{min-height:calc(100svh'));
 });
 
+test('native chapter focus is indicated on its heading, never around the whole section', () => {
+  // Fragment targets stay focusable so Enter and the next Tab retain native
+  // navigation semantics. Only their oversized browser outline is replaced.
+  assert.match(css, /@supports selector\(:focus-visible\)\s*\{\s*\.content\s*>\s*:is\(\.hero,\s*\.section\)\[tabindex="-1"\]:focus\s*\{\s*outline:\s*none;?\s*\}/);
+  assert.match(css, /\.content\s*>\s*\.hero:focus-visible\s+h1,\s*\.content\s*>\s*\.section:focus-visible\s*>\s*\.section-heading\s+h2\s*\{[^}]*outline:\s*2px solid var\(--green\);[^}]*outline-offset:\s*6px/);
+  assert.match(css, /a:focus-visible,button:focus-visible\{outline:2px solid var\(--green\);outline-offset:5px\}/);
+  assert.doesNotMatch(css, /(?:^|\})\s*(?:\*|:focus|:focus-visible)\s*\{[^}]*outline:\s*(?:none|0)/);
+});
+
 test('navigation coalesces scrolling and refreshes after history, resize and restored pages', () => {
   const events = new Map();
   const frames = [];
