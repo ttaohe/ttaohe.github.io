@@ -249,6 +249,9 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--green);outline-offs
 .resume-box a{font-size:13px;white-space:nowrap;border-bottom:1px solid var(--button-line);color:var(--link)}
 .disclosure{padding-top:24px;border-top:1px solid var(--line);font-size:12px;line-height:1.9;color:var(--dim)}
 .disclosure p{margin:0}
+.disclosure .visit-counter{display:flex;flex-wrap:wrap;align-items:baseline;gap:3px 12px;margin-top:12px}
+.visit-counter [data-visit-value]{color:var(--muted);font-variant-numeric:tabular-nums}
+.visit-counter small{font-size:11px;color:var(--dim)}
 .statusbar{display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between;align-items:center;padding:8px 18px;background:var(--status-bg);border-top:1px solid var(--status-line);color:var(--status-fg);font:11px/1.5 var(--mono)}
 .statusbar span{display:flex;gap:18px}
 .outer-foot{margin:0 var(--page-gutter) 30px;padding:0 4px;font:11px/1.8 var(--mono);color:var(--dim);display:flex;justify-content:space-between;gap:15px}

@@ -15,6 +15,7 @@ for (const route of routes) {
   const html = await readFile(path.join(appOutput, route, 'index.html'), 'utf8');
   const text = decodeText(html);
   assert(html.includes('<html'), `Missing static HTML for ${basePath}/${route}`);
+  assert(!html.includes('portfolio-visits.js'), `Homepage-only counter must not load on ${basePath}/${route}`);
   assert(html.includes('内容源暂时无法更新') === status.stale, `Incorrect stale-data notice on ${basePath}/${route}`);
   if (route.startsWith('notes/')) {
     const post = content.posts.find(post => route.endsWith(post.slug));
@@ -36,6 +37,9 @@ assert(!landing.includes('{{'), 'Unresolved portfolio template marker');
 assert(!landing.includes('冯开宇') && !landing.includes('北京理工大学') && !landing.includes('GPA:'), 'Upstream sample resume content must never appear on the personal homepage');
 assert(!/href="[^"]*\.pdf/i.test(landing), 'No personal PDF resume has been supplied');
 assert(landing.includes(content.updatedAt), 'Homepage countdown must use the authoritative content timestamp');
+assert(landing.includes('data-visit-counter') && landing.includes('自启用起；非独立人数'), 'Homepage counter must disclose its pageview scope');
+assert(landing.includes('src="/assets/portfolio-visits.js"'), 'Homepage counter asset is not loaded');
+assert(!/首页累计访问\s*\d/.test(landing), 'A pageview count must come from the live API, never a seeded HTML value');
 if (content.daily) {
   const dailyHtml = decodeText(await readFile(path.join(appOutput, 'daily/index.html'), 'utf8'));
   const latest = content.daily.dates[0].key;
