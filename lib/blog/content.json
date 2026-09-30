@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-30T08:14:00Z",
+  "updatedAt": "2026-09-30T12:17:32Z",
   "posts": [
     {
       "slug": "state-recovery",
@@ -648,6 +648,37 @@
             "mooncake",
             "kv-cache",
             "network"
+          ]
+        },
+        {
+          "id": "sglang-empty-batch-full-latch",
+          "rank": "06",
+          "category": "SGLANG · SCHEDULER LIVENESS",
+          "title": "SGLang 修正空批次的 batch_is_full 锁存，避免后续 Prefill 一直被跳过",
+          "summary": "9 月 30 日 10:26 UTC 新开的 #41872 修正普通 Prefill admission 路径：当 running batch 为空、can_run_list 也为空时，瞬时 NO_TOKEN 不再无条件置位 batch_is_full。新条件只在已经接纳请求或 running batch 非空时锁存；否则下一轮可以重新进入 admission。12:13 UTC 核验 head 3b43adf，PR 仍 open、未合并。",
+          "why": "这是调度活性修复：空批次不会进入常规 Decode 清标志路径，旧锁存可能让 waiting queue 在资源恢复后仍无法推进。补丁新增两项 CPU 回归测试，覆盖空批次不锁存及下一轮再次调用优先级计算。作者报告 managers 套件 825 通过、9 个既有 macOS 环境失败；本次仅检查固定源码和测试断言，未运行该套件或服务端复现。",
+          "source": "https://github.com/sgl-project/sglang/pull/41872",
+          "sourceLabel": "SGLang PR #41872 · head 3b43adf",
+          "reading": "6 min",
+          "signal": "medium",
+          "columns": [
+            "sglang"
+          ]
+        },
+        {
+          "id": "vllm-dspark-draft-eplb",
+          "rank": "07",
+          "category": "VLLM · DSpark EPLB",
+          "title": "vLLM 为 DeepSeek V4 的 DSpark 草稿模型接通 EPLB，明确排除 V4.1",
+          "summary": "#57549 最初于 9 月 18 日提出，本日 11:38 UTC 更新；12:13 UTC 核验 head e4375e0，仍 open、未合并。NVIDIA DSpark 模型新增 MixtureOfExperts 接口，收集自身 MoE 层，并在 runner 中把草稿模型注册到 EPLB 状态。支持条件显式限定 model_type=deepseek_v4；V4.1 草稿专家数更少，继续禁用草稿侧 EPLB。",
+          "why": "推测解码的草稿 MoE 也可能出现专家负载偏斜，目标模型均衡并不自动覆盖草稿。补丁保留适配的 EPLB 配置，补充注册、dummy weights 跳过、V4.1 排除及 v2 runner 测试，并用 (draft) 区分日志。作者给出 GSM8K 1,319 题、5-shot、准确率 0.952 的结果；缺少同条件开关对照，不能据此声称加速。本次只做源码核验，未独立运行 GPU 或精度实验。",
+          "source": "https://github.com/vllm-project/vllm/pull/57549",
+          "sourceLabel": "vLLM PR #57549 · head e4375e0",
+          "reading": "8 min",
+          "signal": "medium",
+          "columns": [
+            "vllm",
+            "models"
           ]
         }
       ],
@@ -1887,9 +1918,9 @@
     "issueMeta": {
       "09.30": {
         "headline": "今日值得关注的 AI Infra 信号",
-        "subtitle": "本期 5 条 · 约 49 分钟",
-        "threadTitle": "优化正在从算子延伸到页表、恢复边界与读取编排",
-        "threadSummary": "Q8KV8 加速稀疏 Prefill，THP 与 cuMem 减少 Host state 的地址翻译压力；sliding-window backoff 和原生 ReadPlan 则让状态恢复边界与 layer-wise 数据消费顺序保持一致。"
+        "subtitle": "本期 7 条 · 约 63 分钟",
+        "threadTitle": "从页表与恢复边界，延伸到调度活性和草稿专家均衡",
+        "threadSummary": "前五条保留稀疏 Prefill、Host 地址翻译、滑窗恢复和 layer-wise 读取的进展；12:00 UTC 批次补充空批次调度锁存修复与 DeepSeek V4 DSpark 草稿侧 EPLB。新增两项均未合并，源码事实、作者测试和本次未复现边界分别标明。"
       },
       "09.29": {
         "headline": "今日值得关注的 AI Infra 信号",
