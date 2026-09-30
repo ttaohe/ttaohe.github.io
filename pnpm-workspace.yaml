@@ -1,0 +1,9 @@
+# Keep installs reproducible, with explicit lifecycle-script approval.
+minimumReleaseAge: 10080
+minimumReleaseAgeIgnoreMissingTime: false
+trustLockfile: false
+strictDepBuilds: true
+allowBuilds:
+  sharp: true
+  unrs-resolver: true
+packageImportMethod: clone-or-copy

@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="940" viewBox="0 0 1000 940" role="img" aria-labelledby="title desc">
+<title id="title">能命中，不等于能恢复</title>
+<desc id="desc">概念示意，非实测时间线。历史 KV、SWA 窗口与循环状态 checkpoint 的可用边界需要相交，且身份一致；缺失必需组件时应回退到更短的合法边界或按模型语义重算。此图不主张固定长度 replay 对所有循环模型都能精确恢复。</desc>
+<defs><pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M 24 0 L 0 0 0 24" fill="none" stroke="#E6ECE9" stroke-width="0.6"/></pattern>
+<marker id="arrow147D83" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9 Z" fill="#147D83"/></marker>
+<marker id="arrow3D9FAF" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9 Z" fill="#3D9FAF"/></marker>
+<marker id="arrowB47D27" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9 Z" fill="#B47D27"/></marker>
+<marker id="arrow7599A5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9 Z" fill="#7599A5"/></marker>
+</defs>
+<rect width="1000" height="940" fill="#FBFAF6"/>
+<rect width="1000" height="940" fill="url(#grid)"/>
+<text x="40" y="64.2" font-family="Noto Sans CJK SC, sans-serif" font-size="32" font-weight="650" fill="#183044" text-anchor="start">
+<tspan x="40" dy="0">能命中，不等于能恢复</tspan>
+</text>
+<text x="40" y="102.95" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#51687A" text-anchor="start">
+<tspan x="40" dy="0">异构状态恢复：以同一前缀边界上的全部必需组件为准</tspan>
+</text>
+<rect x="40" y="128" width="920" height="164" rx="15" fill="#F3F7F5" stroke="#D4E2E5" stroke-width="1.5"/>
+<text x="62" y="166.65" font-family="Noto Sans CJK SC, sans-serif" font-size="19" font-weight="650" fill="#183044" text-anchor="start">
+<tspan x="62" dy="0">候选前缀：同一模型状态身份与前缀标识</tspan>
+</text>
+<rect x="62" y="197" width="274" height="70" rx="15" fill="#EAF5F3" stroke="#147D83" stroke-width="1.5"/>
+<text x="199.0" y="223.925" font-family="Noto Sans CJK SC, sans-serif" font-size="19" font-weight="400" fill="#183044" text-anchor="middle">
+<tspan x="199.0" dy="0">历史 KV 页</tspan>
+<tspan x="199.0" dy="29.45">覆盖所需历史</tspan>
+</text>
+<rect x="363" y="197" width="274" height="70" rx="15" fill="#EAF5F3" stroke="#147D83" stroke-width="1.5"/>
+<text x="500.0" y="223.925" font-family="Noto Sans CJK SC, sans-serif" font-size="19" font-weight="400" fill="#183044" text-anchor="middle">
+<tspan x="500.0" dy="0">SWA 窗口</tspan>
+<tspan x="500.0" dy="29.45">窗口范围完整</tspan>
+</text>
+<rect x="664" y="197" width="274" height="70" rx="15" fill="#EAF5F3" stroke="#147D83" stroke-width="1.5"/>
+<text x="801.0" y="223.925" font-family="Noto Sans CJK SC, sans-serif" font-size="19" font-weight="400" fill="#183044" text-anchor="middle">
+<tspan x="801.0" dy="0">循环状态 checkpoint</tspan>
+<tspan x="801.0" dy="29.45">存在于该边界</tspan>
+</text>
+<path d="M 199 267 L 199 319 L 410 319 L 410 356" fill="none" stroke="#147D83" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow147D83)"/>
+<path d="M 500 267 L 500 356" fill="none" stroke="#147D83" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow147D83)"/>
+<path d="M 801 267 L 801 319 L 590 319 L 590 356" fill="none" stroke="#147D83" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow147D83)"/>
+<rect x="208" y="356" width="584" height="126" rx="15" fill="#FFFFFF" stroke="#147D83" stroke-width="1.5"/>
+<text x="500.0" y="395.0" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="650" fill="#183044" text-anchor="middle">
+<tspan x="500.0" dy="0">求可恢复边界的交集</tspan>
+<tspan x="500.0" dy="31.0">同一前缀身份 · 同一边界 · 全部必需组件</tspan>
+<tspan x="500.0" dy="31.0">KV / 窗口 / checkpoint 同时有效</tspan>
+</text>
+<path d="M 354 482 L 354 530 L 265 530 L 265 568" fill="none" stroke="#147D83" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow147D83)"/>
+<path d="M 646 482 L 646 530 L 735 530 L 735 568" fill="none" stroke="#B47D27" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 6" marker-end="url(#arrowB47D27)"/>
+<text x="105" y="519.95" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="650" fill="#147D83" text-anchor="start">
+<tspan x="105" dy="0">组件齐备</tspan>
+</text>
+<text x="677" y="519.95" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="650" fill="#B47D27" text-anchor="start">
+<tspan x="677" dy="0">缺失或边界不一致</tspan>
+</text>
+<rect x="60" y="568" width="410" height="128" rx="15" fill="#EAF5F3" stroke="#147D83" stroke-width="1.5"/>
+<text x="265.0" y="606.8000000000001" font-family="Noto Sans CJK SC, sans-serif" font-size="21" font-weight="650" fill="#183044" text-anchor="middle">
+<tspan x="265.0" dy="0">从共同边界恢复</tspan>
+<tspan x="265.0" dy="32.550000000000004">请求绑定正确状态</tspan>
+<tspan x="265.0" dy="32.550000000000004">一致续算</tspan>
+</text>
+<rect x="530" y="568" width="410" height="128" rx="15" fill="#FFF4DF" stroke="#B47D27" stroke-width="1.5"/>
+<text x="735.0" y="608.0" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="650" fill="#183044" text-anchor="middle">
+<tspan x="735.0" dy="0">回退 / 重算</tspan>
+<tspan x="735.0" dy="31.0">选择更短的合法边界</tspan>
+<tspan x="735.0" dy="31.0">或按模型语义重新计算</tspan>
+</text>
+<rect x="60" y="735" width="880" height="91" rx="15" fill="#FFFFFF" stroke="#D4E2E5" stroke-width="1.5"/>
+<text x="500.0" y="772.0" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="400" fill="#183044" text-anchor="middle">
+<tspan x="500.0" dy="0">KV 页命中长度 ≠ 可恢复前缀长度</tspan>
+<tspan x="500.0" dy="31.0">循环状态不能像历史 KV 页一样任意截短</tspan>
+</text>
+<path d="M 44 871 L 85 871" fill="none" stroke="#147D83" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow147D83)"/>
+<text x="98" y="876.6" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#51687A" text-anchor="start">
+<tspan x="98" dy="0">实线：必要依赖 / 主路径</tspan>
+</text>
+<path d="M 405 871 L 446 871" fill="none" stroke="#3D9FAF" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 6" marker-end="url(#arrow3D9FAF)"/>
+<text x="460" y="876.6" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#51687A" text-anchor="start">
+<tspan x="460" dy="0">虚线：条件路径 / 待验证策略</tspan>
+</text>
+<text x="40" y="916.6" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#51687A" text-anchor="start">
+<tspan x="40" dy="0">概念示意，非实测时间线；箭头不表示耗时比例</tspan>
+</text>
+</svg>

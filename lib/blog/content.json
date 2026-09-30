@@ -1,0 +1,312 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-09-30T07:33:00Z",
+  "posts": [
+    {
+      "slug": "state-recovery",
+      "title": "KV cache 的下一层问题：什么状态才算真正可恢复？",
+      "subtitle": "把状态规模、合法恢复边界和存储层级拆开，重新理解 hybrid cache 的有效命中",
+      "date": "2026-09-30",
+      "category": "缓存与状态",
+      "tags": [
+        "KV cache",
+        "Hybrid LLM",
+        "Marconi",
+        "状态恢复"
+      ],
+      "kind": "技术综述",
+      "summary": "外存里有 KV，不等于请求能从那里继续执行。本文从模型状态的语义出发，梳理 checkpoint、缓存留存与恢复关键路径之间的关系，并提出尚待验证的测量方法。",
+      "outline": [
+        "1. 先拆开三条分析轴",
+        "2. 模型状态决定合法恢复边界",
+        "3. 能匹配，不代表能留到下次",
+        "4. 用有效恢复量检验缓存策略"
+      ],
+      "sections": [
+        {
+          "heading": "1. 先拆开三条分析轴",
+          "paragraphs": [
+            "讨论 KV cache 时，很容易把“缓存在哪里”“状态有多大”和“命中后能否续算”混成一个问题。存储后端解决了容量与搬运，但 hybrid 模型还提出另一层约束：下一次请求要恢复哪些组件，这些组件是否对应同一个前缀边界？",
+            "第一条轴是状态规模。Full KV、MLA、DSA 所需历史表示随上下文增长；SWA 窗口与 KDA、Mamba 的单个续算状态有界。不过，有界的是一个状态快照，大量历史 checkpoint 仍会累积容量，不能据此推出整个缓存固定大小。",
+            "第二条轴是恢复语义：历史页可命中、窗口完整、recurrent checkpoint 存在，是不同条件。第三条轴是驻留与路径：L1 HBM、L2 host、L3 外存描述位置，direct linker 描述访问路径。共享池、跨请求留存与提前 prefetch，也应分别讨论。"
+          ],
+          "diagram": "state-boundary"
+        },
+        {
+          "heading": "2. 模型状态决定合法恢复边界",
+          "paragraphs": [
+            "DeepSeek-V4.1-Flash 报告将 global KV 长期保留在 persistent cache，把 SWA KV 放入短 TTL 的分布式 host 内存池；SWA 缺失时，以最近一个窗口 replay 做近似重建。这展示了特定模型的存储与重算取舍，不能直接推广成 KDA、Mamba 的精确恢复方法。报告也保留了 cache-resumption 鲁棒性风险。",
+            "这里的 persistent 是部署中的留存语义，不能仅凭名称推断通用断电持久性。类似地，“全量历史可表示”也不意味着所有 KV 页永不淘汰。模型表示能力与缓存管理策略之间，需要保留这条分界。",
+            "Marconi 处理的困难是 recurrent state 会原地更新，无法像历史 KV 那样任意截短复用，因此要选择值得保存的边界。vLLM #37898 用普通 attention 命中长于 SSM 命中的差异发现未留存的共享前缀，再在 block 对齐边界补算并保留 checkpoint；这不要求显式 session 计数器。轮末边界和共享前缀边界是互补线索。"
+          ]
+        },
+        {
+          "heading": "3. 能匹配，不代表能留到下次",
+          "paragraphs": [
+            "缓存树能找到共享前缀，只说明存在匹配关系。请求回来时，相关页与 checkpoint 是否仍驻留、是否被锁定、恢复是否赶得上准入，才决定命中的实际价值。Cache in the Wild 在其生产 traces 中观察到 cross-user 命中较少，同时指出单轮 API 的共享 system prompt 很重要；不能据此否定同一用户跨 session 的复用。",
+            "Preble 将分布式前缀复用与负载均衡联合考虑，也提醒我们：共享池建立后，路由、局部驻留与排队仍会改变收益。对新 code-agent 工作负载，既有论文是比较基线，目标部署的 traces 才能回答复用间隔与容量是否匹配。",
+            "容量测量同样需要拆分。L1、L2 至少应区分 active／locked、可淘汰 cache、free 与 in-flight。token_usage 的口径必须按部署 commit 核验；一个利用率数值无法说明所有已分配状态，也无法区分天然缺少共享与缓存留存不足。"
+          ]
+        },
+        {
+          "heading": "4. 用有效恢复量检验缓存策略",
+          "paragraphs": [
+            "更有解释力的指标是“组件齐备且实际被采用的恢复 token 数”。如果 KV 页命中增加了，合法 checkpoint 却没有覆盖更长前缀，对请求而言可能没有新增收益。SGLang direct linker 的具体实现，正好提供了观察这个边界的源码切口；其 LOAD、COMMIT 与 COW 机制放在关联文章中单独分析。",
+            "一个待验证的实验是固定总容量，对比分组件 LRU、固定间隔 checkpoint 与共享分支边界优先保留。恢复位置覆盖 checkpoint 前后和分叉位置，同时记录 adopted tokens、齐备组件、重算量、写入放大，并检查 logits 或 logprob。若策略只提高对象 hit，却不提高可恢复长度，假设就不成立。",
+            "性能还要回到时间线。HiCache 已在 waiting queue 阶段提前 prefetch，不能假设它等 admission 后才搬运。应比较准入时尚未完成的传输、L2→L1 与同步等待，再测 TTFT 和 HBM 占用时间。恢复正确、命中更多、端到端更快，是需要分别建立的证据。"
+          ]
+        }
+      ],
+      "takeaways": [
+        "先确认同一边界的必需状态齐备，再讨论缓存命中率",
+        "有界续算状态不等于有界历史 checkpoint 总容量",
+        "缓存策略应以实际恢复量和端到端收益共同评价"
+      ],
+      "openQuestions": [
+        "分支工作负载中，checkpoint 覆盖率是否比 KV 驻留容量更先成为瓶颈？",
+        "前缀深度、复用间隔与重算成本，能否在不依赖业务标签时改善保留决策？",
+        "当提前 prefetch 已隐藏外存读取，剩余恢复路径还有多少可优化空间？"
+      ],
+      "relatedSlugs": [
+        "direct-linker",
+        "pd-c2c-coordination"
+      ],
+      "sources": [
+        {
+          "title": "DeepSeek-V4.1-Flash 报告 v1：§3.2 与 §6",
+          "url": "https://arxiv.org/html/2609.19969v1"
+        },
+        {
+          "title": "Marconi：Prefix Caching for the Era of Hybrid LLMs",
+          "url": "https://arxiv.org/abs/2411.19379"
+        },
+        {
+          "title": "vLLM #37898：Hybrid Marconi-style admission policy",
+          "url": "https://github.com/vllm-project/vllm/pull/37898"
+        },
+        {
+          "title": "vLLM 固定版本：shared_prefix_boundary 相关代码",
+          "url": "https://github.com/vllm-project/vllm/blob/e5f3d08d722870a5301560fad0cfa65b7e333900/vllm/v1/core/kv_cache_manager.py#L264-L321"
+        },
+        {
+          "title": "KVCache Cache in the Wild：arXiv v4",
+          "url": "https://arxiv.org/html/2506.02634v4"
+        },
+        {
+          "title": "Preble：Efficient Distributed Prompt Scheduling for LLM Serving",
+          "url": "https://arxiv.org/abs/2407.00023"
+        },
+        {
+          "title": "SGLang 固定版本：waiting queue 前的 prefetch",
+          "url": "https://github.com/sgl-project/sglang/blob/eb9c9ee99d47bf4c526a06cd84da59cd9cf4e2a5/python/sglang/srt/managers/scheduler.py#L3266-L3293"
+        }
+      ],
+      "disclosure": "本文由学习与讨论记录经 AI 辅助整理，公开来源核验截至 2026-09-30。实验部分是待验证设想，尚未实施；文中论文与实现成果属于原作者，不代表本站完成了 GPU 复现或证明了研究新颖性。"
+    },
+    {
+      "slug": "pd-c2c-coordination",
+      "title": "PD 与 C2C：局部更快，怎样变成端到端收益？",
+      "subtitle": "沿着 KV 恢复、prefill、P→D 传输与 Decode 准入，拆解网络、容量和计算的协同",
+      "date": "2026-09-30",
+      "category": "传输与调度",
+      "tags": [
+        "PD 分离",
+        "C2C",
+        "DeepEP",
+        "TENT",
+        "DirectKV"
+      ],
+      "kind": "技术综述",
+      "summary": "提前发送 KV 会占用显存，直接访问 host memory 也需要合理的访问排布。把传输速度、容量收益与内核收益分开测量，才能判断局部优化是否真正改善 TTFT 与 goodput。",
+      "outline": [
+        "1. 把优化放回同一条关键路径",
+        "2. 传输粒度与接收位置分别控制",
+        "3. 区分链路调度与阶段调度",
+        "4. 分离 C2C 的容量与带宽收益"
+      ],
+      "sections": [
+        {
+          "heading": "1. 把优化放回同一条关键路径",
+          "paragraphs": [
+            "Prefill／Decode 分离后，缓存、网络和计算共享请求的延迟预算。命中的 KV 若在 suffix prefill 时提前送往 Decode，可能缩短等待，也可能更早占住 Decode HBM。前一阶段省下的时间，可能变成下一阶段的排队。",
+            "主线可以画成：请求准入、KV 恢复、prefill 与集合通信、P→D 传输、Decode 准入和首 token。部署未必严格串行，需要把依赖、重叠与等待放进同一张时间线。",
+            "KV Transfer 与 DeepEP 共用网卡时能否让位？容量紧张时能否先接收到 host？C2C 能否让部分状态留在 CPU DRAM 参与计算？这些优化分别改变时间、空间和访问方式，需要接受同一组端到端指标的检验。"
+          ],
+          "diagram": "pd-critical-path"
+        },
+        {
+          "heading": "2. 传输粒度与接收位置分别控制",
+          "paragraphs": [
+            "SGLang #39992 针对超过 pack buffer 的大请求，将目标 rank 的 token 分片切成有界 slices，每片 gather／pack 后批量传输，等待完成再复用 buffer，以避免大量逐 token RDMA。它讨论的是 slice-pack，并非修改 DCP ownership。",
+            "截至 2026-09-30，#39992 已关闭、未合并，标题标有 DO NOT MERGE。性能数字来自作者下游分支，未在最新 main 验证。这是方案线索，不能写成上游已上线的收益。",
+            "另一条路径是 #40238：它于 9 月 24 日合并 Decode host receive 通用接口。在设备 token usage 达阈值时，具备能力的后端可将新传输接收到 host pool，设备准入后再恢复到 GPU。接口默认关闭；PR 当时明确内置后端尚未实现 host destination。实际能否使用，要检查目标后端，不能只看开关或合并状态。",
+            "传输粒度、接收位置、显存预留时点是不同变量。较大 slices 不会自动解决容量问题，host 接收也有搬运成本。"
+          ]
+        },
+        {
+          "heading": "3. 区分链路调度与阶段调度",
+          "paragraphs": [
+            "TENT 将传输意图与具体路径分离，在 slice 粒度依据遥测和成本估计晚绑定链路，处理拥塞、坏链路与带宽闲置。拥有这种能力，并不能直接证明某个部署中的 TENT 能理解 DeepEP collective 的业务优先级，或能抢占外部库已经发出的工作。",
+            "阶段调度关注另一层信息。MFS 在 9 月 19 日的 v2 改题为 Stage-Aware Communication Scheduling for Disaggregated LLM Serving，系统名 Nuska，将 KV retrieval、collective、P2D 的依赖及 TTFT 余量纳入调度。来源中的两个标题是同一论文的版本演进。",
+            "验证实现时还要拆开 CPU 与设备路径。GIL 或同步等待是否让提交串行，和已发出的 GPU／NIC 工作是否互相争用，是两组问题。异步 API 不证明实际重叠，时间线重叠也不证明互不干扰。可先对比 prefill-only、KV-only、prefill+KV，记录 CPU 提交、kernel、DeepEP dispatch／combine、NIC 吞吐与 inflight 数。"
+          ]
+        },
+        {
+          "heading": "4. 分离 C2C 的容量与带宽收益",
+          "paragraphs": [
+            "BOOST 希望同一 wave 内的 CTA 按带宽比例并行访问 HBM 与 host memory，以 PAM 处理页放置、DSR 维护动态 KV 映射。其评估重点是 GH200 上 bandwidth-bound decode，不能直接推广到所有 prefill 或 PCIe 系统，更不能简化为固定几个 head 放在 CPU 就能得到相同效果。",
+            "DirectKV 提供独立实现与 SGLang 集成，区分 GH200 ARM 与 Hopper x86／PCIe 镜像，并提示 PCIe 可做功能验证但性能不同。能运行、正确性通过、性能复现，是三项检查。",
+            "一个尚未运行的实验是先固定 batch，对比 HBM-only、prefetch+staging 与 host 直接访问，再放开 batch 测容量收益。固定 context、精度、命中条件与内核版本，记录 TPOT、HBM／C2C 读写和 CTA 尾部。对提前 P→D 传输，则比较完成后发送、命中即发送和预算限制发送，联合记录 TTFT、goodput 与 Decode 预留 HBM 的字节×时间，避免把等待转移误判成加速。"
+          ]
+        }
+      ],
+      "takeaways": [
+        "局部时间下降需要沿请求依赖链验证，尤其要检查下游排队",
+        "传输粒度、接收位置与显存预留时点是不同控制变量",
+        "固定 batch 测带宽，再放开 batch 测容量，避免混合解释收益"
+      ],
+      "openQuestions": [
+        "目标 connector 在什么事件后允许发送 cache-hit KV，#40238 的 host destination 是否真正实现？",
+        "TENT 与 DeepEP 在目标部署中是否共享优先级或让位机制？",
+        "C2C 直读在高命中 small-q prefill 与混合状态模型中，边界在哪里？"
+      ],
+      "relatedSlugs": [
+        "state-recovery",
+        "direct-linker"
+      ],
+      "sources": [
+        {
+          "title": "SGLang #39992：oversized PD DCP transfer 的 slice-pack 提案",
+          "url": "https://github.com/sgl-project/sglang/pull/39992"
+        },
+        {
+          "title": "SGLang #40238：Decode host receive 接口",
+          "url": "https://github.com/sgl-project/sglang/pull/40238"
+        },
+        {
+          "title": "TENT：A Declarative Slice Spraying Engine，v2",
+          "url": "https://arxiv.org/abs/2604.00368v2"
+        },
+        {
+          "title": "Multi-stage Flow Scheduling for LLM Serving，v1",
+          "url": "https://arxiv.org/abs/2603.17456v1"
+        },
+        {
+          "title": "Stage-Aware Communication Scheduling for Disaggregated LLM Serving，v2",
+          "url": "https://arxiv.org/abs/2603.17456v2"
+        },
+        {
+          "title": "BOOST：Concurrent Access to Host Memory and HBM，v1",
+          "url": "https://arxiv.org/html/2609.13592v1"
+        },
+        {
+          "title": "DirectKV：实现与 artifact-evaluation 说明",
+          "url": "https://github.com/shutianluo/DirectKV"
+        }
+      ],
+      "disclosure": "本文由学习与讨论记录经 AI 辅助整理，公开来源及 PR 状态核验截至 2026-09-30。论文结果与下游性能报告属于原作者；本站未运行 GPU 性能复现。文中比较方案均是待验证实验，不构成部署收益承诺。"
+    },
+    {
+      "slug": "direct-linker",
+      "title": "读 SGLang direct linker：LOAD 之后，为什么还需要 COMMIT？",
+      "subtitle": "沿着 pool、checkpoint key 与 COW 源，追踪 FULL + SWA + MAMBA 的恢复一致性",
+      "date": "2026-09-30",
+      "category": "源码阅读",
+      "tags": [
+        "SGLang",
+        "Direct linker",
+        "Mamba",
+        "Mooncake",
+        "正确性"
+      ],
+      "kind": "源码分析",
+      "summary": "以 SGLang #41343 的固定 head 为阅读基线：KV 页恢复只是第一步，recurrent checkpoint 还必须对应相同边界，并在 COMMIT 阶段成为请求的正确 COW 状态源。",
+      "outline": [
+        "1. 先划清基础集成与新增范围",
+        "2. 页命中必须收敛到 checkpoint 边界",
+        "3. COMMIT 接上正确的请求状态",
+        "4. 正确性证据与性能问题分开看"
+      ],
+      "sections": [
+        {
+          "heading": "1. 先划清基础集成与新增范围",
+          "paragraphs": [
+            "SGLang #37381 于 9 月 3 日合并，将 external linker 接入 Unified Radix Cache。树负责分配、插入、组件一致性和节点存活，后端提供共享全局内存访问路径。",
+            "#41343 为没有中间 host tier 的 direct L3 Mooncake linker 增加 FULL + SWA + MAMBA 组合。本文以来源链接中的固定 head 为基线；截至 9 月 30 日 06:46 UTC，它仍 open、未合并。基础集成已合并，不能证明这一组合已进入正式版本。",
+            "Mamba 在这里是组件与状态槽抽象，作者测试的是缩小的 Inkling checkpoint，不能推广为所有 KDA、GDN、Mamba 均已验证。本文聚焦恢复一致性，通用框架另见关联笔记。"
+          ]
+        },
+        {
+          "heading": "2. 页命中必须收敛到 checkpoint 边界",
+          "paragraphs": [
+            "pool assembler 为三类 pool 建立 DevicePoolGroup，但索引语义不同。FULL／SWA 按 token page 组织，每层 K、V 放入同一页对象；Mamba 按 state slot 组织，每槽一行、page_size=1，包含 temporal 与 conv buffers。",
+            "direct transfer 要求行内存连续，启动时拒绝 scaled KV、unified memory、int8 Mamba checkpoint、PLE 等状态。注册 pool 不等于覆盖任意模型。",
+            "OFFLOAD 只用 node 最后一页的 hash 为 Mamba checkpoint 建 key；LOOKUP／LOAD 也只查询候选边界最后一个 key，采用 TRAILING_PAGES。前 N 页 KV 齐全，不意味着任意 N 可恢复。新增单测让 KV／SWA 每页齐全，但只在完整前缀尾部保存 state：较短前缀仍不能报可恢复命中。"
+          ],
+          "diagram": "direct-linker"
+        },
+        {
+          "heading": "3. COMMIT 接上正确的请求状态",
+          "paragraphs": [
+            "LOAD 先分配 Mamba slot。失败会尝试 eviction，仍失败则返回 None，让 wrapper 放弃恢复并重算。数据进入 slot 后，还要确认下一次 forward 从哪里继续：KV 恢复到长度 L，却沿用较短前缀的 recurrent state，会破坏状态对应关系。",
+            "COMMIT 的 _cow_node_state_into_req 将 canonical cache node 的 state 设为请求的 COW 源，并保留请求自己的可写 slot。这里设置源指针和标记，并非立即 GPU copy。PR 描述说明 forward 的 COW 会等待对应 load 完成；本文未继续审计既有等待链路。",
+            "若 canonical node 已有 Mamba state，多余 slot 由 Mamba 组件释放，避免 wrapper 提前释放后组件继续引用。wrapper 还跳过 Mamba 的 adopted-range page slicing，保留 KV／SWA 的页处理。状态槽不能套用 token 页的裁剪规则。"
+          ]
+        },
+        {
+          "heading": "4. 正确性证据与性能问题分开看",
+          "paragraphs": [
+            "新增 E2E 使用 Inkling 的 test revision、确定性推理和 Mooncake，page／track interval 为 128。两轮之间 flush device tree，第二轮检查外存恢复 token 并比较 logprob KL，阈值 1e-9。测试的 host 统计字段在此报告 external restore，不表示路径增加了 host-cache tier。",
+            "以下均为 PR 作者报告，本站未复现：1×H200 上 6/6 请求恢复 1152 tokens，平均 KL=0；故意跳过 COMMIT 中的 Mamba load 后，平均 KL=5.6e-4。负对照支持测试能发现状态错配，但不是吞吐或 TTFT 提升证据。",
+            "作者说明整批 Mamba load 完成后才能 forward，尚无 per-layer overlap；已外存 node 后来因分支新增 checkpoint，不会再次 offload，被归为 hit loss。下一步应先检查边界前后、分支与分配压力下的正确性，再测 load 等待、forward 开始和 TTFT。分支热点优先留 checkpoint 仍是假设，可能被写入放大或 load barrier 抵消。"
+          ]
+        }
+      ],
+      "takeaways": [
+        "FULL／SWA 页存在，不能替代同一边界的 recurrent checkpoint",
+        "LOAD 恢复数据，COMMIT 建立请求继续执行所需的 COW 状态关系",
+        "作者的正确性报告不能转述为本站复现，也不能替代性能证据"
+      ],
+      "openQuestions": [
+        "#41343 最终合并时的实现与 release/tag 包含情况是否变化？",
+        "更大模型、并发分支与 allocation pressure 下是否补齐正确性证据？",
+        "新增 checkpoint 的再次 offload 与 load barrier 能否改善，并提供完整性能对照？"
+      ],
+      "relatedSlugs": [
+        "state-recovery",
+        "pd-c2c-coordination"
+      ],
+      "sources": [
+        {
+          "title": "SGLang #41343：hybrid direct-linker 实现与作者报告",
+          "url": "https://github.com/sgl-project/sglang/pull/41343"
+        },
+        {
+          "title": "SGLang #37381：external linker 基础集成",
+          "url": "https://github.com/sgl-project/sglang/pull/37381"
+        },
+        {
+          "title": "固定 head：linker pool assembler",
+          "url": "https://github.com/sgl-project/sglang/blob/32b202be980329aff0e32908134e892f312ba034/python/sglang/srt/mem_cache/hybrid_cache/linker_pool_assembler.py"
+        },
+        {
+          "title": "固定 head：Mamba checkpoint 与 COMMIT",
+          "url": "https://github.com/sgl-project/sglang/blob/32b202be980329aff0e32908134e892f312ba034/python/sglang/srt/mem_cache/unified_cache/components/mamba.py"
+        },
+        {
+          "title": "固定 head：unified cache linker wrapper",
+          "url": "https://github.com/sgl-project/sglang/blob/32b202be980329aff0e32908134e892f312ba034/python/sglang/srt/mem_cache/unified_cache/unified_cache_linker.py"
+        },
+        {
+          "title": "固定 head：边界与提交单元测试",
+          "url": "https://github.com/sgl-project/sglang/blob/32b202be980329aff0e32908134e892f312ba034/test/registered/unit/mem_cache/test_unified_cache_linker.py"
+        },
+        {
+          "title": "固定 head：Inkling KL E2E 测试",
+          "url": "https://github.com/sgl-project/sglang/blob/32b202be980329aff0e32908134e892f312ba034/test/registered/radix_cache/unified_radix_tree/linker/test_unified_cache_linker_kl_inkling.py"
+        }
+      ],
+      "disclosure": "本文由学习与讨论记录经 AI 辅助整理，基于 2026-09-30 06:46 UTC 已核验的 PR 元数据、代码与测试结构。GPU 测试未独立运行，性能收益尚无对照证据；所有实测数值均明确归于 PR 作者，后续实验为设想。"
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+export type BlogSection = { heading: string; paragraphs: string[]; bullets?: string[]; diagram?: string; code?: string; diagramUrl?: string; diagramDownloadUrl?: string; diagramCaption?: string };
+export type BlogPost = { slug: string; title: string; subtitle: string; date: string; category: string; tags: string[]; kind: string; summary: string; outline: string[]; sections: BlogSection[]; takeaways: string[]; openQuestions: string[]; relatedSlugs: string[]; sources: {title:string;url:string}[]; disclosure: string };
+export type BlogContent = { schemaVersion: 1; updatedAt: string; posts: BlogPost[] };

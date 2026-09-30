@@ -1,0 +1,129 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" modified="2026-09-30T07:30:00.000Z" agent="OpenAI" version="24.7.17" type="device">
+  <diagram id="pd-critical-path" name="传输提前，关键路径未必缩短">
+    <mxGraphModel dx="1000" dy="1060" grid="1" gridSize="24" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1000" pageHeight="1060" background="#FBFAF6" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="传输提前，关键路径未必缩短" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=32;fontColor=#183044;fontStyle=1;align=left;verticalAlign=middle;spacing=0;text;fillColor=none;strokeColor=none;resizable=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="29" width="920" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="PD 协同：同时看计算依赖、网络争用与 Decode 容量" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#51687A;fontStyle=0;align=left;verticalAlign=middle;spacing=0;text;fillColor=none;strokeColor=none;resizable=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="82" width="920" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="flow_panel" value="" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#183044;fontStyle=0;align=center;verticalAlign=middle;spacing=0;rounded=1;arcSize=12;fillColor=#F3F7F5;strokeColor=#D4E2E5;strokeWidth=1.5;" vertex="1" parent="1">
+          <mxGeometry x="25" y="124" width="950" height="370" as="geometry" />
+        </mxCell>
+        <mxCell id="path_label" value="请求关键路径（顺序示意）" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=19;fontColor=#183044;fontStyle=1;align=left;verticalAlign=middle;spacing=0;text;fillColor=none;strokeColor=none;resizable=1;" vertex="1" parent="1">
+          <mxGeometry x="45" y="140" width="900" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="q_restore" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#147D83;strokeWidth=2.5;endArrow=block;endFill=1;dashed=0;exitX=1.0;exitY=0.494949494949495;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.494949494949495;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="queue" target="restore">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="184" y="244" as="sourcePoint" />
+            <mxPoint x="218" y="244" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="restore_prefill" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#147D83;strokeWidth=2.5;endArrow=block;endFill=1;dashed=0;exitX=1.0;exitY=0.494949494949495;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.494949494949495;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="restore" target="prefill">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="363" y="244" as="sourcePoint" />
+            <mxPoint x="397" y="244" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="prefill_transfer" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#147D83;strokeWidth=2.5;endArrow=block;endFill=1;dashed=0;exitX=1.0;exitY=0.494949494949495;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.494949494949495;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="prefill" target="transfer">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="593" y="244" as="sourcePoint" />
+            <mxPoint x="627" y="244" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="transfer_decode" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#147D83;strokeWidth=2.5;endArrow=block;endFill=1;dashed=0;exitX=1.0;exitY=0.494949494949495;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.494949494949495;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="transfer" target="decode">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="772" y="244" as="sourcePoint" />
+            <mxPoint x="806" y="244" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="queue" value="请求队列&lt;br&gt;等待 / 准入" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#183044;fontStyle=0;align=center;verticalAlign=middle;spacing=0;rounded=1;arcSize=12;fillColor=#FFFFFF;strokeColor=#D4E2E5;strokeWidth=1.5;" vertex="1" parent="1">
+          <mxGeometry x="44" y="195" width="140" height="99" as="geometry" />
+        </mxCell>
+        <mxCell id="restore" value="KV 恢复&lt;br&gt;状态齐备" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#183044;fontStyle=0;align=center;verticalAlign=middle;spacing=0;rounded=1;arcSize=12;fillColor=#EAF5F3;strokeColor=#147D83;strokeWidth=1.5;" vertex="1" parent="1">
+          <mxGeometry x="218" y="195" width="145" height="99" as="geometry" />
+        </mxCell>
+        <mxCell id="prefill" value="Prefill 计算&lt;br&gt;DeepEP 集合通信" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#183044;fontStyle=0;align=center;verticalAlign=middle;spacing=0;rounded=1;arcSize=12;fillColor=#FFFFFF;strokeColor=#D4E2E5;strokeWidth=1.5;" vertex="1" parent="1">
+          <mxGeometry x="397" y="195" width="196" height="99" as="geometry" />
+        </mxCell>
+        <mxCell id="transfer" value="P → D&lt;br&gt;KV 传输" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#183044;fontStyle=0;align=center;verticalAlign=middle;spacing=0;rounded=1;arcSize=12;fillColor=#EAF5F3;strokeColor=#147D83;strokeWidth=1.5;" vertex="1" parent="1">
+          <mxGeometry x="627" y="195" width="145" height="99" as="geometry" />
+        </mxCell>
+        <mxCell id="decode" value="Decode 准入&lt;br&gt;首 token" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#183044;fontStyle=0;align=center;verticalAlign=middle;spacing=0;rounded=1;arcSize=12;fillColor=#FFFFFF;strokeColor=#D4E2E5;strokeWidth=1.5;" vertex="1" parent="1">
+          <mxGeometry x="806" y="195" width="150" height="99" as="geometry" />
+        </mxCell>
+        <mxCell id="early_send" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#3D9FAF;strokeWidth=2.5;endArrow=block;endFill=1;dashed=1;exitX=0.496551724137931;exitY=1.0;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5;entryY=1.0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="restore" target="decode">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="290" y="294" as="sourcePoint" />
+            <mxPoint x="881" y="294" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="290" y="363" />
+              <mxPoint x="881" y="363" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="early_label" value="命中前缀提前发送（待验证策略）" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#147D83;fontStyle=1;align=left;verticalAlign=middle;spacing=0;text;fillColor=none;strokeColor=none;resizable=1;" vertex="1" parent="1">
+          <mxGeometry x="375" y="319" width="430" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="budget" value="受 Decode HBM 预留预算与网络预算约束&lt;br&gt;只提前发送已命中前缀；suffix 计算依赖仍保留" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#183044;fontStyle=0;align=center;verticalAlign=middle;spacing=0;rounded=1;arcSize=12;fillColor=#FFF4DF;strokeColor=#B47D27;strokeWidth=1.5;" vertex="1" parent="1">
+          <mxGeometry x="210" y="393" width="730" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="parallel_header" value="两类“并发”必须分开验证" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=24;fontColor=#183044;fontStyle=1;align=left;verticalAlign=middle;spacing=0;text;fillColor=none;strokeColor=none;resizable=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="526" width="920" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="cpu_label" value="CPU 提交 / 等待&lt;br&gt;GIL · 同步点" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=19;fontColor=#183044;fontStyle=1;align=center;verticalAlign=middle;spacing=0;rounded=1;arcSize=12;fillColor=#FFFFFF;strokeColor=#D4E2E5;strokeWidth=1.5;" vertex="1" parent="1">
+          <mxGeometry x="40" y="588" width="225" height="106" as="geometry" />
+        </mxCell>
+        <mxCell id="cpu_inspect" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#147D83;strokeWidth=2.5;endArrow=block;endFill=1;dashed=0;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="cpu_label" target="cpu_notes">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="265" y="641" as="sourcePoint" />
+            <mxPoint x="306" y="641" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="cpu_notes" value="记录提交开始、提交完成与等待&lt;br&gt;异步 API 不代表 GPU / 网卡工作已经重叠" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#183044;fontStyle=0;align=center;verticalAlign=middle;spacing=0;rounded=1;arcSize=12;fillColor=#FFFFFF;strokeColor=#D4E2E5;strokeWidth=1.5;" vertex="1" parent="1">
+          <mxGeometry x="306" y="588" width="654" height="106" as="geometry" />
+        </mxCell>
+        <mxCell id="net_label" value="GPU / 网卡执行&lt;br&gt;设备时间线" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=19;fontColor=#183044;fontStyle=1;align=center;verticalAlign=middle;spacing=0;rounded=1;arcSize=12;fillColor=#FFFFFF;strokeColor=#D4E2E5;strokeWidth=1.5;" vertex="1" parent="1">
+          <mxGeometry x="40" y="716" width="225" height="106" as="geometry" />
+        </mxCell>
+        <mxCell id="net_inspect" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#147D83;strokeWidth=2.5;endArrow=block;endFill=1;dashed=0;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="net_label" target="net_notes">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="265" y="769" as="sourcePoint" />
+            <mxPoint x="306" y="769" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="net_notes" value="KV transfer 与 DeepEP 可能共用网卡&lt;br&gt;已执行工作的重叠，也可能伴随带宽争用" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#183044;fontStyle=0;align=center;verticalAlign=middle;spacing=0;rounded=1;arcSize=12;fillColor=#FFFFFF;strokeColor=#D4E2E5;strokeWidth=1.5;" vertex="1" parent="1">
+          <mxGeometry x="306" y="716" width="654" height="106" as="geometry" />
+        </mxCell>
+        <mxCell id="metrics" value="端到端判断：TTFT + goodput&lt;br&gt;同时记录 Decode HBM 字节×时间、排队与传输完成点" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#183044;fontStyle=1;align=center;verticalAlign=middle;spacing=0;rounded=1;arcSize=12;fillColor=#EAF5F3;strokeColor=#147D83;strokeWidth=1.5;" vertex="1" parent="1">
+          <mxGeometry x="40" y="854" width="920" height="91" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_main" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#147D83;strokeWidth=2.5;endArrow=block;endFill=1;dashed=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="44" y="994" as="sourcePoint" />
+            <mxPoint x="85" y="994" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend_main_text" value="实线：必要依赖 / 主路径" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=16;fontColor=#51687A;fontStyle=0;align=left;verticalAlign=middle;spacing=0;text;fillColor=none;strokeColor=none;resizable=1;" vertex="1" parent="1">
+          <mxGeometry x="98" y="976" width="250" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_optional" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#3D9FAF;strokeWidth=2.5;endArrow=block;endFill=1;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="405" y="994" as="sourcePoint" />
+            <mxPoint x="446" y="994" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend_optional_text" value="虚线：条件路径 / 待验证策略" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=16;fontColor=#51687A;fontStyle=0;align=left;verticalAlign=middle;spacing=0;text;fillColor=none;strokeColor=none;resizable=1;" vertex="1" parent="1">
+          <mxGeometry x="460" y="976" width="490" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_caption" value="概念示意，非实测时间线；箭头不表示耗时比例" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=16;fontColor=#51687A;fontStyle=0;align=left;verticalAlign=middle;spacing=0;text;fillColor=none;strokeColor=none;resizable=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1019" width="920" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

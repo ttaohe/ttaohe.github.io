@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1200" viewBox="0 0 1000 1200" role="img" aria-labelledby="title desc">
+<title id="title">Direct linker：路径与正确性一起比较</title>
+<desc id="desc">概念示意，非实测时间线，也不是普适性能排序。HiCache 可在等待队列阶段执行 L3→L2 prefetch，并支持 L2→L1 逐层恢复。direct external linker 的 hybrid 提案 #41343 把 KV/SWA 与同边界 recurrent checkpoint 恢复结合，COMMIT 绑定请求的正确 COW 源；Mamba load 按批等待，不可宣称其已有逐层重叠收益。#37381 已合并而 #41343 于 2026-09-30 核验仍 open；没有独立 GPU 性能复现。</desc>
+<defs><pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M 24 0 L 0 0 0 24" fill="none" stroke="#E6ECE9" stroke-width="0.6"/></pattern>
+<marker id="arrow147D83" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9 Z" fill="#147D83"/></marker>
+<marker id="arrow3D9FAF" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9 Z" fill="#3D9FAF"/></marker>
+<marker id="arrowB47D27" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9 Z" fill="#B47D27"/></marker>
+<marker id="arrow7599A5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9 Z" fill="#7599A5"/></marker>
+</defs>
+<rect width="1000" height="1200" fill="#FBFAF6"/>
+<rect width="1000" height="1200" fill="url(#grid)"/>
+<text x="40" y="64.2" font-family="Noto Sans CJK SC, sans-serif" font-size="32" font-weight="650" fill="#183044" text-anchor="start">
+<tspan x="40" dy="0">Direct linker：路径与正确性一起比较</tspan>
+</text>
+<text x="40" y="102.95" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#51687A" text-anchor="start">
+<tspan x="40" dy="0">HiCache 已能提前预取；比较 admission 时尚未隐藏的工作</tspan>
+</text>
+<rect x="25" y="124" width="950" height="231" rx="15" fill="#F3F7F5" stroke="#D4E2E5" stroke-width="1.5"/>
+<text x="45" y="161.85" font-family="Noto Sans CJK SC, sans-serif" font-size="21" font-weight="650" fill="#183044" text-anchor="start">
+<tspan x="45" dy="0">路径 A  ·  HiCache 分层恢复</tspan>
+</text>
+<path d="M 205 241 L 255 241" fill="none" stroke="#147D83" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow147D83)"/>
+<path d="M 490 241 L 545 241" fill="none" stroke="#147D83" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow147D83)"/>
+<path d="M 740 241 L 795 241" fill="none" stroke="#147D83" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow147D83)"/>
+<rect x="45" y="193" width="160" height="96" rx="15" fill="#FFFFFF" stroke="#D4E2E5" stroke-width="1.5"/>
+<text x="125.0" y="248.0" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="650" fill="#183044" text-anchor="middle">
+<tspan x="125.0" dy="0">L3 外存</tspan>
+</text>
+<rect x="255" y="193" width="235" height="96" rx="15" fill="#EAF5F3" stroke="#147D83" stroke-width="1.5"/>
+<text x="372.5" y="232.925" font-family="Noto Sans CJK SC, sans-serif" font-size="19" font-weight="400" fill="#183044" text-anchor="middle">
+<tspan x="372.5" dy="0">L2 Host</tspan>
+<tspan x="372.5" dy="29.45">等待队列期间预取</tspan>
+</text>
+<rect x="545" y="193" width="195" height="96" rx="15" fill="#EAF5F3" stroke="#147D83" stroke-width="1.5"/>
+<text x="642.5" y="232.925" font-family="Noto Sans CJK SC, sans-serif" font-size="19" font-weight="400" fill="#183044" text-anchor="middle">
+<tspan x="642.5" dy="0">L1 HBM</tspan>
+<tspan x="642.5" dy="29.45">逐层恢复</tspan>
+</text>
+<rect x="795" y="193" width="160" height="96" rx="15" fill="#FFFFFF" stroke="#D4E2E5" stroke-width="1.5"/>
+<text x="875.0" y="247.65" font-family="Noto Sans CJK SC, sans-serif" font-size="19" font-weight="650" fill="#183044" text-anchor="middle">
+<tspan x="875.0" dy="0">前向计算</tspan>
+</text>
+<text x="45" y="327.45" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#51687A" text-anchor="start">
+<tspan x="45" dy="0">L3 → L2 可利用排队余量；仍需检查残余传输、L2 → L1 与同步等待</tspan>
+</text>
+<rect x="25" y="391" width="950" height="388" rx="15" fill="#F3F7F5" stroke="#D4E2E5" stroke-width="1.5"/>
+<text x="45" y="429.85" font-family="Noto Sans CJK SC, sans-serif" font-size="21" font-weight="650" fill="#183044" text-anchor="start">
+<tspan x="45" dy="0">路径 B  ·  direct L3 + hybrid state（#41343 提案）</tspan>
+</text>
+<path d="M 225 502 L 365 502" fill="none" stroke="#147D83" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow147D83)"/>
+<path d="M 140 553 L 140 638 L 365 638" fill="none" stroke="#147D83" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow147D83)"/>
+<path d="M 565 502 L 595 502 L 595 540 L 620 540" fill="none" stroke="#147D83" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow147D83)"/>
+<path d="M 565 638 L 595 638 L 595 582 L 620 582" fill="none" stroke="#147D83" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow147D83)"/>
+<path d="M 804 560 L 841 560" fill="none" stroke="#147D83" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow147D83)"/>
+<rect x="55" y="451" width="170" height="102" rx="15" fill="#FFFFFF" stroke="#D4E2E5" stroke-width="1.5"/>
+<text x="140.0" y="494.35" font-family="Noto Sans CJK SC, sans-serif" font-size="18" font-weight="400" fill="#183044" text-anchor="middle">
+<tspan x="140.0" dy="0">L3 外存</tspan>
+<tspan x="140.0" dy="27.900000000000002">无中间 Host 层</tspan>
+</text>
+<rect x="365" y="451" width="200" height="102" rx="15" fill="#EAF5F3" stroke="#147D83" stroke-width="1.5"/>
+<text x="465.0" y="493.92499999999995" font-family="Noto Sans CJK SC, sans-serif" font-size="19" font-weight="400" fill="#183044" text-anchor="middle">
+<tspan x="465.0" dy="0">L1 HBM</tspan>
+<tspan x="465.0" dy="29.45">KV / SWA 页</tspan>
+</text>
+<rect x="365" y="591" width="200" height="94" rx="15" fill="#EAF5F3" stroke="#147D83" stroke-width="1.5"/>
+<text x="465.0" y="630.3499999999999" font-family="Noto Sans CJK SC, sans-serif" font-size="18" font-weight="400" fill="#183044" text-anchor="middle">
+<tspan x="465.0" dy="0">状态 slot</tspan>
+<tspan x="465.0" dy="27.900000000000002">同边界 checkpoint</tspan>
+</text>
+<text x="294.5" y="478.45" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="650" fill="#147D83" text-anchor="middle">
+<tspan x="294.5" dy="0">直接加载</tspan>
+</text>
+<rect x="620" y="491" width="184" height="138" rx="15" fill="#FFFFFF" stroke="#147D83" stroke-width="1.5"/>
+<text x="712.0" y="526.4250000000001" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="650" fill="#183044" text-anchor="middle">
+<tspan x="712.0" dy="0">COMMIT</tspan>
+<tspan x="712.0" dy="26.35">绑定正确 COW 源</tspan>
+<tspan x="712.0" dy="26.35">前向前等待</tspan>
+<tspan x="712.0" dy="26.35">状态加载就绪</tspan>
+</text>
+<rect x="841" y="510" width="114" height="100" rx="15" fill="#FFFFFF" stroke="#D4E2E5" stroke-width="1.5"/>
+<text x="898.0" y="566.3" font-family="Noto Sans CJK SC, sans-serif" font-size="18" font-weight="650" fill="#183044" text-anchor="middle">
+<tspan x="898.0" dy="0">前向计算</tspan>
+</text>
+<text x="45" y="727.2750000000001" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#51687A" text-anchor="start">
+<tspan x="45" dy="0">此 PR 的 Mamba 加载需整批完成后才 forward，未实现逐层重叠</tspan>
+<tspan x="45" dy="26.35">COMMIT 设置源与状态标记，不表示此刻已完成 GPU 拷贝</tspan>
+</text>
+<rect x="40" y="816" width="920" height="133" rx="15" fill="#FFFFFF" stroke="#D4E2E5" stroke-width="1.5"/>
+<text x="500.0" y="857.3000000000001" font-family="Noto Sans CJK SC, sans-serif" font-size="21" font-weight="650" fill="#183044" text-anchor="middle">
+<tspan x="500.0" dy="0">比较口径</tspan>
+<tspan x="500.0" dy="32.550000000000004">准入时剩余等待 · HBM 预占时长 · 后端并发</tspan>
+<tspan x="500.0" dy="32.550000000000004">是否更快取决于排队余量、资源预算与实测净收益</tspan>
+</text>
+<rect x="40" y="980" width="920" height="94" rx="15" fill="#FFF4DF" stroke="#B47D27" stroke-width="1.5"/>
+<text x="500.0" y="1019.3499999999999" font-family="Noto Sans CJK SC, sans-serif" font-size="18" font-weight="400" fill="#183044" text-anchor="middle">
+<tspan x="500.0" dy="0">基础 #37381 已合并；hybrid #41343 仍 open（2026-09-30 核验）</tspan>
+<tspan x="500.0" dy="27.900000000000002">正确性证据来自特定测试配置；尚无 TTFT / 吞吐对照</tspan>
+</text>
+<path d="M 44 1131 L 85 1131" fill="none" stroke="#147D83" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow147D83)"/>
+<text x="98" y="1136.6" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#51687A" text-anchor="start">
+<tspan x="98" dy="0">实线：必要依赖 / 主路径</tspan>
+</text>
+<path d="M 405 1131 L 446 1131" fill="none" stroke="#3D9FAF" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 6" marker-end="url(#arrow3D9FAF)"/>
+<text x="460" y="1136.6" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#51687A" text-anchor="start">
+<tspan x="460" dy="0">虚线：条件路径 / 待验证策略</tspan>
+</text>
+<text x="40" y="1176.6" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#51687A" text-anchor="start">
+<tspan x="40" dy="0">概念示意，非实测时间线；箭头不表示耗时比例</tspan>
+</text>
+</svg>

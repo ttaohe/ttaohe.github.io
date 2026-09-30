@@ -1,0 +1,117 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" modified="2026-09-30T07:30:00.000Z" agent="OpenAI" version="24.7.17" type="device">
+  <diagram id="state-boundary" name="能命中，不等于能恢复">
+    <mxGraphModel dx="1000" dy="940" grid="1" gridSize="24" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1000" pageHeight="940" background="#FBFAF6" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="能命中，不等于能恢复" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=32;fontColor=#183044;fontStyle=1;align=left;verticalAlign=middle;spacing=0;text;fillColor=none;strokeColor=none;resizable=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="29" width="920" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="异构状态恢复：以同一前缀边界上的全部必需组件为准" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#51687A;fontStyle=0;align=left;verticalAlign=middle;spacing=0;text;fillColor=none;strokeColor=none;resizable=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="82" width="920" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="candidate_panel" value="" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#183044;fontStyle=0;align=center;verticalAlign=middle;spacing=0;rounded=1;arcSize=12;fillColor=#F3F7F5;strokeColor=#D4E2E5;strokeWidth=1.5;" vertex="1" parent="1">
+          <mxGeometry x="40" y="128" width="920" height="164" as="geometry" />
+        </mxCell>
+        <mxCell id="candidate_label" value="候选前缀：同一模型状态身份与前缀标识" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=19;fontColor=#183044;fontStyle=1;align=left;verticalAlign=middle;spacing=0;text;fillColor=none;strokeColor=none;resizable=1;" vertex="1" parent="1">
+          <mxGeometry x="62" y="143" width="860" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="kv" value="历史 KV 页&lt;br&gt;覆盖所需历史" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=19;fontColor=#183044;fontStyle=0;align=center;verticalAlign=middle;spacing=0;rounded=1;arcSize=12;fillColor=#EAF5F3;strokeColor=#147D83;strokeWidth=1.5;" vertex="1" parent="1">
+          <mxGeometry x="62" y="197" width="274" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="swa" value="SWA 窗口&lt;br&gt;窗口范围完整" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=19;fontColor=#183044;fontStyle=0;align=center;verticalAlign=middle;spacing=0;rounded=1;arcSize=12;fillColor=#EAF5F3;strokeColor=#147D83;strokeWidth=1.5;" vertex="1" parent="1">
+          <mxGeometry x="363" y="197" width="274" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="state" value="循环状态 checkpoint&lt;br&gt;存在于该边界" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=19;fontColor=#183044;fontStyle=0;align=center;verticalAlign=middle;spacing=0;rounded=1;arcSize=12;fillColor=#EAF5F3;strokeColor=#147D83;strokeWidth=1.5;" vertex="1" parent="1">
+          <mxGeometry x="664" y="197" width="274" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="kv_check" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#147D83;strokeWidth=2.5;endArrow=block;endFill=1;dashed=0;exitX=0.5;exitY=1.0;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.3458904109589041;entryY=0.0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="kv" target="validation">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="199" y="267" as="sourcePoint" />
+            <mxPoint x="410" y="356" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="199" y="319" />
+              <mxPoint x="410" y="319" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="swa_check" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#147D83;strokeWidth=2.5;endArrow=block;endFill=1;dashed=0;exitX=0.5;exitY=1.0;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5;entryY=0.0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="swa" target="validation">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="500" y="267" as="sourcePoint" />
+            <mxPoint x="500" y="356" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="state_check" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#147D83;strokeWidth=2.5;endArrow=block;endFill=1;dashed=0;exitX=0.5;exitY=1.0;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.6541095890410958;entryY=0.0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="state" target="validation">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="801" y="267" as="sourcePoint" />
+            <mxPoint x="590" y="356" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="801" y="319" />
+              <mxPoint x="590" y="319" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="validation" value="求可恢复边界的交集&lt;br&gt;同一前缀身份 · 同一边界 · 全部必需组件&lt;br&gt;KV / 窗口 / checkpoint 同时有效" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#183044;fontStyle=1;align=center;verticalAlign=middle;spacing=0;rounded=1;arcSize=12;fillColor=#FFFFFF;strokeColor=#147D83;strokeWidth=1.5;" vertex="1" parent="1">
+          <mxGeometry x="208" y="356" width="584" height="126" as="geometry" />
+        </mxCell>
+        <mxCell id="valid_path" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#147D83;strokeWidth=2.5;endArrow=block;endFill=1;dashed=0;exitX=0.25;exitY=1.0;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5;entryY=0.0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="validation" target="resume">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="354" y="482" as="sourcePoint" />
+            <mxPoint x="265" y="568" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="354" y="530" />
+              <mxPoint x="265" y="530" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="missing_path" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#B47D27;strokeWidth=2.5;endArrow=block;endFill=1;dashed=1;exitX=0.75;exitY=1.0;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5;entryY=0.0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="validation" target="fallback">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="646" y="482" as="sourcePoint" />
+            <mxPoint x="735" y="568" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="646" y="530" />
+              <mxPoint x="735" y="530" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="valid_label" value="组件齐备" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#147D83;fontStyle=1;align=left;verticalAlign=middle;spacing=0;text;fillColor=none;strokeColor=none;resizable=1;" vertex="1" parent="1">
+          <mxGeometry x="105" y="498" width="224" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="missing_label" value="缺失或边界不一致" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#B47D27;fontStyle=1;align=left;verticalAlign=middle;spacing=0;text;fillColor=none;strokeColor=none;resizable=1;" vertex="1" parent="1">
+          <mxGeometry x="677" y="498" width="250" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="resume" value="从共同边界恢复&lt;br&gt;请求绑定正确状态&lt;br&gt;一致续算" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=21;fontColor=#183044;fontStyle=1;align=center;verticalAlign=middle;spacing=0;rounded=1;arcSize=12;fillColor=#EAF5F3;strokeColor=#147D83;strokeWidth=1.5;" vertex="1" parent="1">
+          <mxGeometry x="60" y="568" width="410" height="128" as="geometry" />
+        </mxCell>
+        <mxCell id="fallback" value="回退 / 重算&lt;br&gt;选择更短的合法边界&lt;br&gt;或按模型语义重新计算" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#183044;fontStyle=1;align=center;verticalAlign=middle;spacing=0;rounded=1;arcSize=12;fillColor=#FFF4DF;strokeColor=#B47D27;strokeWidth=1.5;" vertex="1" parent="1">
+          <mxGeometry x="530" y="568" width="410" height="128" as="geometry" />
+        </mxCell>
+        <mxCell id="invariant" value="KV 页命中长度 ≠ 可恢复前缀长度&lt;br&gt;循环状态不能像历史 KV 页一样任意截短" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#183044;fontStyle=0;align=center;verticalAlign=middle;spacing=0;rounded=1;arcSize=12;fillColor=#FFFFFF;strokeColor=#D4E2E5;strokeWidth=1.5;" vertex="1" parent="1">
+          <mxGeometry x="60" y="735" width="880" height="91" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_main" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#147D83;strokeWidth=2.5;endArrow=block;endFill=1;dashed=0;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="44" y="871" as="sourcePoint" />
+            <mxPoint x="85" y="871" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend_main_text" value="实线：必要依赖 / 主路径" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=16;fontColor=#51687A;fontStyle=0;align=left;verticalAlign=middle;spacing=0;text;fillColor=none;strokeColor=none;resizable=1;" vertex="1" parent="1">
+          <mxGeometry x="98" y="853" width="250" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_optional" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#3D9FAF;strokeWidth=2.5;endArrow=block;endFill=1;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="405" y="871" as="sourcePoint" />
+            <mxPoint x="446" y="871" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend_optional_text" value="虚线：条件路径 / 待验证策略" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=16;fontColor=#51687A;fontStyle=0;align=left;verticalAlign=middle;spacing=0;text;fillColor=none;strokeColor=none;resizable=1;" vertex="1" parent="1">
+          <mxGeometry x="460" y="853" width="490" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_caption" value="概念示意，非实测时间线；箭头不表示耗时比例" style="html=1;whiteSpace=wrap;overflow=hidden;fontFamily=Noto Sans CJK SC;fontSize=16;fontColor=#51687A;fontStyle=0;align=left;verticalAlign=middle;spacing=0;text;fillColor=none;strokeColor=none;resizable=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="896" width="920" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
