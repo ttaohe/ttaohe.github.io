@@ -62,7 +62,7 @@ test('company dates and internship labels preserve the user-provided overlapping
   for (const [index, dates] of expected.entries()) assert(items[index].includes(`class="company-dates">${dates}</span>`));
   assert.equal([...experience.matchAll(/ · Intern/g)].length, 2);
   assert.doesNotMatch(items[2], /Intern/);
-  assert(css.includes('.company-heading{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 2ch;font:14px/1.5 var(--sans)}'));
+  assert(css.includes('.company-heading{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px .6em;font:14px/1.5 var(--sans)}'));
   for (const item of items) assert.match(item, /class="company-heading"><span class="company-name">[^]*?<span class="company-dates">[^]*?<\/span><\/div><span class="company-direction">/);
   assert(css.includes('.company-dates{font:11px/1.6 var(--sans);color:var(--dim);white-space:nowrap}'));
   assert(css.includes('.company-dates time{white-space:nowrap}'));
