@@ -228,12 +228,15 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--green);outline-offs
 .section-heading .hash{color:var(--green);font:22px var(--mono)}
 .section-heading h2{font-size:20px;letter-spacing:-.02em;line-height:1.4;margin:0;font-weight:600}
 .section-heading .filename{font:12px var(--mono);color:var(--dim);margin-left:auto}
-.education{list-style:none;margin:0;padding:0;display:grid;gap:12px}
-.education li{display:grid;grid-template-columns:135px minmax(0,1fr);gap:25px;padding:17px 19px;border:1px solid var(--line);border-radius:7px;background:var(--card)}
-.years{font:14px/1.8 var(--mono);color:var(--blue)}
-.school{display:flex;flex-wrap:wrap;align-items:baseline;gap:11px;line-height:1.8}
-.school strong{font:600 19px var(--mono);color:var(--heading)}
-.school span{font-size:15px;color:var(--muted)}
+.education{list-style:none;margin:0;padding:0;display:grid;gap:14px}
+.education li{display:grid;grid-template-columns:80px minmax(0,1fr);align-items:center;gap:24px;padding:21px 23px;border:1px solid var(--line);border-radius:7px;background:var(--card)}
+/* The neutral backing keeps the official emblem colors legible in every theme. */
+.school-emblem{display:block;width:80px;height:80px;object-fit:contain;padding:5px;border-radius:50%;background:#fff}
+.school{min-width:0}
+.school h3{margin:0 0 8px;font:600 18px/1.5 var(--mono);letter-spacing:-.03em;color:var(--heading);overflow-wrap:anywhere;text-wrap:pretty}
+.school-detail{margin:0;font-size:14px;line-height:1.8;color:var(--fg)}
+.school-major{margin:2px 0 0;font-size:13px;line-height:1.7;color:var(--muted);overflow-wrap:anywhere}
+.school .years{margin:9px 0 0;font:12px/1.8 var(--mono);color:var(--blue)}
 .placeholder{min-height:158px;border:1px dashed var(--dashed-line);border-radius:8px;display:flex;align-items:center;justify-content:center;padding:28px;text-align:center;background:linear-gradient(120deg,var(--placeholder-glow),var(--surface))}
 .placeholder .todo{font:13px var(--mono);color:var(--purple);margin:0 0 10px}
 .placeholder p{margin:0;color:var(--muted);font-size:16px}
@@ -312,7 +315,9 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--green);outline-offs
 
     @media(max-width:900px){.content{padding:31px 28px 25px}
 .breadcrumb{padding-right:28px}
-.education li{grid-template-columns:115px minmax(0,1fr);gap:15px}
+.education li{grid-template-columns:64px minmax(0,1fr);gap:18px;padding:19px}
+.school-emblem{width:64px;height:64px;padding:4px}
+.school h3{font-size:17px}
 .hero{grid-template-columns:minmax(0,1fr) 120px;gap:24px}
 .hero h1 span{display:block;margin:12px 0 0;font-size:20px}
 .resume-box{align-items:start;flex-direction:column;gap:14px}
@@ -342,8 +347,11 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--green);outline-offs
 .section-heading{gap:9px}
 .section-heading h2{font-size:19px}
 .section-heading .filename{font-size:10px}
-.education li{grid-template-columns:1fr;gap:8px;padding:16px}
-.years{font-size:13px}
+.education li{grid-template-columns:56px minmax(0,1fr);align-items:start;gap:14px;padding:16px 14px}
+.school-emblem{width:56px;height:56px;margin-top:2px}
+.school h3{font-size:16px;line-height:1.5;letter-spacing:-.035em;margin-bottom:8px}
+.school-detail{font-size:13px}
+.school-major{font-size:12px}
 .research-header{flex-direction:column;gap:13px}
 .research-header h3{font-size:20px}
 .countdown{padding:16px;max-width:min(100%,420px)}

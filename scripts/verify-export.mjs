@@ -33,7 +33,9 @@ for (const route of routes) {
 const landing = await readFile(path.join(output, 'index.html'), 'utf8');
 assert(landing.includes(`href="${basePath}/"`), 'Portfolio landing page does not link to the notes section');
 assert(!landing.includes('知识地图 <'), 'Root must remain the portfolio landing page');
-for (const text of ['TaoHe', '何涛', '2019–2023', '2023–2026', 'NWPU', 'WHU', 'EE · 本科', 'CS · 硕士', '经历与项目', '整理中，后续补充', '距离下次资料检查', '上次内容更新']) assert(landing.includes(text), `Missing confirmed portfolio content: ${text}`);
+for (const text of ['TaoHe', '何涛', 'Northwestern Polytechnical University', 'Wuhan University', '西北工业大学 · 本科 · 电子信息工程', '武汉大学 · 硕士 · 计算机应用技术', 'Electronic Information Engineering', 'Computer Application Technology', '经历与项目', '整理中，后续补充', '距离下次资料检查', '上次内容更新']) assert(landing.includes(text), `Missing confirmed portfolio content: ${text}`);
+for (const years of [['2019', '2023'], ['2023', '2026']]) assert(landing.includes(`<time datetime="${years[0]}">${years[0]}</time>–<time datetime="${years[1]}">${years[1]}</time>`), `Missing confirmed education years ${years.join('–')}`);
+for (const [school, extension] of [['nwpu', 'gif'], ['whu', 'png']]) assert(new RegExp(`src="/assets/${school}-emblem\\.[a-f0-9]{16}\\.${extension}"`).test(landing), `Missing fingerprinted official ${school} emblem`);
 assert(!landing.includes('{{'), 'Unresolved portfolio template marker');
 assert(landing.includes('class="research-grid"') && landing.includes('class="research-context"'), 'Research two-column layout is missing');
 assert(landing.includes('/favicon.svg?v=walnut-1'), 'Homepage must use the walnut favicon');
@@ -53,12 +55,12 @@ assert(landing.includes(content.updatedAt), 'Homepage countdown must use the aut
 assert(landing.includes('data-visit-counter') && landing.includes('统计首页加载次数，不是独立访客人数'), 'Homepage counter must disclose its pageview scope');
 assert(/src="\/assets\/portfolio-visits\.[a-f0-9]{16}\.js"/.test(landing), 'Homepage counter must use a fingerprinted asset');
 const assetUrls = [...landing.matchAll(/(?:href|src)="(\/assets\/[^"?#]+)"/g)].map(match => match[1]);
-assert.equal(assetUrls.length, 5, 'Homepage must load its portrait, stylesheet and three modules');
+assert.equal(assetUrls.length, 7, 'Homepage must load its portrait, two school emblems, stylesheet and three modules');
 for (const assetUrl of assetUrls) {
-  assert(/\.[a-f0-9]{16}\.(?:css|js|jpg)$/.test(assetUrl), `Unversioned homepage asset ${assetUrl}`);
+  assert(/\.[a-f0-9]{16}\.(?:css|js|jpg|gif|png)$/.test(assetUrl), `Unversioned homepage asset ${assetUrl}`);
 }
 for (const filename of await readdir(path.join(output, 'assets'))) {
-  const match = filename.match(/\.([a-f0-9]{16})\.(?:css|js|jpg)$/);
+  const match = filename.match(/\.([a-f0-9]{16})\.(?:css|js|jpg|gif|png)$/);
   if (!match) continue; // Compatibility aliases are not referenced by fresh HTML.
   const bytes = await readFile(path.join(output, 'assets', filename));
   assert.equal(createHash('sha256').update(bytes).digest('hex').slice(0, 16), match[1], `Asset hash mismatch: ${filename}`);
