@@ -205,7 +205,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--green);outline-offs
 .breadcrumb{align-self:center;min-width:0;margin-left:auto;padding:0 var(--editor-gutter) 0 20px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:11px var(--mono);color:var(--dim)}
 .content{padding:32px var(--editor-gutter) 30px}
 .hero{position:relative;display:grid;grid-template-columns:minmax(0,1fr) clamp(148px,16vw,216px);align-items:start;gap:24px 40px;padding-bottom:32px}
-.profile-copy{min-width:0}
+.profile-copy{min-width:0;container:profile / inline-size}
 .profile-avatar{display:block;width:100%;height:auto;aspect-ratio:1;object-fit:cover;border:1px solid var(--line);border-radius:12px}
 .code-comment{font:13px/1.7 var(--mono);color:var(--green);margin:0 0 15px}
 .hero h1{font-family:var(--mono);font-size:clamp(38px,6vw,58px);line-height:1.18;letter-spacing:-.055em;margin:0 0 20px;font-weight:650}
@@ -214,6 +214,17 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--green);outline-offs
 .intro{max-width:650px}
 .intro p{text-wrap:pretty}
 .intro p+p{margin-top:5px}
+.profile-experience{margin-top:22px;padding-top:16px;border-top:1px solid var(--line)}
+.profile-experience h2{margin:0 0 13px;font:500 11px/1.7 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.company-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:minmax(0,1fr);gap:15px}
+.company-list li{display:grid;grid-template-columns:36px minmax(0,1fr);align-items:start;gap:11px;min-width:0}
+.company-logo{display:block;width:36px;height:36px;object-fit:contain;padding:3px;border-radius:7px;background:#fff}
+.company-copy{min-width:0}
+.company-name{display:block;font:600 14px/1.5 var(--sans);color:var(--strong)}
+.company-direction{display:block;margin-top:3px;font:12px/1.6 var(--sans);color:var(--muted);text-wrap:pretty;overflow-wrap:anywhere}
+@container profile (min-width:540px){
+  .company-list{grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+}
 .hero p strong{color:var(--strong);font-weight:500}
 .focus-line{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;font:13px/1.7 var(--mono);color:var(--muted);margin-top:24px}
 .focus-line .key{color:var(--purple)}
@@ -239,13 +250,19 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--green);outline-offs
 .school-major{margin:2px 0 0;font-size:13px;line-height:1.7;color:var(--muted);overflow-wrap:anywhere}
 .school .years{margin:9px 0 0;font:12px/1.8 var(--mono);color:var(--blue)}
 /* Use the reading area's width, after the sidebar and gutters. Each paired
-   card keeps at least 393px; the two-line title slot aligns the details without
-   clipping longer names. Unsupported container queries retain the single column. */
+   card keeps at least 393px. Shared natural rows align the details without
+   reserving an empty title line on wider screens. */
 @container education (min-width:800px){
   .education{grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch}
   .education li{grid-template-columns:64px minmax(0,1fr);align-items:start;gap:18px;padding:21px}
   .school-emblem{width:64px;height:64px;padding:4px;margin-top:3px}
-  .school h3{min-block-size:3em}
+  @supports (grid-template-rows:subgrid){
+    .education{row-gap:0}
+    .education li{grid-row:span 4;grid-template-rows:subgrid;row-gap:0}
+    .school{display:contents}
+    .school-emblem{grid-row:1/5}
+    .school>*{grid-column:2}
+  }
 }
 .placeholder{min-height:158px;border:1px dashed var(--dashed-line);border-radius:8px;display:flex;align-items:center;justify-content:center;padding:28px;text-align:center;background:linear-gradient(120deg,var(--placeholder-glow),var(--surface))}
 .placeholder .todo{font:13px var(--mono);color:var(--purple);margin:0 0 10px}
@@ -349,6 +366,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--green);outline-offs
 .hero h1{grid-column:1;margin-bottom:0}
 .profile-avatar{grid-column:2;grid-row:1/3;border-radius:9px}
 .hero .intro,.hero .focus-line,.hero .actions{grid-column:1/-1}
+.hero .profile-experience{grid-column:1/-1;margin-top:0;padding-top:16px}
 .hero .focus-line,.hero .actions{margin-top:0}
 .hero h1{font-size:42px}
 .hero p{font-size:15px}

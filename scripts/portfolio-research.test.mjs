@@ -30,8 +30,8 @@ async function render(content, { cssSuffix = '', verifyAssets = false } = {}) {
     if (verifyAssets) {
       const assetDir = path.join(fixture, 'publish/assets');
       const filenames = await readdir(assetDir);
-      const hashed = filenames.filter(name => /\.[a-f0-9]{16}\.(css|js|jpg)$/.test(name));
-      assert.equal(hashed.length, 6);
+      const hashed = filenames.filter(name => /\.[a-f0-9]{16}\.(css|js|jpg|gif|png|ico)$/.test(name));
+      assert.equal(hashed.length, 11);
       for (const name of hashed) {
         const bytes = await readFile(path.join(assetDir, name));
         assert.equal(name.match(/\.([a-f0-9]{16})\./)[1], createHash('sha256').update(bytes).digest('hex').slice(0, 16));

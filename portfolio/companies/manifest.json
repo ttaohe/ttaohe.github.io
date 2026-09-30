@@ -1,0 +1,38 @@
+[
+  {
+    "name": "Xiaomi",
+    "file": "xiaomi-logo.png",
+    "page": "https://www.mi.com/global/",
+    "source": "https://i02.appmifile.com/i18n/scm/favicon.png",
+    "width": 196,
+    "height": 196,
+    "sha256": "cbd7602e878c987180cbb14e86aa241541e3523e85362e1ac0bc7b896f93ea65",
+    "size_bytes": 4594,
+    "retrieved": "2026-09-30",
+    "unchanged_original": true
+  },
+  {
+    "name": "Ant Group",
+    "file": "ant-group-logo.png",
+    "page": "https://www.antgroup.com/",
+    "source": "https://gw.alipayobjects.com/mdn/rms/afts/img/A*BAhDQLCn3-wAAAAAAAAAAAAAARQnAQ",
+    "width": 80,
+    "height": 80,
+    "sha256": "279216da79d508f1ae5ef221a2416f1e5ad8a21bd8a44b1192cc12b6e30a0aef",
+    "size_bytes": 3344,
+    "retrieved": "2026-09-30",
+    "unchanged_original": true
+  },
+  {
+    "name": "Infinigence AI",
+    "file": "infinigence-ai-logo.ico",
+    "page": "https://www.infinigence-ai.com/en/",
+    "source": "https://www.infinigence-ai.com/favicon.ico",
+    "width": 32,
+    "height": 32,
+    "sha256": "842ac62536485a88cca2e9722c7d6090c4a18501839be6f5540efa5a4a90c901",
+    "size_bytes": 4318,
+    "retrieved": "2026-09-30",
+    "unchanged_original": true
+  }
+]

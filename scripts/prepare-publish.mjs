@@ -48,6 +48,10 @@ const scheduleModel = await readFile(path.join(root, 'lib/update-schedule.ts'), 
 const schedulePath = await publishAsset('update-schedule.js', ts.transpileModule(scheduleModel, { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.ES2020 } }).outputText);
 const countdownSource = (await readFile(path.join(root, 'portfolio/countdown.mjs'), 'utf8')).replace("'./update-schedule.js'", `'./${path.basename(schedulePath)}'`);
 const assets = {
+  '/assets/xiaomi-logo.png': await publishAsset('xiaomi-logo.png', await readFile(path.join(root, 'portfolio/companies/xiaomi-logo.png'))),
+  '/assets/ant-group-logo.png': await publishAsset('ant-group-logo.png', await readFile(path.join(root, 'portfolio/companies/ant-group-logo.png'))),
+  '/assets/infinigence-ai-logo.ico': await publishAsset('infinigence-ai-logo.ico', await readFile(path.join(root, 'portfolio/companies/infinigence-ai-logo.ico'))),
+
   '/assets/nwpu-emblem.gif': await publishAsset('nwpu-emblem.gif', await readFile(path.join(root, 'portfolio/schools/nwpu-emblem.gif'))),
   '/assets/whu-emblem.png': await publishAsset('whu-emblem.png', await readFile(path.join(root, 'portfolio/schools/whu-emblem.png'))),
   '/assets/portfolio-avatar.jpg': await publishAsset('portfolio-avatar.jpg', await readFile(path.join(root, 'portfolio/avatar.jpg'))),

@@ -109,9 +109,9 @@ Drive 保存权威内容、源码归档与原始资料；本仓库保存可部�
 
 ### 主页资料与倒计时边界
 
-`portfolio/index.html` 仅展示已确认的教育经历（西北工业大学 / Northwestern Polytechnical University，电子信息工程 / Electronic Information Engineering 本科，2019–2023；武汉大学 / Wuhan University，计算机应用技术 / Computer Application Technology 硕士，2023–2026）和研究方向。两校校徽使用官网原始素材，出处与校验值记录于 `portfolio/schools/SOURCES.md`，随根主页资源一起进行内容哈希发布。经历、项目与个人 PDF 简历仍为待补充状态；`resume-ng` 只是排版模板来源，不使用上游示例经历充当个人信息。
+`portfolio/index.html` 仅展示已确认的教育经历（西北工业大学 / Northwestern Polytechnical University，电子信息工程 / Electronic Information Engineering 本科，2019–2023；武汉大学 / Wuhan University，计算机应用技术 / Computer Application Technology 硕士，2023–2026）和研究方向，并在 Profile 简介下展示已确认的公司 Experience：Xiaomi · On-device Inference Infrastructure、Ant Group · LLM Inference Infrastructure、Infinigence AI · LLM Inference Infrastructure。三项不附当前状态、职位、日期或实习分类；详细经历与项目仍保留待补充占位。公司标识使用官网原始素材，出处与校验值记录于 `portfolio/companies/SOURCES.md`；标识旁已有公司名，所以图片使用空 alt 避免重复朗读。两校校徽使用官网原始素材，出处与校验值记录于 `portfolio/schools/SOURCES.md`，随根主页资源一起进行内容哈希发布。详细经历、项目与个人 PDF 简历仍为待补充状态；`resume-ng` 只是排版模板来源，不使用上游示例经历充当个人信息。
 
-教育经历使用命名容器查询：教育区域在扣除侧栏与页边距后的实际宽度达到 800px 时呈现两张等宽卡片，否则保持单列。并排时保留两行校名的最小空间，让两校专业与年份对齐；长文本仍可自然换行。不支持容器查询的浏览器安全回退为单列。
+教育经历使用命名容器查询：教育区域在扣除侧栏与页边距后的实际宽度达到 800px 时呈现两张等宽卡片，否则保持单列。并排时以 CSS subgrid 共享四行内容的自然高度，让两校专业与年份对齐；两校名都只占一行时不预留额外空白，有长校名换行时由实际内容撑高。长文本仍可自然换行。不支持 subgrid 时保留自然高度；不支持容器查询的浏览器安全回退为单列。
 
 最新文章链接和内容更新时间由权威内容快照生成。`lib/update-schedule.ts` 同时供 React 博客和根主页倒计时模块使用。资料检查计划在每四小时 UTC 整点进行，也对应北京时间的每四小时整点；此计划与 GitHub 的第 23 分钟补偿构建不同。
 
