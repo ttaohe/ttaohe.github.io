@@ -147,6 +147,10 @@ test('sidebar quote is attributed and the redundant visible counter note is remo
   assert(html.includes('抽象不是为了模糊，而是为了在新的层次上做到精确。'));
   assert(html.includes('https://www.cs.utexas.edu/~EWD/transcriptions/EWD03xx/EWD340.html'));
   assert(html.includes('E. W. Dijkstra'));
+  assert(html.includes('<em>The purpose of abstracting is not to be vague, but to create a new semantic level in which one can be absolutely precise.</em>'));
+  assert(html.includes('class="sidebar-quote-original" lang="en"'));
+  assert(css.includes('.sidebar-quote-original{font:12px/1.85'));
+  assert(css.includes('overflow-y:auto'));
   assert(html.includes('中文为意译'));
   assert(!html.includes('A notebook for'));
   assert(!html.includes('<small>自启用起；非独立人数</small>'));
