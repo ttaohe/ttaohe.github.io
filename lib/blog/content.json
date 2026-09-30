@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-30T12:17:32Z",
+  "updatedAt": "2026-09-30T16:03:46Z",
   "posts": [
     {
       "slug": "state-recovery",
@@ -679,6 +679,71 @@
           "columns": [
             "vllm",
             "models"
+          ]
+        },
+        {
+          "id": "sglang-mamba-file-tp-identity",
+          "rank": "08",
+          "category": "SGLANG · HICACHE STATE IDENTITY",
+          "title": "HiCache 文件 L3 给 Mamba 加上 TP 身份，避免命中却读错 Rank",
+          "summary": "9 月 30 日 15:31 UTC 新开的 #41907 给混合 MLA 模型的文件 L3 补齐分片身份：KV／indexer 页继续共享，Mamba state key 增加 TP rank 与 TP size；容量准入、重启扫描和 LRU 改按每个 key 的归属工作。缺少 rank 身份的旧 state 文件作为 miss。16:02 UTC 核验 head 62196f5，open、未合并。",
+          "why": "同一前缀与恢复边界还不够，状态必须属于正确 TP 分片。代码核查确认 rank 0 管理 replicated 页，各 rank 管理自己的 Mamba state。作者在另一个开发分支的 GLM-5.3-Flash、4×GB300、TP4/EP4 诊断中发现原先 408/544 个 payload 属于错误 rank，key-only 修补后 544/544 匹配；这不是最终补丁的完整验收。首版作者报告 CPU 38 tests＋2 subtests 通过，但当前 head 简化测试后未重跑，也无新 GPU E2E／完整数值验证。本次未独立复现。",
+          "source": "https://github.com/sgl-project/sglang/pull/41907",
+          "sourceLabel": "SGLang PR #41907 · head 62196f5",
+          "reading": "7 min",
+          "signal": "high",
+          "columns": [
+            "sglang",
+            "kv-cache",
+            "models"
+          ]
+        },
+        {
+          "id": "sglang-amd-moe-histogram-bitonic",
+          "rank": "09",
+          "category": "SGLANG · AMD MOE KERNEL",
+          "title": "AMD MoE 小批排序改用 Histogram＋Bitonic，局部收益仍需完整 Decode 验证",
+          "summary": "9 月 30 日 14:22 UTC 新开的 #41900 为 32＜M×topk≤256 的小批路由整理增加单 CTA histogram＋bitonic 排序，替代成对比较，并生成 expert padding 偏移。它仅覆盖不融合 MX 量化输出、无 expert_mask／num_local_tokens、topk＜128 且连续 int32 IDs 等条件。16:02 UTC 核验 head 32b7777，仍为 open draft、未合并。",
+          "why": "路由辅助开销逐层重复，值得与 GEMM 一起分析。作者在 MI355X 报告大端 shape 排序 14.8→5.2 μs、192/192 reference subtests 通过；叠加其他开发优化的 DeepSeek-V4-Pro 栈中，plain c32 为 1952→2031 tok/s，DSpark b6 c4 为 1351→1408 tok/s。基线并非纯 main，不能把约 4% 收益推广到全部 MoE、EP 或 V4.1；不融合 MX 输出也不表示整个模型未量化。本次检查 dispatch、排序和测试源码，没有 GPU 复现。",
+          "source": "https://github.com/sgl-project/sglang/pull/41900",
+          "sourceLabel": "SGLang PR #41900 · head 32b7777",
+          "reading": "6 min",
+          "signal": "medium",
+          "columns": [
+            "sglang",
+            "models"
+          ]
+        },
+        {
+          "id": "vllm-moe-reload-router-capture",
+          "rank": "10",
+          "category": "VLLM · RL ROUTER REPLAY",
+          "title": "vLLM 修正 MoE 权重重载后的路由采集失绑，避免回放旧 Router 状态",
+          "summary": "9 月 30 日 15:15 UTC 新开的 #59455 修复 MoE 内核生命周期问题：FLASHINFER_TRTLLM 等 monolithic kernel 在权重重载时重建 experts 对象，可能丢失 routed-experts capture callback。补丁把 moe_kernel 改为带 setter 的属性，替换内核时迁移 callback；新内核不支持采集则明确报错。16:02 UTC 核验 head d40d1df，open、未合并。",
+          "why": "RL rollout 的 router replay 依赖当前权重对应的路由，reload 成功不等于辅助采集状态仍然正确。源码可见 callback 重绑及 fail-fast 逻辑；作者报告 22 个 CPU tests 通过，并在单张 B200、两层 dummy-weight 模型上比较 TRTLLM 与 DeepGEMM 路由重合度。该端到端检查使用 v0.30.0 加局部补丁，非完整 head 安装，不能据此声称训练质量改善或全套 CI 已通过。本次仅核查固定源码与公开材料，未独立运行测试或 GPU 复现。",
+          "source": "https://github.com/vllm-project/vllm/pull/59455",
+          "sourceLabel": "vLLM PR #59455 · head d40d1df",
+          "reading": "6 min",
+          "signal": "high",
+          "columns": [
+            "vllm",
+            "models"
+          ]
+        },
+        {
+          "id": "mooncake-disk-owner-retention-index",
+          "rank": "11",
+          "category": "MOONCAKE · STORE METADATA",
+          "title": "Mooncake 把过期副本清理扫描缩到磁盘 Owner，保留恢复与下线语义",
+          "summary": "9 月 30 日 13:07 UTC 新开的 #4429 给 Store Master 增加 LOCAL_DISK owner 候选索引，避免构造 retaining-client 集合时扫描所有 memory-only 客户端。索引在磁盘挂载、旧式注册及恢复路径补齐；磁盘卸载不立即移除候选，完成 client offboarding 才清理。16:02 UTC 核验 head 2560782，仍为 open draft、未合并。",
+          "why": "优化对象是元数据扫描规模，同时必须守住 liveness 与客户端 incarnation 边界。源码和新增五项回归覆盖 metadata-only owner、失败分块恢复已发布的副本及重新注册；RPC／snapshot 格式与 PutStart 锁边界不变。作者报告 CPU-only 326 tests／7 CTest targets 通过，但采用外部链接配置；WSL 微基准在 4096 客户端、64 disk owners 时为 446.81→2.50 μs，全磁盘情况反而 475.20→499.10 μs。这只是集合构造，不是 PutStart 或 RPC 时延；人工逐行审查仍待完成。本次未独立执行测试或性能复现。",
+          "source": "https://github.com/kvcache-ai/Mooncake/pull/4429",
+          "sourceLabel": "Mooncake PR #4429 · head 2560782",
+          "reading": "6 min",
+          "signal": "medium",
+          "columns": [
+            "mooncake",
+            "kv-cache"
           ]
         }
       ],
@@ -1918,9 +1983,9 @@
     "issueMeta": {
       "09.30": {
         "headline": "今日值得关注的 AI Infra 信号",
-        "subtitle": "本期 7 条 · 约 63 分钟",
-        "threadTitle": "从页表与恢复边界，延伸到调度活性和草稿专家均衡",
-        "threadSummary": "前五条保留稀疏 Prefill、Host 地址翻译、滑窗恢复和 layer-wise 读取的进展；12:00 UTC 批次补充空批次调度锁存修复与 DeepSeek V4 DSpark 草稿侧 EPLB。新增两项均未合并，源码事实、作者测试和本次未复现边界分别标明。"
+        "subtitle": "本期 11 条 · 约 88 分钟",
+        "threadTitle": "从恢复身份、路由生命周期，到有边界的小批优化",
+        "threadSummary": "前七条保留；16:00 UTC 批次新增 TP 分片 Mamba 文件身份、AMD 小批 MoE 排序、权重重载后的路由采集重绑，以及 Mooncake 磁盘 owner 索引。四项均未合并；源码事实、作者实验条件和本次未复现边界分别标明。"
       },
       "09.29": {
         "headline": "今日值得关注的 AI Infra 信号",
