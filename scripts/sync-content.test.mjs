@@ -54,3 +54,29 @@ test('a feed cannot silently remove published articles', () => withProject(async
 test('oversized response is rejected before parsing', async () => {
   await assert.rejects(readLimitedResponse(new Response('{}', { headers: { 'content-length': String(MAX_FEED_BYTES + 1) } })), /size limit/);
 });
+
+test('legacy post-only feeds remain compatible while missing sections keep a visible fallback notice', () => withProject(async projectRoot => {
+  const legacy = structuredClone(fixture);
+  delete legacy.daily;
+  delete legacy.experiments;
+  assert.equal(validateContent(legacy).posts.length, fixture.posts.length);
+  const result = await syncContent({ projectRoot, fetchImpl: async () => new Response(JSON.stringify(legacy)) });
+  assert.equal(result.status.stale, true);
+  assert.deepEqual(result.content.daily, fixture.daily);
+  assert.deepEqual(result.content.experiments, fixture.experiments);
+}));
+test('archived Daily items cannot silently disappear during synchronization', () => withProject(async projectRoot => {
+  const incoming = structuredClone(fixture);
+  incoming.daily.reports[incoming.daily.dates[0].key].pop();
+  const result = await syncContent({ projectRoot, fetchImpl: async () => new Response(JSON.stringify(incoming)) });
+  assert.equal(result.status.stale, true);
+  assert.deepEqual(result.content.daily, fixture.daily);
+}));
+test('Daily data requires valid date, column and experiment relationships', () => {
+  const invalid = structuredClone(fixture);
+  invalid.daily.dates = [];
+  assert.throws(() => validateContent(invalid), /Daily dates/);
+  const experiment = structuredClone(fixture);
+  experiment.experiments[0].related = ['does-not-exist'];
+  assert.throws(() => validateContent(experiment), /unknown article/);
+});

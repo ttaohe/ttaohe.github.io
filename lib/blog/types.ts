@@ -1,3 +1,6 @@
 export type BlogSection = { heading: string; paragraphs: string[]; bullets?: string[]; diagram?: string; code?: string; diagramUrl?: string; diagramDownloadUrl?: string; diagramCaption?: string };
 export type BlogPost = { slug: string; title: string; subtitle: string; date: string; category: string; tags: string[]; kind: string; summary: string; outline: string[]; sections: BlogSection[]; takeaways: string[]; openQuestions: string[]; relatedSlugs: string[]; sources: {title:string;url:string}[]; disclosure: string };
-export type BlogContent = { schemaVersion: 1; updatedAt: string; posts: BlogPost[] };
+export type BlogContent = { schemaVersion: 1; updatedAt: string; posts: BlogPost[]; daily?: DailyData; experiments?: Experiment[] };
+export type DailyItem = {id:string;rank:string;category:string;title:string;summary:string;why:string;source:string;sourceLabel:string;reading:string;signal:"high"|"medium";columns:string[]};
+export type DailyData = {year:number;issueMeta?:Record<string,{headline:string;subtitle:string;threadTitle:string;threadSummary:string}>;reports:Record<string,DailyItem[]>;dates:{day:string;week:string;key:string}[];columns:{id:string;name:string;code:string;description:string;color:string}[];topicBars:{label:string;value:number;color:string}[]};
+export type Experiment = {id:string;title:string;hypothesis:string;method:string[];metrics:string[];falsifier:string;related:string[]};

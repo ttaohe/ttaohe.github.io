@@ -1,15 +1,18 @@
-# Tao · AI Infra Notes
+# Tao · AI Infra Daily Notes
 
-Personal research notebook and AI Infra daily archive, published as a static GitHub Pages site.
+A public portfolio section at **https://ttaohe.github.io/ai-infra-daily-notes/**, mirrored from the same public Drive content source as the original blog. The personal homepage at `/` stays available for other projects.
 
-## Routes
+## Published routes
 
-- `/`: interactive knowledge map and research notes
-- `/notes/<slug>/`: full native articles
-- `/daily/`: all existing daily reports, date archives, topic filters and browser-local bookmarks
-- `/research/`: compatible knowledge-map entry
-- `/experiments/`: clearly labeled experiment proposals
-- `/diagrams/`: SVG figures and editable draw.io sources
+- `/`: minimal personal portfolio landing page
+- `/ai-infra-daily-notes/`: interactive knowledge map and research notes
+- `/ai-infra-daily-notes/notes/<slug>/`: complete native articles
+- `/ai-infra-daily-notes/daily/`: current reports, all historical issues, topic filters and browser-local bookmarks
+- `/ai-infra-daily-notes/research/`: knowledge-map compatibility entry
+- `/ai-infra-daily-notes/experiments/`: clearly labeled experiment proposals
+- `/ai-infra-daily-notes/diagrams/`: SVG figures and editable draw.io sources
+
+The first root-level article, Daily, research and experiment URLs keep small redirect pages so previously shared links remain useful.
 
 ## Local development and checks
 
@@ -22,37 +25,44 @@ pnpm lint
 pnpm build
 ```
 
-The build downloads and validates the already-public Drive content feed, then exports static HTML for every article to `out/`. It verifies all internal route and asset links. Preview `out/` with any static HTTP server, for example `python3 -m http.server 4173 --directory out`.
+The build validates the public Drive feed, exports Next.js static HTML into `out/`, then prepares the portfolio layout in `publish/`. The app export is placed under `publish/ai-infra-daily-notes/`; the root landing page is `portfolio/index.html`. All internal route and asset URLs are checked with the configured prefix. Preview `publish/` with a static HTTP server, for example `python3 -m http.server 4173 --directory publish`.
 
-No runtime server, database, API key, third-party account token or Cloudflare service is required. GitHub Actions uses only GitHub's standard short-lived deployment credentials.
+`lib/site-config.json` is the single prefix/origin configuration. `sitePath()` prefixes app-local links and assets while keeping external sources and fragments unchanged.
+
+No runtime server, database, private API key or Cloudflare service is required for GitHub Pages. GitHub Actions uses standard short-lived deployment credentials; external actions are pinned to verified commit SHAs.
 
 ## GitHub Pages setup
 
-1. Use a public repository named `ttaohe.github.io`, with default branch `main`.
-2. In Settings → Pages, set Source to **GitHub Actions**.
-3. Push this project to `main`, or run **Deploy AI Infra Notes to GitHub Pages** from Actions.
-4. Wait for both `build` and `deploy` to succeed, then verify https://ttaohe.github.io/ and a direct article URL.
+Repository: `ttaohe/ttaohe.github.io`, default branch: `main`. Settings → Pages → Source must be **GitHub Actions**. The workflow uploads only `publish/`.
 
-The project intentionally has no subdirectory base path: it is configured for the personal site at the root of `ttaohe.github.io`. Do not deploy it under a different repository path without adjusting all route and public-asset URLs.
+Builds run after a push, on manual dispatch, and at a fallback four-hour cadence (minute 23 UTC). Scheduled GitHub jobs can be delayed and are not an exact-time delivery guarantee. GitHub can disable schedules for inactive public repositories, so inspect Actions if refreshes stop.
 
-The workflow rebuilds on pushes, manual dispatch, and every four hours (at minute 23 UTC). GitHub scheduled jobs can be delayed and are not an exact-time delivery guarantee. The workflow must exist on the default branch; GitHub may disable scheduled workflows in inactive public repositories, so check Actions if refreshes stop.
+## One authoritative content source
 
-## Public content and fallback behavior
+`lib/blog/feed-config.json` identifies the existing public Drive JSON file. Its backward-compatible schema contains:
 
-`lib/blog/feed-config.json` points to the existing public Drive JSON feed. `scripts/sync-content.mjs` fetches it before building and validates article structure, HTTPS sources, unique slugs, outline/section alignment, related articles, size and update timestamp. A response that omits an article in the bundled fallback is rejected, so published fallback routes cannot silently disappear.
+- `schemaVersion`, `updatedAt`, `posts`: full research articles
+- optional `daily`: year, issue metadata, reports, archive dates, columns and signal distribution
+- optional `experiments`: hypotheses, methods, metrics, falsifiers and related articles
 
-If the feed cannot be fetched or validated, the build retains `lib/blog/content.json`. Every page then displays an explicit amber notice that the saved snapshot may be stale. A successful subsequent build removes the notice. The rendered content is fixed until the next build, unlike the prior runtime-fetching site.
+Drive is the authoritative material/content store. This repository contains the deployable source mirror and a verified fallback snapshot. Both published sites consume the common content rather than maintaining separate Daily or experiment records. Source archives and original materials are maintained in Drive.
 
-When publishing content changes, keep the repository's `lib/blog/content.json` fallback current as well. A scheduled build reads the latest feed but does not commit changes back to the repository. Thus a failed later fetch falls back to the most recently committed snapshot. `lib/blog/feed-status.json` records whether the build used the live feed and the content timestamp.
+The approved content-maintenance task should update Drive first, verify it, and mirror the exact validated payload into `lib/blog/content.json` on `main`. That push starts an immediate rebuild. The scheduled rebuild is a fallback for changes that have not yet triggered a commit. A scheduled build reads the current feed but does not itself commit back to the repository.
 
-Daily report records remain in `app/daily/page.tsx`. Updating Drive articles alone does not add a daily report; update that file to publish a new daily issue. Preserve all historical records and date/column/bookmark flows.
+A completed build is required for new content to appear on GitHub Pages. The other site's runtime cache and this build pipeline can briefly show different revisions during refresh. Confirm the content timestamp and live pages after publishing rather than claiming instantaneous synchronization.
+
+## Safe fallback
+
+`scripts/sync-content.mjs` reads raw public JSON and validates article structure, HTTPS source URLs, unique identifiers, related-article references, Daily dates/columns, response size and content timestamp. It rejects feeds that silently omit previously committed articles, Daily items or experiments.
+
+If fetching/validation fails, it retains `lib/blog/content.json` and renders an explicit amber stale-data notice on every app page. Legacy post-only feeds remain accepted: missing Daily/experiment sections use the saved data and enable the same notice. A successful complete refresh removes it. The personal landing page contains no content claims and does not depend on the feed.
+
+Keep the committed fallback current when publishing changes. Otherwise a later fetch failure will use the last committed snapshot. `lib/blog/feed-status.json` records the build's source status and content timestamp. `daily-snapshot.json` and `experiments.ts` preserve backward-compatible local defaults; all normal rendering consumes the common content payload.
 
 ## Writing and diagrams
 
-Each article starts with a clear question outline, followed by matching sections, evidence, takeaways and open questions. Distinguish reading notes, source-code analysis, design hypotheses and actually executed experiments. Never describe a cited paper's benchmark or an untested idea as a personal reproduction.
+Start articles with a clear question outline, followed by matching sections, evidence, takeaways and open questions. Distinguish reading notes, source analysis, design hypotheses and actually executed experiments. Never describe a cited benchmark or untested idea as a personal reproduction.
 
-Existing figure names are `state-boundary`, `pd-critical-path` and `direct-linker`. Keep each SVG and its editable `.drawio` source together. Remote figures must use publicly readable HTTPS links. All content here and in the configured feed is public; never add credentials, private conversations or unrelated personal data.
+Keep each SVG figure with its editable `.drawio` source. Built-in figures are `state-boundary`, `pd-critical-path` and `direct-linker`; new remote figures require publicly readable HTTPS links. All deployed material is public. Never include credentials, private conversations or unrelated personal data.
 
-## What was migrated
-
-This static project preserves the public AI Infra blog, all three original full articles, the interactive SVG knowledge map, experiment proposals, daily history and diagram downloads. It is separate from the existing `ttaoai-homepage` project and does not use the `infra-daily` repository.
+This project is separate from `ttaoai-homepage` and does not use the `infra-daily` repository.

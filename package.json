@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "next dev",
     "sync:content": "node scripts/sync-content.mjs",
-    "build": "node scripts/sync-content.mjs && next build --webpack && node scripts/verify-export.mjs",
+    "build": "node scripts/sync-content.mjs && next build --webpack && node scripts/prepare-publish.mjs && node scripts/verify-export.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ignore-pattern out --ignore-pattern .next",
     "test": "node --test scripts/*.test.mjs"

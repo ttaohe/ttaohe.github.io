@@ -1,0 +1,1443 @@
+{
+  "year": 2026,
+  "reports": {
+    "09.30": [
+      {
+        "id": "sglang-glm53-q8kv8-sparse-prefill",
+        "rank": "01",
+        "category": "SGLANG · DSA PREFILL",
+        "title": "GLM-5.3-Flash 在 Hopper 接通 Q8KV8 稀疏 Prefill，长上下文吞吐提升约 9%",
+        "summary": "9 月 30 日新开的 #41790 让 GLM-5.3-Flash 在 H100/H200 上使用 flashmla_sparse_q8：Query 与聚合出的 BF16 KV rows 在调用时转成 FP8，持久 KV cache 与 decode 路径仍保持 BF16/TileLang。4×H200 TP4、3.5K–120K 输入和 1-token 输出下，总 token throughput 提升 8.60%–9.42%；8K–120K 单请求 TTFT 降低 7.85%–8.78%，单个 DSA layer 快 1.51–1.72×。",
+        "why": "它把 FP8 的收益限制在稀疏 Prefill 计算内，不要求把持久 KV 格式整体改为 FP8，因此更容易接入现有 Hopper 部署。GSM8K 与 LongBench-v2 结果落在对照噪声范围内，但该 PR 仍在评审中。",
+        "source": "https://github.com/sgl-project/sglang/pull/41790",
+        "sourceLabel": "SGLang PR #41790",
+        "reading": "10 min",
+        "signal": "high",
+        "columns": [
+          "sglang",
+          "kv-cache",
+          "models"
+        ]
+      },
+      {
+        "id": "sglang-hisparse-large-rdma-registration",
+        "rank": "02",
+        "category": "SGLANG · HISPARSE RDMA",
+        "title": "HiSparse 为数百 GiB Host KV Pool 增加分块注册与 THP 强校验",
+        "summary": "9 月 30 日的 Draft #41782 同时处理两个 RDMA 注册上限：按页数切分连续 KV region，避免单个 MR 过大；再用 2 MiB THP 将 NIC 页表条目缩减 512×。一次 259 GiB pool 中仅 4 GiB 落在 4 KiB pages，就让 ionic NIC 从第 27 个 region 起大量 EINVAL；MADV_COLLAPSE 将 25 GiB small pages 恢复为 huge pages 后，1,845 个 regions 全部注册成功。",
+        "why": "大 Host KV pool 能否用于 PD，不只取决于 DRAM 容量，还受单 MR 大小和 RNIC translation budget 约束。新逻辑在 Mooncake 注册前验证 huge-page 覆盖率，能把启动后的海量注册错误提前变成可诊断的容量条件。",
+        "source": "https://github.com/sgl-project/sglang/pull/41782",
+        "sourceLabel": "SGLang PR #41782",
+        "reading": "11 min",
+        "signal": "high",
+        "columns": [
+          "sglang",
+          "mooncake",
+          "kv-cache",
+          "network"
+        ]
+      },
+      {
+        "id": "vllm-engram-cumem-sorted-host-lookup",
+        "rank": "03",
+        "category": "VLLM · ENGRAM HOST LOOKUP",
+        "title": "vLLM 用 2 MiB cuMem 页与排序访问加速 Engram Host Lookup，最高 8.38×",
+        "summary": "9 月 30 日的 Draft #59327 将同节点 DP replicas 的 DeepSeek-V4.1 Engram table 改为共享 cuMem NUMA host allocation，以 2 MiB pages 取代 /dev/shm 的 64 KiB pages；大 lookup 还会按 table offset 排序，并在 4,096 tokens 以上转到 main stream。GB200、94.4 GiB table 下，4,096 tokens 从 4,632.3 降至 1,503.2 μs，32,768 tokens 从 36,990.2 降至 4,411.9 μs（8.38×）。",
+        "why": "这里的瓶颈是 GPU 访问 Host table 时的地址翻译和 TLB miss，而不是链路带宽。该设计同时减少副本容量、改善页命中并避免后台 lookup 与持久 kernel 争抢 SM；不过端到端 Prefill 与精度评估仍待补充。",
+        "source": "https://github.com/vllm-project/vllm/pull/59327",
+        "sourceLabel": "vLLM PR #59327",
+        "reading": "10 min",
+        "signal": "high",
+        "columns": [
+          "vllm",
+          "kv-cache",
+          "models",
+          "network"
+        ]
+      },
+      {
+        "id": "vllm-pd-sliding-window-backoff",
+        "rank": "04",
+        "category": "VLLM · KV CONNECTOR",
+        "title": "vLLM 修正 Sliding-window PD 的最后一 Token 回退，避免静默错误与 NaN",
+        "summary": "9 月 30 日的 Draft #59330 发现 NIXL/Mooncake 会先加载全部 N 个 prompt tokens，再让 Decode 回退重算最后一个 token；对 sliding-window state，这可能提前丢掉 N−W 所在 block，使约 1/block_size 的请求读到 null block。新逻辑让所有 resume-dependent groups 在 P 端只传 N−1 tokens、D 端从 N−1 恢复，DeepSeek-V4.1 原先在 1,023/4,095/8,191 tokens 出现的 NaN 由此被结构性避免。",
+        "why": "PD 传输边界必须和模型状态的保留窗口一致，不能只按 full-attention KV 的语义处理。当前 2,234 个单元测试通过，但完整 TP4+TP4 GSM8K 验证仍是 TODO。",
+        "source": "https://github.com/vllm-project/vllm/pull/59330",
+        "sourceLabel": "vLLM PR #59330",
+        "reading": "8 min",
+        "signal": "high",
+        "columns": [
+          "vllm",
+          "kv-cache",
+          "models",
+          "network"
+        ]
+      },
+      {
+        "id": "mooncake-native-layerwise-read-plan",
+        "rank": "05",
+        "category": "MOONCAKE · LAYER-WISE LOAD",
+        "title": "Mooncake 将 Layer-wise KV 读取下沉为原生 ReadPlan，释放 Python GIL",
+        "summary": "9 月 29 日的 Draft #4377 新增一站式 C++ ReadPlan：应用提交多组 source ranges 与 destination layouts 后，通过 run() 和 wait(group) 按层消费，后续 group 在后台继续读取。默认顺序执行，MOONCAKE_READ_PLAN_PIPELINE=1 可开启两组窗口；run/wait 都释放 GIL，并对 key overlap、client 生命周期、失败 drain 和有序发布给出明确约束。",
+        "why": "它把每层 layout 展开、ranged read、结果校验和 readiness 通知从 Python 热路径移到原生状态机，为 L3→L1 的 layer-wise overlap 提供可复用控制面。当前完成单元与 TCP E2E 测试，但尚未给出 RDMA 端到端性能数据。",
+        "source": "https://github.com/kvcache-ai/Mooncake/pull/4377",
+        "sourceLabel": "Mooncake PR #4377",
+        "reading": "10 min",
+        "signal": "medium",
+        "columns": [
+          "mooncake",
+          "kv-cache",
+          "network"
+        ]
+      }
+    ],
+    "09.29": [
+      {
+        "id": "sglang-waiting-prefix-refresh",
+        "rank": "01",
+        "category": "SGLANG · SCHEDULER",
+        "title": "SGLang 让等待队列持续刷新 Prefix 热度，阻断 FCFS 下的 Cache Storm",
+        "summary": "9 月 29 日新开的 #41593 修复默认 FCFS 等 cache-agnostic 策略下的隐性问题：请求在 waiting queue 中不会重新 match prefix，LRU 因而把即将执行的长前缀当作最冷对象淘汰。约 37K-token、多轮会话 workload 中，等待 8–20 秒的 admission hit 降至 0.802，超过 20 秒降至 0.480；默认开启的 bounded refresh 会在队列不超过 128 时更新前缀 last_access_time，同配置下 8–20 秒命中率回升至 0.972。",
+        "why": "这几乎完整复现了流量上升→排队→前缀老化→重算→更长排队的正反馈链。它只改变 eviction order，不锁死页面，也不改变 FCFS admission 顺序。",
+        "source": "https://github.com/sgl-project/sglang/pull/41593",
+        "sourceLabel": "SGLang PR #41593",
+        "reading": "10 min",
+        "signal": "high",
+        "columns": [
+          "sglang",
+          "kv-cache"
+        ]
+      },
+      {
+        "id": "sglang-hybrid-mla-kda-dcp-l3",
+        "rank": "02",
+        "category": "SGLANG · HICACHE L3",
+        "title": "Hybrid MLA/KDA 首次接通 DCP 下的 File 与 Mooncake L3",
+        "summary": "9 月 29 日的 #41591 允许 Kimi-Linear 一类模型在 DCP 下同时保存共享 MLA KV 与 rank-local KDA state，并在所有 rank 的完整 checkpoint 集合上取交集后恢复。H200 TP2/DCP2 测试中，跨 engine 恢复 1,024-token peer prefix 和 1,280-token generated prefix；当两个 rank 的 checkpoints 分别为 {512,1024} 与 {512,768} 时，统一回退到 512。",
+        "why": "MLA replica 可以共享对象，但 KDA state 必须保留 TP-rank 身份；混合缓存的 restore boundary 还必须跨 rank 一致。它补齐了 unified state cache 从单机/单组件走向 DCP L3 的关键语义。",
+        "source": "https://github.com/sgl-project/sglang/pull/41591",
+        "sourceLabel": "SGLang PR #41591",
+        "reading": "9 min",
+        "signal": "high",
+        "columns": [
+          "sglang",
+          "mooncake",
+          "kv-cache",
+          "models",
+          "network"
+        ]
+      },
+      {
+        "id": "vllm-sm100-fp4-moe-padding",
+        "rank": "03",
+        "category": "VLLM · MOE KERNEL",
+        "title": "Blackwell FP4 DeepGEMM MoE 跳过 Padding，完整 FFN 再降 9.36%",
+        "summary": "9 月 28 日的 vLLM #59044 让 grouped GEMM 使用 prefix-sum scheduler，并把各 expert 的真实结束位置传给 fused SiLU+mul+FP8 quant，只处理 live rows。8×GB200、DeepSeek-V4-Flash EP8 下，activation 从 76.0 降至 20.7 μs，完整 FFN 从 425.5 降至 385.7 μs；32 个本地 experts、28,672 个 allocated rows 的布局 metadata 也从 112 KiB 缩至 128 bytes。",
+        "why": "Decode 阶段 expert padding 会同时浪费两次 GEMM 和 activation 带宽。该优化不需要 count readback 或额外 kernel，并保持 live outputs bit-identical。",
+        "source": "https://github.com/vllm-project/vllm/pull/59044",
+        "sourceLabel": "vLLM PR #59044",
+        "reading": "9 min",
+        "signal": "high",
+        "columns": [
+          "vllm",
+          "models"
+        ]
+      },
+      {
+        "id": "mooncake-dax-zero-copy-rdma",
+        "rank": "04",
+        "category": "MOONCAKE · DAX OFFLOAD",
+        "title": "Mooncake DAX Offload 尝试直接 RDMA 回载，移除 Owner 侧 Staging Copy",
+        "summary": "9 月 28 日的 #4357 让远端 requester 直接从 Optane PMem 或 CXL 的 DAX arena 读取对象，不再先由 owner memcpy 到 ClientBuffer。数据路径从“介质读→DRAM 写→NIC 读”三次 memory pass 缩为 NIC 直接读一次，同时释放 staging capacity；按 copy/link 带宽关系，PR 估算大 batch 可获得 1.5–3× reload speedup。",
+        "why": "这把分层 KV 回载从异步覆盖进一步推进到消除中间副本，对共享 Cache Server 服务多个 Prefill 实例尤其有价值。不过当前是 opt-in Draft，真实 DAX/RDMA 性能仍待验证。",
+        "source": "https://github.com/kvcache-ai/Mooncake/pull/4357",
+        "sourceLabel": "Mooncake PR #4357",
+        "reading": "10 min",
+        "signal": "medium",
+        "columns": [
+          "mooncake",
+          "kv-cache",
+          "network"
+        ]
+      },
+      {
+        "id": "mooncake-dmabuf-subrange-registration",
+        "rank": "05",
+        "category": "MOONCAKE · DMA-BUF",
+        "title": "Mooncake 修复大 KV Buffer 注册时重复映射整块 BAR1 的问题",
+        "summary": "9 月 28 日的 #4364 发现 DMA-BUF pre-touch 会为每个 slice 导出整个 CUDA allocation：32 GiB allocation 的 16×2 GiB 注册只成功 3/16，随后因 BAR1 耗尽返回 ENOMEM。修复后只导出 page-aligned requested range，并跳过 device-memory pre-touch，16/16 slices 全部成功；vLLM MooncakeStoreConnector 也能在 H200 MIG 上注册完整 35.2 GB KV cache。",
+        "why": "大 KV pool 注册失败并非 buffer 本身过大，而是同一 allocation 被并发映射多次。对 MIG、DMA-BUF 和整池注册场景，这是一项直接决定 Mooncake 是否可用的底层修复。",
+        "source": "https://github.com/kvcache-ai/Mooncake/pull/4364",
+        "sourceLabel": "Mooncake PR #4364",
+        "reading": "8 min",
+        "signal": "high",
+        "columns": [
+          "mooncake",
+          "kv-cache",
+          "network"
+        ]
+      }
+    ],
+    "09.28": [
+      {
+        "id": "sglang-minimax-m3-indexer-cp",
+        "rank": "01",
+        "category": "SGLANG · SPARSE INDEXER",
+        "title": "MiniMax-M3 TP4 将 Index-K 扫描拆给各 Rank，128K Indexer 快 2.64×",
+        "summary": "9 月 28 日新开的 SGLang #41488 针对 MiniMax-M3 TP4：四个 index-query heads 分布在四个 rank，但每个 rank 原本都会扫描完整的 replicated index-K cache。新路径按 rank 切分 block reads，同时让每个 K tile 驻留期间完成四个 head 的评分；MI355X、128K context、batch 32 下 indexer chain 从 109.84 降至 41.63 μs（-62.1%）。",
+        "why": "它优化的不是 cache capacity，而是 replicated index cache 带来的读取放大。短上下文和小 batch 会退化，因此目前保持 opt-in，且尚无 full-model serving 数据。",
+        "source": "https://github.com/sgl-project/sglang/pull/41488",
+        "sourceLabel": "SGLang PR #41488",
+        "reading": "9 min",
+        "signal": "high",
+        "columns": [
+          "sglang",
+          "kv-cache",
+          "models",
+          "network"
+        ]
+      },
+      {
+        "id": "sglang-gdn-verify-sm90",
+        "rank": "02",
+        "category": "SGLANG · SPEC DECODE",
+        "title": "SM90 GDN Target Verify 改用窄 Value Tile，DFlash 吞吐提升 10.8%",
+        "summary": "9 月 28 日的 #41486 将 GDN recurrent verify 的 value tile 从 32 列缩至 4 列，以更多单 warp programs 填满 H100/H200。H200、batch 1、T=16 时，Qwen3.5-4B kernel 从 42.76 降至 18.78 μs；Qwen3.5-397B TP4 从 36.87 降至 12.93 μs，且 recurrent state bit-identical。DFlash 16-token verify 的端到端 output throughput 从 749 升至 829 tok/s（+10.8%），普通 4-token MTP 的收益约为 2%。",
+        "why": "KDA/GDN speculative verify 的小 batch 并不一定受 FLOPs 限制，launch geometry 与 SM occupancy 可以直接决定收益能否兑现。该优化也说明 verify width 越大，recurrent update kernel 越值得专门调度。",
+        "source": "https://github.com/sgl-project/sglang/pull/41486",
+        "sourceLabel": "SGLang PR #41486",
+        "reading": "9 min",
+        "signal": "high",
+        "columns": [
+          "sglang",
+          "models"
+        ]
+      },
+      {
+        "id": "vllm-triton38-moe-routing",
+        "rank": "03",
+        "category": "VLLM · MOE ROUTING",
+        "title": "vLLM 复用 Top-k 元数据，消除 Triton 3.8 MoE Routing 重建开销",
+        "summary": "9 月 27 日的 vLLM #58897 不再丢弃 Triton top-k 已生成的 SparseMatrix metadata，并用 stable sort + searchsorted 取代 int64 argsort、atomic scatter_add 与约 15 个小 kernel。MI355X CUDA-graph replay 中，gpt-oss 无 EP 的 routing call 中位快 71%；16,384 rows 从 143.37 降至 33.08 μs，必须重建 metadata 的路径中位也快 26%。",
+        "why": "MoE decode 的固定成本可能来自路由元数据整理，而不是 expert GEMM 或通信。这个 Draft 尚缺端到端和 GSM8K 数据，但已定位出 ROCm Triton 3.8 路径中每层 31–140 μs 的可消除开销。",
+        "source": "https://github.com/vllm-project/vllm/pull/58897",
+        "sourceLabel": "vLLM PR #58897",
+        "reading": "9 min",
+        "signal": "high",
+        "columns": [
+          "vllm",
+          "models"
+        ]
+      },
+      {
+        "id": "vllm-mamba-external-claim-admission",
+        "rank": "04",
+        "category": "VLLM · HYBRID CACHE",
+        "title": "vLLM 修正 Mamba External Claim 的 Admission 计数，避免 Warm Hit 杀死 EngineCore",
+        "summary": "9 月 27 日发布的 #58901 修复 Mamba align mode：同步加载 KV Connector 命中时，admission 少算每个 Mamba group 的 boundary state block，导致请求被错误放行后在真正分配阶段耗尽 block。新逻辑显式计算 external claim 会拉取的 state blocks，使 estimate 与 allocation 在对齐、非对齐、异步及 cold prefill 情况下保持一致；Qwen3.8-27B-FP8 测试中，两轮各 25,088 external tokens 均成功恢复，旧逻辑则让两条 warm request 直接终止 EngineCore。",
+        "why": "这与 Hybrid KV/Mamba state 的统一容量规划直接相关：命中并不等于零分配，恢复边界本身仍可能占用持久 state slot。高水位运行时，少算一个 block 就可能从性能问题升级为服务进程崩溃。",
+        "source": "https://github.com/vllm-project/vllm/pull/58901",
+        "sourceLabel": "vLLM PR #58901",
+        "reading": "8 min",
+        "signal": "high",
+        "columns": [
+          "vllm",
+          "kv-cache",
+          "models",
+          "network"
+        ]
+      },
+      {
+        "id": "mooncake-fp8-kv-codec",
+        "rank": "05",
+        "category": "MOONCAKE · STORE CODEC",
+        "title": "Mooncake Store 提议原生 FP8 KV Record，BF16 Chunk 字节数接近减半",
+        "summary": "9 月 27 日新开的 Mooncake #4347 为完整 FP16/BF16 KV chunk 增加 opt-in CPU codec：按 group 保存 E4M3FN payload、FP32 scales、shape/header 与整条 record CRC，读取时恢复到原 dtype。示例 [2,16,128] BF16 chunk 从 8,192 raw bytes 变为 4,280-byte record，减少约 47.8%。",
+        "why": "这把 lossy KV representation 从各框架私有实现提升为 Store 的显式格式契约，便于校验、版本化和跨调用方复用。不过当前仍是同步 CPU Draft，不减少 GPU→Host 字节，也尚未验证 RDMA、模型质量和端到端吞吐。",
+        "source": "https://github.com/kvcache-ai/Mooncake/pull/4347",
+        "sourceLabel": "Mooncake PR #4347",
+        "reading": "10 min",
+        "signal": "medium",
+        "columns": [
+          "mooncake",
+          "kv-cache",
+          "models",
+          "network"
+        ]
+      }
+    ],
+    "09.27": [
+      {
+        "id": "sglang-hicache-int8-host-pool",
+        "rank": "01",
+        "category": "SGLANG · HICACHE L2",
+        "title": "HiCache 尝试用 INT8 保存 Host KV，同容量可缓存 1.78× Tokens",
+        "summary": "9 月 27 日新开的 SGLang #41365 保持 L1 KV 为 BF16，但在 D2H eviction 时按 head 压成 INT8 record，L2 命中后再恢复 BF16。Qwen3-8B TP1 的 Host bytes/token 从 147,456 降至 82,944；相同 8 GB Host tier 的容量从 54,254 增至 96,451 tokens，测试 workload 的命中率由约 57% 升至 73%。",
+        "why": "这首次让 HiCache L2 representation 与 L1 dtype 解耦，但代价是双向 staging buffer 和 encode/decode。真正值得跟进的是：更大命中窗口能否长期覆盖额外搬运与量化成本。",
+        "source": "https://github.com/sgl-project/sglang/pull/41365",
+        "sourceLabel": "SGLang PR #41365",
+        "reading": "9 min",
+        "signal": "high",
+        "columns": [
+          "sglang",
+          "mooncake",
+          "kv-cache",
+          "models",
+          "network"
+        ]
+      },
+      {
+        "id": "sglang-mooncake-direct-mamba-linker",
+        "rank": "02",
+        "category": "SGLANG · UNIFIED CACHE",
+        "title": "Mooncake Direct L3 开始支持 Full + SWA + Mamba 混合状态",
+        "summary": "9 月 26 日的 #41343 扩展 unified-cache direct linker，使 Inkling 一类 Full+SWA+Mamba 模型无需 Host tier 也能直接在 Mooncake 中 offload/load。Mamba state 以 checkpoint node 尾页 hash 定位，load 后还要 COMMIT 到请求自己的 slot；H200 测试中 flush L1 后，6/6 请求从 Mooncake 恢复 1,152 tokens，KL 为 0。",
+        "why": "KV page 与 Mamba slot 的寻址和生命周期不同，不能只把 recurrent state 当作另一块 KV。该实现把“页对象恢复”与“请求 slot 状态提交”明确拆开。",
+        "source": "https://github.com/sgl-project/sglang/pull/41343",
+        "sourceLabel": "SGLang PR #41343",
+        "reading": "8 min",
+        "signal": "high",
+        "columns": [
+          "sglang",
+          "mooncake",
+          "kv-cache",
+          "models",
+          "network"
+        ]
+      },
+      {
+        "id": "vllm-qwen-gdn-recoverssm",
+        "rank": "03",
+        "category": "VLLM · RECOVERSSM",
+        "title": "Qwen GDN Spec Decode 引入 RecoverSSM，不再为每个 Draft 保存完整状态",
+        "summary": "9 月 27 日新开的 vLLM #58863 把 Kimi-K3 KDA 已使用的 RecoverSSM 协议扩展到 Qwen4Exp/Qwen3.8-Flash-Next 的 GDN 与 PLE short conv：verify 只写小型 replay record，commit 仅重放 accepted tokens 并一次性更新 recurrent state。GB10 上 agent loop 从 1.31 降至 1.10 s/turn，4 GiB 内 KV token capacity 从 75,678 增至 103,953（+37%），prefix hit rate 增加 4.7 个百分点。",
+        "why": "Spec decode 的隐藏容量成本往往来自每个 draft position 的状态快照。RecoverSSM 把成本改成 accepted-token replay，更适合 KDA/GDN 这类固定大小 recurrent state。",
+        "source": "https://github.com/vllm-project/vllm/pull/58863",
+        "sourceLabel": "vLLM PR #58863",
+        "reading": "9 min",
+        "signal": "high",
+        "columns": [
+          "vllm",
+          "kv-cache",
+          "models"
+        ]
+      },
+      {
+        "id": "vllm-risk-aware-prefix-admission",
+        "rank": "04",
+        "category": "VLLM · SCHEDULER",
+        "title": "vLLM 实验性加入 Risk-aware Prefix Cache Admission",
+        "summary": "9 月 26 日发布的 #58837 在分配新请求前估计 full-prompt block demand，并检查 free queue 是否会暴露 cached blocks；存在风险时，在有限 waiting window 内按 cached-prefix length 重新排序。受限 8 GiB KV workload 的历史实验中，中位吞吐提升 5.02%、batch completion time 降低 4.78%，但个别种子退化且冷请求 TTFT 可能明显增加。",
+        "why": "它直接干预“新请求 admission 挤掉热前缀”的正反馈链，与你的 Q_knee 问题高度一致。不过当前没有 aging 或等待上界，公平性仍是主要风险。",
+        "source": "https://github.com/vllm-project/vllm/pull/58837",
+        "sourceLabel": "vLLM PR #58837",
+        "reading": "8 min",
+        "signal": "medium",
+        "columns": [
+          "vllm",
+          "kv-cache"
+        ]
+      },
+      {
+        "id": "mooncake-replica-host-spread",
+        "rank": "05",
+        "category": "MOONCAKE · STORE",
+        "title": "Mooncake 副本分配从“不同 Segment”升级为“不同 Host”",
+        "summary": "9 月 26 日发布的 Mooncake #4335 修复 RandomAllocationStrategy：一台机器拥有多个 segment 时，两个 replica 过去可能都落在同一主机，单机故障会同时丢失两份。新策略第一轮按 host 去重，资源不足时第二轮才回退到同 host，以保持 best-effort replica count。",
+        "why": "对多 NIC、多 MR segment 的 KV Store，segment diversity 不等于 failure-domain diversity。副本元数据必须理解 host 边界，replica_num 大于等于 2 时才真正提供容灾。",
+        "source": "https://github.com/kvcache-ai/Mooncake/pull/4335",
+        "sourceLabel": "Mooncake PR #4335",
+        "reading": "6 min",
+        "signal": "high",
+        "columns": [
+          "mooncake",
+          "kv-cache",
+          "network"
+        ]
+      }
+    ],
+    "09.26": [
+      {
+        "id": "sglang-mooncake-mla-dcp-l3",
+        "rank": "01",
+        "category": "SGLANG · MOONCAKE L3",
+        "title": "Mooncake HiCache L3 接通 MLA DCP 跨引擎共享",
+        "summary": "9 月 26 日新开的 SGLang #41265 把昨日 file-backend 的 MLA DCP L3 设计接到 Mooncake：逻辑 DCP page 被翻译为各 rank 的物理 Host 指针，namespace 纳入 TP/DCP 拓扑与 logical page size，等价 TP replica 共用对象。H200 TP4/DCP2、Mooncake TCP 下，fresh reader 在全部 4 个 rank 恢复 1,024 tokens；1,024-token prefix 仅生成 16 个对象，没有 TP replica 重复。",
+        "why": "这一步才把 DCP-aware L3 从本地文件扩展到可跨实例共享的 Store。对多 P 实例而言，KV 对象身份必须绑定逻辑 shard，而不能简单绑定写入它的 rank。",
+        "source": "https://github.com/sgl-project/sglang/pull/41265",
+        "sourceLabel": "SGLang PR #41265",
+        "reading": "8 min",
+        "signal": "high",
+        "columns": [
+          "sglang",
+          "mooncake",
+          "kv-cache",
+          "network"
+        ]
+      },
+      {
+        "id": "sglang-swa-evict-before-chunk-plan",
+        "rank": "02",
+        "category": "SGLANG · SWA CACHE",
+        "title": "SWA Chunked Prefill 改为先释放窗口外 Slot，再规划下一块",
+        "summary": "9 月 26 日的 #41263 修正 SWA cache 的释放顺序：旧流程在规划 chunk N+1 时仍占着更早 chunk 的窗口外 slot，MiMo-V2.6-Flash 因此从 4,096-token chunk 退化为 258/3,968 交替。新流程在构造 PrefillAdder 前提前释放安全范围，使 127,852-token prompt 的 forward 次数从 60 降至 32，实测 prefill throughput 由 508–541 提升到 722–741 tok/s。",
+        "why": "这是典型的“容量足够但释放时序制造假性不足”。在 bounded-memory attention 中，缓存生命周期必须参与 scheduler 的下一步容量决策，而不能等 allocation 阶段才回收。",
+        "source": "https://github.com/sgl-project/sglang/pull/41263",
+        "sourceLabel": "SGLang PR #41263",
+        "reading": "8 min",
+        "signal": "high",
+        "columns": [
+          "sglang",
+          "kv-cache",
+          "models"
+        ]
+      },
+      {
+        "id": "vllm-engram-mxfp8-direct-wkv",
+        "rank": "03",
+        "category": "VLLM · DEEPSEEK V4.1",
+        "title": "Engram 的 MXFP8 Row 直接喂给 WKV，移除反量化再量化",
+        "summary": "9 月 26 日新开的 vLLM #58766 让 DeepSeek-V4.1 Engram lookup 直接返回带 F8_128x4 scale 的 QuantizedActivation，删除 FP8→BF16→MXFP8 往返。GB300 上 TP1/HBM、1,024 tokens 的 lookup+quant 从 12.4 µs 降至 6.2 µs；TP4 本地 kernel 从 19.6 降至 5.5 µs，并让每次 head exchange 少传 48% 字节。",
+        "why": "Engram 默认放在 Host 后，lookup 与 collective 已成为 persistent state 路径的一部分。保持端到端量化格式既减少主 stream kernel，也直接降低跨 rank 搬运量。",
+        "source": "https://github.com/vllm-project/vllm/pull/58766",
+        "sourceLabel": "vLLM PR #58766",
+        "reading": "8 min",
+        "signal": "high",
+        "columns": [
+          "vllm",
+          "kv-cache",
+          "models",
+          "network"
+        ]
+      },
+      {
+        "id": "vllm-hisparse-steady-state-concurrency",
+        "rank": "04",
+        "category": "VLLM · HISPARSE",
+        "title": "HiSparse 区分启动容量上界与稳态最大并发",
+        "summary": "9 月 26 日的 #58805 新增 steady-state max concurrency 日志。原启动估算把所有 resident page 都计入 GPU pool，但 Host-backed decode 请求实际上只 pin 当前 active tail pages；新指标会同时给出这个更接近运行期的并发上界。",
+        "why": "对 Host KV / DirectKV 类路径，只看启动时 capacity 会低估可服务并发，也无法解释“模型能启动但高峰期何时撞上 HBM 尾部压力”。稳态 bound 更适合容量规划和 Q_knee 告警。",
+        "source": "https://github.com/vllm-project/vllm/pull/58805",
+        "sourceLabel": "vLLM PR #58805",
+        "reading": "4 min",
+        "signal": "medium",
+        "columns": [
+          "vllm",
+          "kv-cache",
+          "network"
+        ]
+      },
+      {
+        "id": "mooncake-data-direct-suballocation-alignment",
+        "rank": "05",
+        "category": "MOONCAKE · DATA DIRECT",
+        "title": "Data Direct 修复 GPU 子分配的 IOVA 页对齐",
+        "summary": "9 月 26 日新开的 Mooncake #4329 修复 #4267 Data Direct 路径：CUDA allocation 内部的 tensor 可能不是系统页对齐地址，直接注册会以 EOPNOTSUPP 失败。新实现向前扩展到页对齐 IOVA，并同步调整 DMA-BUF offset、MR length、chunk boundary 与 deregistration 范围；64 KiB page 的硬件测试中，修复前 3 个失败用例现在全部通过。",
+        "why": "真实 KV buffer 往往来自大 allocation 的子区间，而不是独立 page-aligned allocation。若注册层不处理 alignment prefix，Data Direct 在 benchmark 能跑、接入真实 allocator 后却会随机失效。",
+        "source": "https://github.com/kvcache-ai/Mooncake/pull/4329",
+        "sourceLabel": "Mooncake PR #4329",
+        "reading": "6 min",
+        "signal": "high",
+        "columns": [
+          "mooncake",
+          "kv-cache",
+          "network"
+        ]
+      }
+    ],
+    "09.25": [
+      {
+        "id": "sglang-hicache-dcp-file-l3",
+        "rank": "01",
+        "category": "SGLANG · HICACHE",
+        "title": "HiCache L3 首次支持 MLA DCP 跨引擎复用",
+        "summary": "9 月 25 日新开的 SGLang #41187 为 dense BF16 MLA 建立 DCP-aware 的 L3 文件布局：等价 shard 共用 storage key，每个 shard 只选一个 writer，并把 logical page offset 翻译成 rank-local row。H200 上 TP4/DCP2 的 fresh engine 可在每个 rank 恢复 1,024 tokens；删除某个 shard 后，所有 rank 会一致退回到 128-token prefix。",
+        "why": "DCP 下每个 rank 只有交错 token shard，过去 rank-0-only backup 无法构成完整逻辑页。这个 PR 首次把“逻辑前缀”与“物理 shard 身份”对齐，为多 P 实例共享 L3 KV 补上关键拓扑语义。",
+        "source": "https://github.com/sgl-project/sglang/pull/41187",
+        "sourceLabel": "SGLang PR #41187",
+        "reading": "7 min",
+        "signal": "high",
+        "columns": [
+          "sglang",
+          "mooncake",
+          "kv-cache",
+          "network"
+        ]
+      },
+      {
+        "id": "sglang-hicache-mtp-state",
+        "rank": "02",
+        "category": "SGLANG · MTP STATE",
+        "title": "HiCache 开始完整保存 MTP 各 Draft Head 的 KV 与 Recurrent State",
+        "summary": "9 月 25 日更新的 #40223 修复 Inkling MTP 命中 Host prefix 时只恢复部分 draft state 的问题：full-attention KV、共享索引 SWA、identity-mapped SWA，以及 convolution/temporal state 现在分别进入正确的 Host pool，并在 target completion 前全部恢复。GB300 上 64 组传输用例通过；4 组端到端测试都恢复 768 host tokens，生成 32 tokens 与 cold run 完全一致。",
+        "why": "混合模型的 cache unit 已不再是单一 target KV block，而是一组具有不同索引空间和生命周期的 draft KV / SWA / recurrent state。容量核算、迁移完成事件和复用正确性必须按这组状态整体定义。",
+        "source": "https://github.com/sgl-project/sglang/pull/40223",
+        "sourceLabel": "SGLang PR #40223",
+        "reading": "8 min",
+        "signal": "high",
+        "columns": [
+          "sglang",
+          "mooncake",
+          "kv-cache",
+          "models"
+        ]
+      },
+      {
+        "id": "vllm-dcp-partial-tail-offload",
+        "rank": "03",
+        "category": "VLLM · KV OFFLOAD",
+        "title": "Hybrid Model 的 Partial-tail Offload 扩展到 DCP",
+        "summary": "9 月 25 日的 vLLM #58619 允许 full-attention block 与 unsharded recurrent block 尺寸不同，并按各 group 的 block size 计算 partial-tail source address；同时修复请求结束时两个 boundary 触发断言崩溃。2 节点 GB300、TP8/DCP8 的组合验证中，配合 lookup-anchor PR 后，原本 0 命中的 13,824–24,960 token 前缀可完整从 CPU tier 恢复。",
+        "why": "KDA/MLA hybrid state 的可复用边界通常落在 full block 内部。若 offload 只能保存整块，agent 请求尾部的高价值增量会被系统性丢掉；DCP 又进一步要求每个 group 用自己的物理几何寻址。",
+        "source": "https://github.com/vllm-project/vllm/pull/58619",
+        "sourceLabel": "vLLM PR #58619",
+        "reading": "8 min",
+        "signal": "high",
+        "columns": [
+          "vllm",
+          "kv-cache",
+          "models",
+          "network"
+        ]
+      },
+      {
+        "id": "vllm-dsv41-fused-woa",
+        "rank": "04",
+        "category": "VLLM · DSV4.1 KERNEL",
+        "title": "DSv4.1 小批量 O-Projection 三个 Kernel 融成一个",
+        "summary": "9 月 25 日更新的 #58634 为 SM100 增加 CuTe-DSL `FusedWoAKernel`，把 inverse RoPE、per-32 FP8 quant、grouped `wo_a` 与后续 MXFP8 quant 的前三段合并，并直接向 `wo_b` 交付预量化 activation。GB200、DSv4.1-Flash TP4 上，完整 O-projection 在 1 token 时由 16.06 µs 降至 10.37 µs（1.55×），8 token 为 1.54×；到 32 token 收益收敛到 1.05×。",
+        "why": "Decode 小 batch 的瓶颈常是 launch、量化与中间数据搬运，而不是 GEMM FLOPs。把 attention 输出转换直接并入 WO-A，是 DSv4.1 这种多阶段稀疏注意力继续压 TPOT 的典型路径。",
+        "source": "https://github.com/vllm-project/vllm/pull/58634",
+        "sourceLabel": "vLLM PR #58634",
+        "reading": "7 min",
+        "signal": "high",
+        "columns": [
+          "vllm",
+          "models"
+        ]
+      },
+      {
+        "id": "mooncake-last-hit-only-lease",
+        "rank": "05",
+        "category": "MOONCAKE · K3 KDA",
+        "title": "Mooncake 为 K3 多 Checkpoint 查询增加 LastHitOnly Lease",
+        "summary": "9 月 24 日新开的 Mooncake #4314 为 `BatchProbeKey` 增加 `GrantLeasePolicy::LastHitOnly`：按 caller 顺序检查多个 KDA checkpoint candidate，只对最后一个完整命中的 candidate 加租约，并返回 selected-only mask。完整性检查与 lease grant 在有序 metadata-shard lock 下完成，避免验证完成后、恢复开始前被普通 eviction 删除。",
+        "why": "K3 prefix lookup 会探测多个 checkpoint，但最终只恢复一个；若全部加租约会放大 pin 容量，不加租约又有 TOCTOU 淘汰风险。这个策略把“探测范围”和“真正保活范围”分开，是 agent 长链尾部 state 复用所需的控制面原语。",
+        "source": "https://github.com/kvcache-ai/Mooncake/pull/4314",
+        "sourceLabel": "Mooncake PR #4314",
+        "reading": "6 min",
+        "signal": "high",
+        "columns": [
+          "mooncake",
+          "kv-cache",
+          "network"
+        ]
+      }
+    ],
+    "09.24": [
+      {
+        "id": "sglang-dflash-swa-kv-ratio",
+        "rank": "01",
+        "category": "SGLANG · SPEC DECODE",
+        "title": "全 SWA DFLASH Draft 不再按 Target 全长分配 KV",
+        "summary": "SGLang #40665 新增 `--speculative-draft-kv-ratio`，允许全 SWA 的 DFLASH draft 只保留与窗口工作集匹配的 KV 容量，并由 target allocator 维护 full→SWA slot 映射。Qwen3.8-27B、1×H200 的示例中，draft pool 从 8.6 GiB 降到 2.6 GiB，target token capacity 从 450,060 增至 547,899，提升 21.7%。",
+        "why": "这把缓存容量规划从“每个 target token 都给 draft 留一格”改成按 attention 可见范围分配。对 SWA/KDA 这类 bounded state，物理池大小不应继续绑定完整上下文长度。",
+        "source": "https://github.com/sgl-project/sglang/pull/40665",
+        "sourceLabel": "SGLang PR #40665",
+        "reading": "7 min",
+        "signal": "high",
+        "columns": [
+          "sglang",
+          "kv-cache",
+          "models"
+        ]
+      },
+      {
+        "id": "sglang-minimax-fp8-index-cache",
+        "rank": "02",
+        "category": "SGLANG · SPARSE ATTENTION",
+        "title": "MiniMax-M3 的 Index K Cache 改用 FP8，容量提升 15.6%",
+        "summary": "9 月 24 日合并的 #36549 在 gfx95（MI350/MI355）上把 lightning indexer 的 K cache 从 BF16 改为 FP8 E4M3，而主 attention KV dtype 保持不变。8×MI350X、TP8 实测 index pool 从 43.34 GB 降至约 25.05 GB；同步修正 cell-size accounting 后，`max_total_num_tokens` 从 3.189M 增至 3.686M。",
+        "why": "稀疏 index cache 只负责候选块打分，不必复制主 KV 的精度与容量策略。这也是 Index Cache 与主 KV 分池、分精度管理的直接工程证据。",
+        "source": "https://github.com/sgl-project/sglang/pull/36549",
+        "sourceLabel": "SGLang PR #36549",
+        "reading": "7 min",
+        "signal": "high",
+        "columns": [
+          "sglang",
+          "kv-cache",
+          "models"
+        ]
+      },
+      {
+        "id": "vllm-mla-replicated-offload",
+        "rank": "03",
+        "category": "VLLM · KV OFFLOAD",
+        "title": "多组 MLA / SWA-MLA Offload 只需一个 TP Rank 写出 KV",
+        "summary": "vLLM #57652 扩展 `replicated_layout` 检测，使 DeepSeek-V4-Flash、DeepSeek-V3.2-Exp、GLM-5.3 等 multi-group MLA / SlidingWindowMLA 模型也能识别 `num_kv_heads=1` 的复制式布局。这样 TP 场景只需一个 rank offload KV，避免多个 rank 把相同潜向量重复写入 CPU 或磁盘。",
+        "why": "KV offload 的真实带宽成本不仅由 bytes/token 决定，还取决于 TP 下数据是 replicated 还是 sharded。识别错误会让外部缓存写带宽和容量近似放大 TP 倍。",
+        "source": "https://github.com/vllm-project/vllm/pull/57652",
+        "sourceLabel": "vLLM PR #57652",
+        "reading": "6 min",
+        "signal": "high",
+        "columns": [
+          "vllm",
+          "kv-cache",
+          "network"
+        ]
+      },
+      {
+        "id": "vllm-dsv4-mtp-metadata-rebuild",
+        "rank": "04",
+        "category": "VLLM · SPEC DECODE",
+        "title": "DeepSeek-V4 MTP 移除一次 Draft Metadata 重建",
+        "summary": "新 PR #58463 调整 `DeepseekSparseSWAMetadataBuilder` 与 `AutoRegressiveSpeculator`，移除融合最后 N−1 个 draft step 前的第一次 attention metadata build。DeepSeek-V4-Flash、MTP=3、4×GB200 的 profile 显示每个 decode step 减少约 1 ms Host 工作，但该工作在 TP4 下不处于关键路径，因此吞吐基本没有变化。",
+        "why": "它提醒我们区分 CPU overhead 与端到端 critical path：删掉 1 ms 并不必然提高 TPS，但会释放控制面余量，为更高并发或更轻的 GPU step 降低 Host 饱和风险。",
+        "source": "https://github.com/vllm-project/vllm/pull/58463",
+        "sourceLabel": "vLLM PR #58463",
+        "reading": "5 min",
+        "signal": "medium",
+        "columns": [
+          "vllm",
+          "models"
+        ]
+      },
+      {
+        "id": "mooncake-conductor-event-query",
+        "rank": "05",
+        "category": "MOONCAKE · CONDUCTOR",
+        "title": "Mooncake Conductor 把 KV Event 接入全局 Prefix Index",
+        "summary": "#4292 把每个服务的 ZMQ KV 事件流接入 prefix index，并产出可运行的 `mooncake_conductor`，对外提供 `/query`、`/register`、`/unregister`、`/services` 与 `/global_view`。它还跟踪一个逻辑 KV 对应的多个物理组件，只有最后一个组件消失时才删除索引项。",
+        "why": "这让 Conductor 从静态设计走向可用控制面：全局调度器终于能查询不同服务、不同副本上的前缀位置，而不必让每个引擎自行猜测 L3 命中。",
+        "source": "https://github.com/kvcache-ai/Mooncake/pull/4292",
+        "sourceLabel": "Mooncake PR #4292",
+        "reading": "7 min",
+        "signal": "high",
+        "columns": [
+          "mooncake",
+          "kv-cache",
+          "network"
+        ]
+      }
+    ],
+    "09.22": [
+      {
+        "id": "sglang-k3-cuda-graph-streams",
+        "rank": "01",
+        "category": "SGLANG · MERGED",
+        "title": "Kimi K3 CUDA Graph 回放流从 96 条收敛到 4 条",
+        "summary": "SGLang 合并 #40640，通过先记录 KDA 主投影、再安排侧流 gate GEMV，并调整 MLA output gate 的记录边界，修复 B300 上重复 attention fork 导致的 replay stream 爆炸。TP8 的 8 个 rank 都从 96 条 target stream 降至 4 条，kernel 数与结果保持一致；BS1 吞吐提升约 0.8%–1.0%，BS16 基本不变。",
+        "why": "这说明异步分支不是越多越好：CUDA Graph 捕获顺序本身会放大 stream 拓扑和调度开销。对 KDA+MLA、DSpark 这类多分支 decode，profile 时应把 replay stream 数与 kernel 时间一起看。",
+        "source": "https://github.com/sgl-project/sglang/pull/40640",
+        "sourceLabel": "SGLang PR #40640",
+        "reading": "6 min",
+        "signal": "high",
+        "columns": [
+          "sglang",
+          "models"
+        ]
+      },
+      {
+        "id": "sglang-decode-host-receive",
+        "rank": "02",
+        "category": "SGLANG · PD",
+        "title": "Decode HBM 紧张时，KV Transfer 可先落 Host Pool",
+        "summary": "#40238 新增 `--disaggregation-decode-host-receive-threshold`：当 Decode 的 device token usage 超过阈值，支持该能力的 backend 可把入站 KV 直接接收到 retraction host pool，等 HBM admission 成功后再恢复。它共用 HiCache 的 layer-first Host 池，并覆盖 target KV、draft KV、回填校验与 radix 去重。",
+        "why": "这正面回答了“提前把命中 KV 发到 D 会不会长期占 HBM”：可以提前传，但把未就绪数据先停在 DRAM。当前仍只是引擎接口——没有内置 backend 实现 Host destination，端到端收益要等 Mooncake/NIXL 等后端接入。",
+        "source": "https://github.com/sgl-project/sglang/pull/40238",
+        "sourceLabel": "SGLang PR #40238",
+        "reading": "7 min",
+        "signal": "high",
+        "columns": [
+          "sglang",
+          "mooncake",
+          "kv-cache",
+          "network"
+        ]
+      },
+      {
+        "id": "vllm-kv-transfer-pinned-metrics",
+        "rank": "03",
+        "category": "VLLM · METRICS",
+        "title": "vLLM 终于能看见被异步 KV Transfer pin 住的容量",
+        "summary": "新 PR #58004 增加 `vllm:num_kv_pinned_requests` 与 `vllm:num_kv_pinned_tokens`，统计请求已经完成但仍等待远端 Decode 拉取、因此不能释放的 KV。指标在 scheduler 层实现，覆盖 NIXL pull/push、Mooncake、MoRIIO，以及 Decode 接收中止和双向 readback。",
+        "why": "过去慢 D 或卡住的 connector 只表现为莫名升高的 `kv_cache_usage_perc`。这两个量可以直接接进容量告警与 Q_knee 分析，区分“活跃请求占用”与“传输尾部 pin 住的占用”。",
+        "source": "https://github.com/vllm-project/vllm/pull/58004",
+        "sourceLabel": "vLLM PR #58004",
+        "reading": "5 min",
+        "signal": "high",
+        "columns": [
+          "vllm",
+          "mooncake",
+          "kv-cache",
+          "network"
+        ]
+      },
+      {
+        "id": "mooncake-nvidia-data-direct",
+        "rank": "04",
+        "category": "MOONCAKE · RDMA",
+        "title": "Mooncake Transfer Engine 接入 NVIDIA Data Direct 注册路径",
+        "summary": "#4267 为 classic RDMA transport 增加 opt-in `MC_RDMA_DATA_DIRECT=1`：用 PCIe DMA-BUF export 配合 `mlx5dv_reg_dmabuf_mr(...DATA_DIRECT)` 注册 CUDA 显存，并优先于 nvidia-peermem。实现保留 shared DMA-BUF 与 chunk offset，已在 CUDA 13 / ARM64 / GB300 上完成跨机 GPU READ/WRITE 校验。",
+        "why": "这不是自动选网卡或 TENT/IBGDA 的替代，而是 GB300 + CX8 等平台的一条更直接 GPU↔RNIC 数据通路。对你的 KV RDMA 路径，下一步重点是比较注册成本、可用 NIC 拓扑和稳定态吞吐。",
+        "source": "https://github.com/kvcache-ai/Mooncake/pull/4267",
+        "sourceLabel": "Mooncake PR #4267",
+        "reading": "6 min",
+        "signal": "high",
+        "columns": [
+          "mooncake",
+          "kv-cache",
+          "network"
+        ]
+      },
+      {
+        "id": "mooncake-batchget-cuda-graph-barrier",
+        "rank": "05",
+        "category": "MOONCAKE · CUDA GRAPH",
+        "title": "Mooncake BatchGet 可作为 CUDA Graph 内的等待条件",
+        "summary": "#4235 用 mapped pinned host flag 与 `cuStreamWaitValue32` 建立 `CudaTransferBarrier`，让已捕获的 CUDA Graph 等待后台 `BatchGet` 或 `TransferFuture` 完成，并可在每次 replay 前重新 arm。失败的读取也会释放 GPU wait，但调用方必须根据 `barrier->wait()` 丢弃无效输出。",
+        "why": "它把 KV 回载完成事件从 Python/Host polling 推进到 GPU timeline，可为“先发 KV、计算时异步覆盖”提供同步原语。不过当前尚未把传输本身绑定到用户 stream，也没有 Python `*_on_stream` API。",
+        "source": "https://github.com/kvcache-ai/Mooncake/pull/4235",
+        "sourceLabel": "Mooncake PR #4235",
+        "reading": "6 min",
+        "signal": "high",
+        "columns": [
+          "mooncake",
+          "kv-cache",
+          "models",
+          "network"
+        ]
+      }
+    ],
+    "09.21": [
+      {
+        "id": "hicache-serialized-loadback",
+        "rank": "01",
+        "category": "SGLANG · HICACHE",
+        "title": "HiCache serialized load-back：避免回载整条 Prefix 反噬可用容量",
+        "summary": "#39395 把 multi-node prefix 的 H2D 回载改为逐 radix node 传输与确认，使已完成 node 能立刻成为可回收副本。在 GB300 1P1D 压力实验中，可用 target prefix 从 2.159M 增至 3.270M tokens，完整 32K path 命中从 61/100 提升到 100/100。",
+        "why": "它直接缓解 L3/L2 回载挤出 L1 热 KV 的问题；代价是无压力场景纯 load-back latency 增加约 41.8%，所以当前保持 opt-in。",
+        "source": "https://github.com/sgl-project/sglang/pull/39395",
+        "sourceLabel": "SGLang PR #39395",
+        "reading": "7 min",
+        "signal": "high",
+        "columns": [
+          "sglang",
+          "mooncake",
+          "kv-cache",
+          "network"
+        ]
+      },
+      {
+        "id": "sglang-kda-aux-state-budget",
+        "rank": "02",
+        "category": "SGLANG · KDA",
+        "title": "KDA auxiliary state 正式进入 KVCacheConfigurator 容量预算",
+        "summary": "#40227 增加 `extra_mamba_cache_bytes_per_req`，让 KDA/Mamba 的额外 persistent state 在 KV/state pool sizing 之前就计入显存预算，同时向 backend 暴露 layer 与 prefix metadata。",
+        "why": "它不是直接提速，而是为 KDA+MLA/DSA unified state pool 与 HiCache hybrid-state offload 补齐容量规划接口，避免 backend 私下吃显存。",
+        "source": "https://github.com/sgl-project/sglang/pull/40227",
+        "sourceLabel": "SGLang PR #40227",
+        "reading": "5 min",
+        "signal": "high",
+        "columns": [
+          "sglang",
+          "kv-cache",
+          "models"
+        ]
+      },
+      {
+        "id": "vllm-preserve-offload-tier",
+        "rank": "03",
+        "category": "VLLM · OFFLOAD",
+        "title": "vLLM sleep / pause 后可保留 CPU 与 SSD KV tier",
+        "summary": "#57810 新增 `clear_connector_cache=False`，允许 sleep 或 pause 时保留 external KV connector 的 offload tier；默认仍清空，以避免换权重后误用 stale KV。",
+        "why": "它让 GPU compute 临时让位时不必丢掉昂贵的异构缓存，既适用于 RL rollout，也适用于按需腾挪算力的 serving。",
+        "source": "https://github.com/vllm-project/vllm/pull/57810",
+        "sourceLabel": "vLLM PR #57810",
+        "reading": "5 min",
+        "signal": "high",
+        "columns": [
+          "vllm",
+          "kv-cache",
+          "network"
+        ]
+      },
+      {
+        "id": "vllm-engram-rocm-host",
+        "rank": "04",
+        "category": "VLLM · ROCM",
+        "title": "DeepSeek V4.1 Engram 在 ROCm 上迁移到 Host",
+        "summary": "已合并的 #57491 把 TP4 每 rank 约 47.2 GiB 的 Engram table 放入 pinned host memory 并用 UVA 访问。MI355X TP4 的 available KV memory 从 107.8 GiB 增至 154.38 GiB，GPU KV capacity 提升 43.2%，吞吐基本持平。",
+        "why": "所谓 KV capacity optimization 已不能只看 KV：Engram、KDA/Mamba state 等持久辅助状态正在和 KV 竞争同一份 HBM。",
+        "source": "https://github.com/vllm-project/vllm/pull/57491",
+        "sourceLabel": "vLLM PR #57491",
+        "reading": "6 min",
+        "signal": "high",
+        "columns": [
+          "vllm",
+          "kv-cache",
+          "models",
+          "network"
+        ]
+      },
+      {
+        "id": "mooncake-adaptive-scatter-read",
+        "rank": "05",
+        "category": "MOONCAKE · RDMA",
+        "title": "Mooncake 自适应聚合碎片化 RDMA scatter read",
+        "summary": "#4117 在预计 gather 至少快约 10% 时，把大量小 range pack 到预注册 Store buffer，再用少量 bulk RDMA WRITE 发送；大 range 继续直传。98,304×264B scatter 的跨机实验达到 35.07 Gbit/s。",
+        "why": "Engram sparse rows、partial KV 与异构 state 都会把传输单位从连续大块变成离散 range，网络 planner 必须同时权衡 RTT、QP depth 与 packing cost。",
+        "source": "https://github.com/kvcache-ai/Mooncake/pull/4117",
+        "sourceLabel": "Mooncake PR #4117",
+        "reading": "6 min",
+        "signal": "high",
+        "columns": [
+          "mooncake",
+          "network"
+        ]
+      }
+    ],
+    "09.20": [
+      {
+        "id": "multitier-vllm",
+        "rank": "01",
+        "category": "KV CACHE",
+        "title": "vLLM 原生多级 KV Offloading：从单一 CPU 层走向多后端体系",
+        "summary": "新的高层设计把 CPU DRAM 设为主层，并允许接入多个二级存储后端。关键变化不是“再加一层 SSD”，而是统一 block 生命周期、异步搬运与后端选择。",
+        "why": "对你正在做的 L1/L2/L3 统一池最直接：可以重点比较它的 block ownership、回填路径和 Mooncake 的 store-centric 设计。",
+        "source": "https://github.com/vllm-project/vllm/issues/38260",
+        "sourceLabel": "vLLM RFC #38260",
+        "reading": "6 min",
+        "signal": "high",
+        "columns": [
+          "vllm",
+          "kv-cache"
+        ]
+      },
+      {
+        "id": "sglang-fa4",
+        "rank": "02",
+        "category": "SGLANG",
+        "title": "SGLang 推进 FlashAttention 4 与 CUDA 13 默认镜像",
+        "summary": "RFC 讨论把 FA4 集成进 runtime，并同步处理默认 CUDA 版本迁移。对 Hopper 路径而言，性能收益之外，真正的工程成本在镜像、算子兼容和 fallback 边界。",
+        "why": "你的 B300 环境更值得关注后续 Blackwell 支持路径，以及 attention backend 切换是否影响现有 KDA / MLA 组合。",
+        "source": "https://github.com/sgl-project/sglang/issues/20486",
+        "sourceLabel": "SGLang RFC #20486",
+        "reading": "5 min",
+        "signal": "high",
+        "columns": [
+          "sglang",
+          "models"
+        ]
+      },
+      {
+        "id": "mooncake-radix",
+        "rank": "03",
+        "category": "MOONCAKE",
+        "title": "Mooncake Store Master 探索原生 Radix Tree 前缀查询",
+        "summary": "提案尝试在 Store Master 中补齐 prefix / range query，使 L3 不再只依赖 hash key 查找。它触碰的是你反复提到的“L3 缺少上下文树信息”问题。",
+        "why": "如果落地，L3 连续性判断与调度可能从引擎侧下沉到 store；需要继续盯元数据开销、跨 replica 一致性和淘汰语义。",
+        "source": "https://github.com/kvcache-ai/Mooncake/issues/1732",
+        "sourceLabel": "Mooncake RFC #1732",
+        "reading": "4 min",
+        "signal": "high",
+        "columns": [
+          "mooncake",
+          "kv-cache"
+        ]
+      },
+      {
+        "id": "metakv",
+        "rank": "04",
+        "category": "PAPER",
+        "title": "MetaKV：按请求动态选择 KV 压缩配置，而不是全局固定策略",
+        "summary": "MetaKV 用轻量预测器估计各候选压缩配置的延迟、峰值内存与正确率，再按每个 prompt 的约束进行选择。核心是把 KV 压缩从静态开关变成在线决策。",
+        "why": "和你设想的 KDA / MLA 混合路由很接近：都在做请求级资源—质量权衡，可以借鉴其约束建模与离线 profile 方法。",
+        "source": "https://arxiv.org/abs/2609.07966",
+        "sourceLabel": "arXiv 2609.07966",
+        "reading": "8 min",
+        "signal": "medium",
+        "columns": [
+          "kv-cache",
+          "models"
+        ]
+      },
+      {
+        "id": "kvgov",
+        "rank": "05",
+        "category": "SECURITY",
+        "title": "多租户 Prefix Cache 的命中时延开始被系统化视为侧信道",
+        "summary": "KVGov 通过 per-principal salt 隔离 block hash chain，目标是在保留大部分共享前缀收益的同时切断跨租户时序信号。",
+        "why": "MaaS 的 cross-user 复用不只取决于命中率；身份边界一旦进入 cache key，容量模型、调度模型和实际收益都要重算。",
+        "source": "https://arxiv.org/abs/2608.09225",
+        "sourceLabel": "arXiv 2608.09225",
+        "reading": "7 min",
+        "signal": "medium",
+        "columns": [
+          "kv-cache"
+        ]
+      }
+    ],
+    "09.19": [
+      {
+        "id": "kda-mla-dcp-hicache",
+        "rank": "01",
+        "category": "SGLANG",
+        "title": "KDA + MLA 的 DCP Decode 已接入 UnifiedRadixCache 与 HiCache",
+        "summary": "PR #40263 打通 KDA+MLA、DCP、PD Decode 与 L1/L2 缓存；当前 L3 仍受 Mooncake key 未感知 dcp_rank 的限制。另一条 KV-only restore 路线则让 KDA/SWA 状态继续走 Prefill→Decode 传输。",
+        "why": "这直接对应你的混合 attention 状态管理：MLA 历史 KV 可以恢复，但 recurrent / bounded state 不能被当成同一种缓存对象处理。",
+        "source": "https://github.com/sgl-project/sglang/pull/40263",
+        "sourceLabel": "SGLang PR #40263",
+        "reading": "6 min",
+        "signal": "high",
+        "columns": [
+          "sglang",
+          "mooncake",
+          "kv-cache",
+          "models"
+        ]
+      }
+    ],
+    "09.18": [
+      {
+        "id": "tent-slice-spraying",
+        "rank": "01",
+        "category": "NETWORK",
+        "title": "TENT：用 Slice Spraying 调度 KV 的多路径传输",
+        "summary": "TENT 根据链路 telemetry 把 KV 切片动态喷洒到多条 RDMA 路径，支持故障 reroute。论文报告相对 Mooncake TE 吞吐最高 1.36×、P90 TTFT 下降 26.4%。",
+        "why": "它能提高多 rail 利用率，但尚不能主动识别或抢占 DeepEP；生产上仍需限制 in-flight bytes / WR，并给 EP 通信更高优先级。",
+        "source": "https://arxiv.org/abs/2604.00368",
+        "sourceLabel": "TENT · arXiv 2604.00368",
+        "reading": "8 min",
+        "signal": "high",
+        "columns": [
+          "mooncake",
+          "network"
+        ]
+      },
+      {
+        "id": "tent-mooncake-code",
+        "rank": "02",
+        "category": "MOONCAKE",
+        "title": "TENT 已嵌入 Mooncake 主仓库，但与 DeepEP 的协同仍是开放问题",
+        "summary": "TENT 通过 USE_TENT 构建开关进入 Mooncake 数据面；QoS、EP 作为一等 DeviceTransport，以及跨通信栈优先级仍在 roadmap 中。",
+        "why": "你的场景不是单独跑 KV 传输，而是 KV Transfer 与 Dispatch/Combine 共享 NIC；评估时必须同时看带宽、提交时间线和 QoS。",
+        "source": "https://github.com/kvcache-ai/Mooncake/issues/1883",
+        "sourceLabel": "Mooncake Roadmap #1883",
+        "reading": "5 min",
+        "signal": "high",
+        "columns": [
+          "mooncake",
+          "network"
+        ]
+      }
+    ],
+    "09.17": [
+      {
+        "id": "deepep-gil-release",
+        "rank": "01",
+        "category": "ENGINEERING",
+        "title": "Prefill + KV Transfer 慢 20% 的根因不是 RDMA，而是 Python GIL",
+        "summary": "DeepEP 1.2.1 的 node-local Dispatch / Combine 等待 GPU 时仍持有 GIL，阻塞 Mooncake 的 Python transfer thread。PR #555 释放 GIL 后，性能差距从超过 20% 收敛到 1% 以内。",
+        "why": "这是判断“网络争用”前必须排除的 CPU 提交阻塞：时间线上看似没有重叠，并不等于 NIC 已经饱和。",
+        "source": "https://github.com/deepseek-ai/DeepEP/pull/555",
+        "sourceLabel": "DeepEP PR #555",
+        "reading": "6 min",
+        "signal": "high",
+        "columns": [
+          "sglang",
+          "mooncake",
+          "models",
+          "network"
+        ]
+      },
+      {
+        "id": "component-aware-persistence",
+        "rank": "02",
+        "category": "HICACHE",
+        "title": "Full KV 延迟持久化，KDA / Mamba State 提前持久化",
+        "summary": "SGLang #39845 / #39856 开始按组件生命周期做 overflow tiering：普通 KV 可晚些落盘，recurrent state 则需要更早保证可恢复性。",
+        "why": "这避免了“KV 命中但状态缺失”的无效缓存，也说明统一池不能等价于统一淘汰策略。",
+        "source": "https://github.com/sgl-project/sglang/pull/39845",
+        "sourceLabel": "SGLang PR #39845",
+        "reading": "5 min",
+        "signal": "high",
+        "columns": [
+          "sglang",
+          "mooncake",
+          "kv-cache",
+          "models"
+        ]
+      }
+    ],
+    "09.16": [
+      {
+        "id": "hicache-buffer-only",
+        "rank": "01",
+        "category": "SGLANG",
+        "title": "HiCache Buffer-only：减少 per-worker L2 重复与容量碎片",
+        "summary": "#20535 将 Host 缓存集中为 buffer-only 路径；给出的 benchmark 中，命中率从 38.7% 升到 45.9%，storage-hit tokens 从 1.53M 增至 6.08M，TTFT P99 从 3996ms 降至 3526ms。",
+        "why": "收益取决于流量形态：共享前缀多时集中池更有利；session-sticky 且跨实例复用低时，本地 L2 仍可能更合适。",
+        "source": "https://github.com/sgl-project/sglang/pull/20535",
+        "sourceLabel": "SGLang PR #20535",
+        "reading": "7 min",
+        "signal": "high",
+        "columns": [
+          "sglang",
+          "mooncake",
+          "kv-cache"
+        ]
+      },
+      {
+        "id": "kvcache-wild",
+        "rank": "02",
+        "category": "PAPER",
+        "title": "KVCache Cache in the Wild：云上 Prefix 复用没有想象中均匀",
+        "summary": "大规模生产 trace 表明，跨用户与跨 session 的命中贡献高度偏斜，容量、路由和 workload 结构共同决定最终收益；无限容量下的理论命中率不能直接代表服务命中率。",
+        "why": "它解释了为什么 MaaS Code Agent 场景需要 cache-aware routing、工作集测量和 Q_knee，而不能只依赖单实例 RadixCache。",
+        "source": "https://www.usenix.org/conference/atc25/presentation/wang-jiahao",
+        "sourceLabel": "USENIX ATC 2025",
+        "reading": "9 min",
+        "signal": "high",
+        "columns": [
+          "sglang",
+          "vllm",
+          "kv-cache"
+        ]
+      },
+      {
+        "id": "nvl72-weight-offload",
+        "rank": "03",
+        "category": "VLLM",
+        "title": "NVL72 上的 Weight Offloading v2：让 C2C 搬运与专家计算重叠",
+        "summary": "vLLM 用 NVFP4 将部分专家权重放在 Grace CPU DRAM，通过 NVLink-C2C 预取到可复用 HBM buffer，并用独立 copy stream 覆盖传输。",
+        "why": "这说明引擎不一定需要专门的 C2C API；普通异步 copy 在 Grace-Blackwell 上会自然走 C2C，真正需要设计的是 buffer 生命周期与预取窗口。",
+        "source": "https://vllm.ai/blog/2026-02-03-dsr1-gb200-part1",
+        "sourceLabel": "vLLM Engineering Blog",
+        "reading": "8 min",
+        "signal": "medium",
+        "columns": [
+          "vllm",
+          "models",
+          "network"
+        ]
+      }
+    ],
+    "09.15": [
+      {
+        "id": "partial-page-prefix",
+        "rank": "01",
+        "category": "SGLANG",
+        "title": "Partial-page Prefix Reuse：大物理页也能做精确前缀匹配",
+        "summary": "#35635 使用 exact LCP、新建 request-private page，并把已匹配的部分 KV 延迟复制进去；随后新 token 继续填充剩余 slot，本质是 partial page 的 copy-on-write materialization。",
+        "why": "在 page size 256、平均尾差约 2500 token 的假设下，尾部重算浪费约 5.1%；这个方案保留大页传输效率，同时降低 agent 长前缀浪费。",
+        "source": "https://github.com/sgl-project/sglang/pull/35635",
+        "sourceLabel": "SGLang PR #35635",
+        "reading": "7 min",
+        "signal": "high",
+        "columns": [
+          "sglang",
+          "kv-cache"
+        ]
+      },
+      {
+        "id": "vllm-marconi",
+        "rank": "02",
+        "category": "VLLM",
+        "title": "Marconi：由 MLA 热点驱动 KDA Checkpoint，而不是显式 Session 计数",
+        "summary": "Marconi 保留完整 MLA prefix cache；当 MLA 命中位置明显领先于 KDA checkpoint 时，将其视为重复热点，并在 prefill 到达该位置时生成新的 KDA checkpoint。",
+        "why": "这为异构 attention 状态提供了实用边界：增长型 MLA 负责发现复用，常数状态 KDA 只在值得的位置建立恢复点。",
+        "source": "https://github.com/vllm-project/vllm/pull/37898",
+        "sourceLabel": "vLLM PR #37898",
+        "reading": "8 min",
+        "signal": "high",
+        "columns": [
+          "vllm",
+          "kv-cache",
+          "models"
+        ]
+      }
+    ],
+    "09.14": [
+      {
+        "id": "smg-rbg",
+        "rank": "01",
+        "category": "SGLANG",
+        "title": "SMG 管流量与缓存局部性，RBG 管角色拓扑与生命周期",
+        "summary": "SGLang Model Gateway 负责 request/load/cache-aware 路由及 PD 协同；RoleBasedGroup 则面向 Kubernetes，把 Router、Prefill、Decode 与 Mooncake 角色建模为可部署和伸缩的工作负载。",
+        "why": "两者解决的不是同一层：SMG 决定请求去哪里，RBG 决定这些角色怎样被组织、扩缩和恢复。",
+        "source": "https://github.com/sgl-project/sglang",
+        "sourceLabel": "SGLang Repository",
+        "reading": "5 min",
+        "signal": "medium",
+        "columns": [
+          "sglang",
+          "mooncake",
+          "network"
+        ]
+      }
+    ],
+    "09.11": [
+      {
+        "id": "deepseek-v41-persistent-kv",
+        "rank": "01",
+        "category": "MODEL ARCH",
+        "title": "DeepSeek V4.1：Persistent KV 缩到 V4 的约 1/8",
+        "summary": "CSA2 跨层共享与 FP4 KV 把 Global KV 压到约 890 B/token；Encoder SWA 进入约占 10% Host DRAM 的短 TTL 池，Decoder SWA 不持久化，而是用 128-token bounded replay 恢复。",
+        "why": "它把不同 attention state 的生命周期彻底拆开：Global KV 可长期驻留超过 72 小时，SWA 与 recurrent state 则需要专门的恢复语义。",
+        "source": "https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash",
+        "sourceLabel": "DeepSeek V4.1 Flash",
+        "reading": "10 min",
+        "signal": "high",
+        "columns": [
+          "kv-cache",
+          "models"
+        ]
+      }
+    ],
+    "09.09": [
+      {
+        "id": "mooncake-kv-infra",
+        "rank": "01",
+        "category": "MOONCAKE",
+        "title": "Mooncake 正从 KV Store 走向完整的 KV Data Infrastructure",
+        "summary": "Conductor / global prefix index 负责按 tier 与 locality 路由，Store 管元数据和驻留位置，客户端承载数据面；manifest-driven reshard 则把逻辑 KV 与 TP/PP 物理布局解耦。",
+        "why": "这条路线把你关心的 metadata、ownership、placement、迁移与异构恢复放在同一控制面，而不是继续堆叠一个更大的 L3。",
+        "source": "https://github.com/kvcache-ai/Mooncake/issues/3692",
+        "sourceLabel": "Mooncake RFC #3692",
+        "reading": "8 min",
+        "signal": "high",
+        "columns": [
+          "mooncake",
+          "kv-cache",
+          "network"
+        ]
+      }
+    ],
+    "09.08": [
+      {
+        "id": "hicache-page-first-direct",
+        "rank": "01",
+        "category": "HICACHE",
+        "title": "Page-first Direct 在 L2→L1 回填上优于 Page-first Kernel",
+        "summary": "#25282 在相同 DeepSeek-V4-Flash-FP8、hicache_ratio=8 与 GSM8K workload 下，第二轮 PFD+direct 达到 35.576s / 250.393 tok/s，PF+kernel 为 36.445s / 245.739 tok/s。",
+        "why": "实验验证的是清空 L1 后的 L2 load-back，不包含 Mooncake L3、H2D 暴露或 submission-head latency；可作为方向证据，不能直接外推到完整三级缓存。",
+        "source": "https://github.com/sgl-project/sglang/pull/25282",
+        "sourceLabel": "SGLang PR #25282",
+        "reading": "7 min",
+        "signal": "medium",
+        "columns": [
+          "sglang",
+          "mooncake",
+          "kv-cache",
+          "network"
+        ]
+      },
+      {
+        "id": "deepgemm-boundary",
+        "rank": "02",
+        "category": "KERNEL",
+        "title": "DeepGEMM 的核心位置在 MoE Grouped GEMM，不是 Attention Kernel",
+        "summary": "Attention 仍由专门 backend 执行；DeepGEMM 可以覆盖 Q/K/V/O 投影 GEMM，但在 SGLang 中更核心的用途是 MoE expert grouped GEMM 与 FP8 GEMM backend。",
+        "why": "排查性能时要把 attention kernel、投影 GEMM 和 expert GEMM 分开观测，否则会把 DeepGEMM 的收益错误归因到 attention。",
+        "source": "https://github.com/deepseek-ai/DeepGEMM",
+        "sourceLabel": "DeepGEMM Repository",
+        "reading": "4 min",
+        "signal": "medium",
+        "columns": [
+          "sglang",
+          "models"
+        ]
+      }
+    ]
+  },
+  "dates": [
+    {
+      "day": "30",
+      "week": "WED",
+      "key": "09.30"
+    },
+    {
+      "day": "29",
+      "week": "TUE",
+      "key": "09.29"
+    },
+    {
+      "day": "28",
+      "week": "MON",
+      "key": "09.28"
+    },
+    {
+      "day": "27",
+      "week": "SUN",
+      "key": "09.27"
+    },
+    {
+      "day": "26",
+      "week": "SAT",
+      "key": "09.26"
+    },
+    {
+      "day": "25",
+      "week": "FRI",
+      "key": "09.25"
+    },
+    {
+      "day": "24",
+      "week": "THU",
+      "key": "09.24"
+    },
+    {
+      "day": "22",
+      "week": "TUE",
+      "key": "09.22"
+    },
+    {
+      "day": "21",
+      "week": "MON",
+      "key": "09.21"
+    },
+    {
+      "day": "20",
+      "week": "SUN",
+      "key": "09.20"
+    },
+    {
+      "day": "19",
+      "week": "SAT",
+      "key": "09.19"
+    },
+    {
+      "day": "18",
+      "week": "FRI",
+      "key": "09.18"
+    },
+    {
+      "day": "17",
+      "week": "THU",
+      "key": "09.17"
+    },
+    {
+      "day": "16",
+      "week": "WED",
+      "key": "09.16"
+    },
+    {
+      "day": "15",
+      "week": "TUE",
+      "key": "09.15"
+    },
+    {
+      "day": "14",
+      "week": "MON",
+      "key": "09.14"
+    },
+    {
+      "day": "13",
+      "week": "SUN",
+      "key": "09.13"
+    },
+    {
+      "day": "12",
+      "week": "SAT",
+      "key": "09.12"
+    },
+    {
+      "day": "11",
+      "week": "FRI",
+      "key": "09.11"
+    },
+    {
+      "day": "10",
+      "week": "THU",
+      "key": "09.10"
+    },
+    {
+      "day": "09",
+      "week": "WED",
+      "key": "09.09"
+    },
+    {
+      "day": "08",
+      "week": "TUE",
+      "key": "09.08"
+    }
+  ],
+  "columns": [
+    {
+      "id": "sglang",
+      "name": "SGLang",
+      "code": "SG",
+      "description": "Runtime · HiCache · Scheduler",
+      "color": "bg-[#c7ff5e]"
+    },
+    {
+      "id": "vllm",
+      "name": "vLLM",
+      "code": "VL",
+      "description": "V1 · KV Connector · Marconi",
+      "color": "bg-[#72e6ff]"
+    },
+    {
+      "id": "mooncake",
+      "name": "Mooncake / HiCache",
+      "code": "MK",
+      "description": "Store · Transfer Engine · L2/L3",
+      "color": "bg-[#ffb15e]"
+    },
+    {
+      "id": "kv-cache",
+      "name": "KV Cache 系统",
+      "code": "KV",
+      "description": "Reuse · Eviction · Routing",
+      "color": "bg-[#ff7d8b]"
+    },
+    {
+      "id": "models",
+      "name": "模型与算子",
+      "code": "MX",
+      "description": "KDA · MLA · MoE · Spec",
+      "color": "bg-[#bda2ff]"
+    },
+    {
+      "id": "network",
+      "name": "通信与存储",
+      "code": "IO",
+      "description": "RDMA · NVLink · SSD · CXL",
+      "color": "bg-[#73dfba]"
+    }
+  ],
+  "topicBars": [
+    {
+      "label": "缓存策略 / 状态",
+      "value": 80,
+      "color": "bg-[#c7ff5e]"
+    },
+    {
+      "label": "模型与算子",
+      "value": 40,
+      "color": "bg-[#72e6ff]"
+    },
+    {
+      "label": "通信与存储",
+      "value": 60,
+      "color": "bg-[#ffb15e]"
+    }
+  ],
+  "issueMeta": {
+    "09.30": {
+      "headline": "今日值得关注的 AI Infra 信号",
+      "subtitle": "本期 5 条 · 约 49 分钟",
+      "threadTitle": "优化正在从算子延伸到页表、恢复边界与读取编排",
+      "threadSummary": "Q8KV8 加速稀疏 Prefill，THP 与 cuMem 减少 Host state 的地址翻译压力；sliding-window backoff 和原生 ReadPlan 则让状态恢复边界与 layer-wise 数据消费顺序保持一致。"
+    },
+    "09.29": {
+      "headline": "今日值得关注的 AI Infra 信号",
+      "subtitle": "本期 5 条 · 约 46 分钟",
+      "threadTitle": "SGLang 让等待队列持续刷新 Prefix 热度，阻断 FCFS 下的 Cache Storm",
+      "threadSummary": "这几乎完整复现了流量上升→排队→前缀老化→重算→更长排队的正反馈链。它只改变 eviction order，不锁死页面，也不改变 FCFS admission 顺序。"
+    },
+    "09.28": {
+      "headline": "今日值得关注的 AI Infra 信号",
+      "subtitle": "本期 5 条 · 约 45 分钟",
+      "threadTitle": "MiniMax-M3 TP4 将 Index-K 扫描拆给各 Rank，128K Indexer 快 2.64×",
+      "threadSummary": "它优化的不是 cache capacity，而是 replicated index cache 带来的读取放大。短上下文和小 batch 会退化，因此目前保持 opt-in，且尚无 full-model serving 数据。"
+    },
+    "09.27": {
+      "headline": "今日值得关注的 AI Infra 信号",
+      "subtitle": "本期 5 条 · 约 40 分钟",
+      "threadTitle": "HiCache 尝试用 INT8 保存 Host KV，同容量可缓存 1.78× Tokens",
+      "threadSummary": "这首次让 HiCache L2 representation 与 L1 dtype 解耦，但代价是双向 staging buffer 和 encode/decode。真正值得跟进的是：更大命中窗口能否长期覆盖额外搬运与量化成本。"
+    },
+    "09.26": {
+      "headline": "今日值得关注的 AI Infra 信号",
+      "subtitle": "本期 5 条 · 约 34 分钟",
+      "threadTitle": "Mooncake HiCache L3 接通 MLA DCP 跨引擎共享",
+      "threadSummary": "这一步才把 DCP-aware L3 从本地文件扩展到可跨实例共享的 Store。对多 P 实例而言，KV 对象身份必须绑定逻辑 shard，而不能简单绑定写入它的 rank。"
+    },
+    "09.25": {
+      "headline": "今日值得关注的 AI Infra 信号",
+      "subtitle": "本期 5 条 · 约 36 分钟",
+      "threadTitle": "HiCache L3 首次支持 MLA DCP 跨引擎复用",
+      "threadSummary": "DCP 下每个 rank 只有交错 token shard，过去 rank-0-only backup 无法构成完整逻辑页。这个 PR 首次把“逻辑前缀”与“物理 shard 身份”对齐，为多 P 实例共享 L3 KV 补上关键拓扑语义。"
+    },
+    "09.24": {
+      "headline": "今日值得关注的 AI Infra 信号",
+      "subtitle": "本期 5 条 · 约 32 分钟",
+      "threadTitle": "全 SWA DFLASH Draft 不再按 Target 全长分配 KV",
+      "threadSummary": "这把缓存容量规划从“每个 target token 都给 draft 留一格”改成按 attention 可见范围分配。对 SWA/KDA 这类 bounded state，物理池大小不应继续绑定完整上下文长度。"
+    },
+    "09.22": {
+      "headline": "今日值得关注的 AI Infra 信号",
+      "subtitle": "本期 5 条 · 约 30 分钟",
+      "threadTitle": "Kimi K3 CUDA Graph 回放流从 96 条收敛到 4 条",
+      "threadSummary": "这说明异步分支不是越多越好：CUDA Graph 捕获顺序本身会放大 stream 拓扑和调度开销。对 KDA+MLA、DSpark 这类多分支 decode，profile 时应把 replay stream 数与 kernel 时间一起看。"
+    },
+    "09.21": {
+      "headline": "今日值得关注的 AI Infra 信号",
+      "subtitle": "本期 5 条 · 约 29 分钟",
+      "threadTitle": "HiCache serialized load-back：避免回载整条 Prefix 反噬可用容量",
+      "threadSummary": "它直接缓解 L3/L2 回载挤出 L1 热 KV 的问题；代价是无压力场景纯 load-back latency 增加约 41.8%，所以当前保持 opt-in。"
+    },
+    "09.20": {
+      "headline": "今日值得关注的 AI Infra 信号",
+      "subtitle": "本期 5 条 · 约 30 分钟",
+      "threadTitle": "vLLM 原生多级 KV Offloading：从单一 CPU 层走向多后端体系",
+      "threadSummary": "对你正在做的 L1/L2/L3 统一池最直接：可以重点比较它的 block ownership、回填路径和 Mooncake 的 store-centric 设计。"
+    },
+    "09.19": {
+      "headline": "今日值得关注的 AI Infra 信号",
+      "subtitle": "本期 1 条 · 约 6 分钟",
+      "threadTitle": "KDA + MLA 的 DCP Decode 已接入 UnifiedRadixCache 与 HiCache",
+      "threadSummary": "这直接对应你的混合 attention 状态管理：MLA 历史 KV 可以恢复，但 recurrent / bounded state 不能被当成同一种缓存对象处理。"
+    },
+    "09.18": {
+      "headline": "今日值得关注的 AI Infra 信号",
+      "subtitle": "本期 2 条 · 约 13 分钟",
+      "threadTitle": "TENT：用 Slice Spraying 调度 KV 的多路径传输",
+      "threadSummary": "它能提高多 rail 利用率，但尚不能主动识别或抢占 DeepEP；生产上仍需限制 in-flight bytes / WR，并给 EP 通信更高优先级。"
+    },
+    "09.17": {
+      "headline": "今日值得关注的 AI Infra 信号",
+      "subtitle": "本期 2 条 · 约 11 分钟",
+      "threadTitle": "Prefill + KV Transfer 慢 20% 的根因不是 RDMA，而是 Python GIL",
+      "threadSummary": "这是判断“网络争用”前必须排除的 CPU 提交阻塞：时间线上看似没有重叠，并不等于 NIC 已经饱和。"
+    },
+    "09.16": {
+      "headline": "今日值得关注的 AI Infra 信号",
+      "subtitle": "本期 3 条 · 约 24 分钟",
+      "threadTitle": "HiCache Buffer-only：减少 per-worker L2 重复与容量碎片",
+      "threadSummary": "收益取决于流量形态：共享前缀多时集中池更有利；session-sticky 且跨实例复用低时，本地 L2 仍可能更合适。"
+    },
+    "09.15": {
+      "headline": "今日值得关注的 AI Infra 信号",
+      "subtitle": "本期 2 条 · 约 15 分钟",
+      "threadTitle": "Partial-page Prefix Reuse：大物理页也能做精确前缀匹配",
+      "threadSummary": "在 page size 256、平均尾差约 2500 token 的假设下，尾部重算浪费约 5.1%；这个方案保留大页传输效率，同时降低 agent 长前缀浪费。"
+    },
+    "09.14": {
+      "headline": "今日值得关注的 AI Infra 信号",
+      "subtitle": "本期 1 条 · 约 5 分钟",
+      "threadTitle": "SMG 管流量与缓存局部性，RBG 管角色拓扑与生命周期",
+      "threadSummary": "两者解决的不是同一层：SMG 决定请求去哪里，RBG 决定这些角色怎样被组织、扩缩和恢复。"
+    },
+    "09.11": {
+      "headline": "今日值得关注的 AI Infra 信号",
+      "subtitle": "本期 1 条 · 约 10 分钟",
+      "threadTitle": "DeepSeek V4.1：Persistent KV 缩到 V4 的约 1/8",
+      "threadSummary": "它把不同 attention state 的生命周期彻底拆开：Global KV 可长期驻留超过 72 小时，SWA 与 recurrent state 则需要专门的恢复语义。"
+    },
+    "09.09": {
+      "headline": "今日值得关注的 AI Infra 信号",
+      "subtitle": "本期 1 条 · 约 8 分钟",
+      "threadTitle": "Mooncake 正从 KV Store 走向完整的 KV Data Infrastructure",
+      "threadSummary": "这条路线把你关心的 metadata、ownership、placement、迁移与异构恢复放在同一控制面，而不是继续堆叠一个更大的 L3。"
+    },
+    "09.08": {
+      "headline": "今日值得关注的 AI Infra 信号",
+      "subtitle": "本期 2 条 · 约 11 分钟",
+      "threadTitle": "Page-first Direct 在 L2→L1 回填上优于 Page-first Kernel",
+      "threadSummary": "实验验证的是清空 L1 后的 L2 load-back，不包含 Mooncake L3、H2D 暴露或 submission-head latency；可作为方向证据，不能直接外推到完整三级缓存。"
+    }
+  }
+}

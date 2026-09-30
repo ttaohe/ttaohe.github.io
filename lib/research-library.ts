@@ -1,3 +1,4 @@
+import {sitePath} from "./site-path";
 export const researchLibrary = {
   index: "https://docs.google.com/document/d/1Z8OMQBt3iMLZNrFpdmF8-l7X2MGkUGPEn-ZH6h9k0Oc",
   ideas: "https://docs.google.com/document/d/15IC3J-A4PdMcv87uyTevCB7FIZWoVzFT6ErRHNK7Mno",
@@ -7,7 +8,7 @@ export const researchLibrary = {
 export const researchNotes = [
   {
     id: "state-recovery",
-    webUrl: "/notes/state-recovery",
+    webUrl: sitePath("/notes/state-recovery"),
     number: "01",
     title: "KV Cache：层级与异构状态恢复",
     description: "从缓存位置到合法恢复边界：梳理 SWA、KDA、Marconi 与 direct linker，保留提前 prefetch 的关键约束。",
@@ -21,7 +22,7 @@ export const researchNotes = [
   },
   {
     id: "transfer-compute",
-    webUrl: "/notes/pd-c2c-coordination",
+    webUrl: sitePath("/notes/pd-c2c-coordination"),
     number: "02",
     title: "PD 与 C2C：传输、容量和计算协同",
     description: "把提前传输、Decode 准入、DeepEP 争用与 host 直读放到同一条请求关键路径中比较。",
