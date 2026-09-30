@@ -23,6 +23,8 @@ await mkdir(path.join(publish, 'assets'), { recursive: true });
 const scheduleModel = await readFile(path.join(root, 'lib/update-schedule.ts'), 'utf8');
 await writeFile(path.join(publish, 'assets/update-schedule.js'), ts.transpileModule(scheduleModel, { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.ES2020 } }).outputText);
 await cp(path.join(root, 'portfolio/countdown.mjs'), path.join(publish, 'assets/portfolio-countdown.js'));
+await cp(path.join(root, 'portfolio/ui.mjs'), path.join(publish, 'assets/portfolio-ui.js'));
+await cp(path.join(root, 'portfolio/styles.css'), path.join(publish, 'assets/portfolio.css'));
 await cp(path.join(root, 'out/404.html'), path.join(publish, '404.html'));
 await writeFile(path.join(publish, '.nojekyll'), '');
 // Keep the first publication's direct article links useful after moving the section.
