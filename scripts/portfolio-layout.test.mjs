@@ -52,8 +52,9 @@ test('focus is a semantic, copyable Python list with only the confirmed directio
 
 test('focus code uses readable theme-aware type without mobile shrinkage or clipped lines', () => {
   assert.match(css, /\.focus-code\{[^}]*max-width:520px;min-width:0/);
-  assert.match(css, /\.focus-code\{[^}]*font:17px\/1\.75 var\(--mono\)/);
-  assert.match(css, /\.focus-code\{font-size:16px;padding:14px 16px\}/);
+  assert.match(css, /\.focus-code\{[^}]*font:17px\/1\.6 var\(--mono\)/);
+  assert.match(css, /\.focus-code\{font-size:16px;padding:8px 16px\}/);
+  assert.match(css, /\.focus-code\{[^}]*padding:8px 20px/);
   assert.match(css, /\.focus-code code\{font:inherit\}/);
   assert.match(css, /\.focus-code\{[^}]*background:var\(--raised\)/);
   assert.match(css, /\.focus-code\{[^}]*white-space:pre-wrap;overflow-wrap:break-word;overflow-x:auto/);

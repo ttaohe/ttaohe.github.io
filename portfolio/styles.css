@@ -226,7 +226,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--green);outline-offs
   .company-list{grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
 }
 .hero p strong{color:var(--strong);font-weight:500}
-.focus-code{width:100%;max-width:520px;min-width:0;margin:24px 0 0;padding:16px 20px;border:1px solid var(--line);border-left:2px solid var(--blue);border-radius:7px;background:var(--raised);color:var(--muted);font:17px/1.75 var(--mono);white-space:pre-wrap;overflow-wrap:break-word;overflow-x:auto;tab-size:2}
+.focus-code{width:100%;max-width:520px;min-width:0;margin:24px 0 0;padding:8px 20px;border:1px solid var(--line);border-left:2px solid var(--blue);border-radius:7px;background:var(--raised);color:var(--muted);font:17px/1.6 var(--mono);white-space:pre-wrap;overflow-wrap:break-word;overflow-x:auto;tab-size:2}
 .focus-code code{font:inherit}
 .focus-code .key{color:var(--purple)}
 .focus-code .value{color:var(--value)}
@@ -372,7 +372,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--green);outline-offs
 .hero .focus-code,.hero .actions{margin-top:0}
 .hero h1{font-size:42px}
 .hero p{font-size:15px}
-.focus-code{font-size:16px;padding:14px 16px}
+.focus-code{font-size:16px;padding:8px 16px}
 .section{padding:25px 0}
 .section-heading{gap:9px}
 .section-heading h2{font-size:19px}
