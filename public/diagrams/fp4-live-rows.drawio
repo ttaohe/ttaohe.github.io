@@ -1,0 +1,103 @@
+<mxfile host="app.diagrams.net" version="24.7.17">
+  <diagram name="Live-row 范围契约" id="fp4-live-rows">
+    <mxGraphModel dx="1120" dy="750" grid="1" gridSize="10" page="1" pageWidth="1120" pageHeight="750">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" value="一份 live-row 范围，贯穿整个 MoE FFN" style="text;whiteSpace=wrap;html=0;align=left;verticalAlign=middle;resizable=0;fontSize=30;fontColor=#172638;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="44" y="18" width="1050" height="42" />
+        </mxCell>
+        <mxCell id="3" value="概念示意｜固定容量不变，执行范围随当前 expert counts 改变" style="text;whiteSpace=wrap;html=0;align=left;verticalAlign=middle;resizable=0;fontSize=18;fontColor=#172638;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="44" y="61" width="1050" height="30" />
+        </mxCell>
+        <mxCell id="4" value="" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#ffffff;strokeColor=#cbd5e1;fontSize=18;fontColor=#172638;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="44" y="110" width="1032" height="197" />
+        </mxCell>
+        <mxCell id="5" value="A = 128    counts = [96, 0, 129, 1]" style="text;whiteSpace=wrap;html=0;align=left;verticalAlign=middle;resizable=0;fontSize=21;fontColor=#172638;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="66" y="124" width="1050" height="33" />
+        </mxCell>
+        <mxCell id="6" value="start = [0, 128, 128, 384]     end = [96, 128, 257, 385]" style="text;whiteSpace=wrap;html=0;align=left;verticalAlign=middle;resizable=0;fontSize=19;fontColor=#172638;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="66" y="156" width="1050" height="31" />
+        </mxCell>
+        <mxCell id="7" value="示例 buffer：226 行有效数据；512 行对齐容量（宽度仅作语义示意）" style="text;whiteSpace=wrap;html=0;align=left;verticalAlign=middle;resizable=0;fontSize=17;fontColor=#172638;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="66" y="189" width="1050" height="29" />
+        </mxCell>
+        <mxCell id="8" value="expert 0 · 96" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#b9dfd3;strokeColor=#cbd5e1;fontSize=16;fontColor=#172638;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="66" y="224" width="170" height="43" />
+        </mxCell>
+        <mxCell id="9" value="gap" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#e5e7eb;strokeColor=#cbd5e1;fontSize=16;fontColor=#172638;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="236" y="224" width="70" height="43" />
+        </mxCell>
+        <mxCell id="10" value="expert 2 · 129" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#b9dfd3;strokeColor=#cbd5e1;fontSize=16;fontColor=#172638;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="306" y="224" width="245" height="43" />
+        </mxCell>
+        <mxCell id="11" value="gap" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#e5e7eb;strokeColor=#cbd5e1;fontSize=16;fontColor=#172638;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="551" y="224" width="165" height="43" />
+        </mxCell>
+        <mxCell id="12" value="expert 3 · 1" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#b9dfd3;strokeColor=#cbd5e1;fontSize=16;fontColor=#172638;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="716" y="224" width="120" height="43" />
+        </mxCell>
+        <mxCell id="13" value="tail padding" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#e5e7eb;strokeColor=#cbd5e1;fontSize=16;fontColor=#172638;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="836" y="224" width="196" height="43" />
+        </mxCell>
+        <mxCell id="14" value="expert 1 为空：start = end = 128；未占用一段 live rows" style="text;whiteSpace=wrap;html=0;align=left;verticalAlign=middle;resizable=0;fontSize=16;fontColor=#172638;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="66" y="275" width="1050" height="28" />
+        </mxCell>
+        <mxCell id="15" value="scatter 输出 endpoint[E]&#10;每个 expert 一个 int32" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#d6e5f5;strokeColor=#cbd5e1;fontSize=19;fontColor=#172638;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="390" y="342" width="340" height="62" />
+        </mxCell>
+        <mxCell id="16" value="FC1 grouped GEMM&#10;读取 endpoint" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#fff;strokeColor=#cbd5e1;fontSize=20;fontColor=#172638;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="50" y="470" width="250" height="80" />
+        </mxCell>
+        <mxCell id="17" value="SiLU + mul + FP8 quant&#10;读取同一 endpoint" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#fff;strokeColor=#cbd5e1;fontSize=20;fontColor=#172638;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="435" y="470" width="250" height="80" />
+        </mxCell>
+        <mxCell id="18" value="FC2 grouped GEMM&#10;读取同一 endpoint" style="rounded=1;whiteSpace=wrap;html=0;fillColor=#fff;strokeColor=#cbd5e1;fontSize=20;fontColor=#172638;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="820" y="470" width="250" height="80" />
+        </mxCell>
+        <mxCell id="19" style="endArrow=classic;html=0;strokeColor=#4b5563;" edge="1" parent="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="300" y="510" />
+            <mxPoint as="targetPoint" x="430" y="510" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="20" style="endArrow=classic;html=0;strokeColor=#4b5563;" edge="1" parent="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="685" y="510" />
+            <mxPoint as="targetPoint" x="815" y="510" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="21" style="endArrow=classic;html=0;strokeColor=#4b5563;dashed=1;" edge="1" parent="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="425" y="404" />
+            <mxPoint as="targetPoint" x="175" y="465" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="22" style="endArrow=classic;html=0;strokeColor=#4b5563;dashed=1;" edge="1" parent="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="560" y="404" />
+            <mxPoint as="targetPoint" x="560" y="465" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="23" style="endArrow=classic;html=0;strokeColor=#4b5563;dashed=1;" edge="1" parent="1">
+          <mxGeometry as="geometry" relative="1">
+            <mxPoint as="sourcePoint" x="695" y="404" />
+            <mxPoint as="targetPoint" x="945" y="465" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="24" value="每个 expert 仅处理 [start, end)；start = align_up(previous_end, A)" style="text;whiteSpace=wrap;html=0;align=left;verticalAlign=middle;resizable=0;fontSize=21;fontColor=#172638;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="64" y="573" width="1050" height="33" />
+        </mxCell>
+        <mxCell id="25" value="activation padding 可保持未写，但下游不能把这些行当作有效数据" style="text;whiteSpace=wrap;html=0;align=left;verticalAlign=middle;resizable=0;fontSize=20;fontColor=#172638;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="64" y="605" width="1050" height="32" />
+        </mxCell>
+        <mxCell id="26" value="边界：新 masking 对应 SM10.x FP4 expert 的 SILU / packed-UE8M0 路径" style="text;whiteSpace=wrap;html=0;align=left;verticalAlign=middle;resizable=0;fontSize=17;fontColor=#172638;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="44" y="665" width="1050" height="29" />
+        </mxCell>
+        <mxCell id="27" value="来源：vLLM #59044，head 85285b44a8 · 箭头不表示时延或带宽比例" style="text;whiteSpace=wrap;html=0;align=left;verticalAlign=middle;resizable=0;fontSize=16;fontColor=#526171;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry as="geometry" x="44" y="698" width="1050" height="28" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -68,6 +68,8 @@ export default function DailyDashboard({data}:{data:DailyData}) {
     : isColumn
       ? allItems.filter((item) => item.columns.includes(activeColumn))
       : datedReport;
+  const viewSubtitle = tab === "saved" ? `跨期收藏 · ${items.length} 条` : isColumn ? `${selectedColumn?.name} · ${items.length} 条` : issue.subtitle;
+  const viewEyebrow = tab === "saved" ? "SAVED / 跨期收藏" : isColumn ? `COLUMN / ${selectedColumn?.code}` : `${year} / ${date.replace(".", " / ")}`;
 
   const toggleSaved = (id: string) => {
     const next = saved.includes(id) ? saved.filter((item) => item !== id) : [...saved, id];
@@ -184,7 +186,7 @@ export default function DailyDashboard({data}:{data:DailyData}) {
               </div>
             </div>
             <div className="hidden lg:block">
-              <p className="text-xs font-bold tracking-[0.16em] text-[#738288]">{isColumn ? `COLUMN / ${selectedColumn?.code}` : `${year} / ${date.replace(".", " / ")}`}</p>
+              <p className="text-xs font-bold tracking-[0.16em] text-[#738288]">{viewEyebrow}</p>
               <h1 className="mt-2 text-[clamp(2.1rem,4vw,4.2rem)] font-black leading-[0.95] tracking-[-0.055em] text-[#10222b]">{isColumn ? <>{selectedColumn?.name}<br />专栏</> : tab === "saved" ? <>已收藏<br />AI Infra 信号</> : isToday ? <>{issue.headline}</> : <>往期简报<br />AI Infra 信号</>}</h1>
             </div>
             <div className="rounded-full border border-[#cad3d6] bg-white px-3 py-2 text-xs font-semibold text-[#51636b] shadow-sm">
@@ -193,7 +195,7 @@ export default function DailyDashboard({data}:{data:DailyData}) {
           </header>
 
           <section className="mb-6 lg:hidden">
-            <p className="text-[11px] font-bold tracking-[0.15em] text-[#738288]">{isColumn ? `COLUMN / ${selectedColumn?.code}` : `2026 / ${date.replace(".", " / ")}`}</p>
+            <p className="text-[11px] font-bold tracking-[0.15em] text-[#738288]">{viewEyebrow}</p>
             <h1 className="mt-2 text-[2.35rem] font-black leading-[0.96] tracking-[-0.055em]">{isColumn ? <>{selectedColumn?.name}<br />专栏</> : tab === "saved" ? <>已收藏<br />AI Infra 信号</> : isToday ? <>{issue.headline}</> : <>往期简报<br />AI Infra 信号</>}</h1>
             {isColumn && <p className="mt-3 text-sm text-[#6d7e85]">{selectedColumn?.description}</p>}
           </section>
@@ -205,7 +207,7 @@ export default function DailyDashboard({data}:{data:DailyData}) {
                 <TabsTrigger value="saved" className="rounded-full px-4 text-[13px] data-[state=active]:bg-[#10222b] data-[state=active]:text-white">已收藏 {saved.length}</TabsTrigger>
               </TabsList>
             </Tabs>
-            <p className="hidden text-xs text-[#7e8c91] sm:block">{issue.subtitle}</p>
+            <p className="hidden text-xs text-[#7e8c91] sm:block">{viewSubtitle}</p>
           </div>
 
           <a href={sitePath("/")} className="mb-6 flex items-center gap-3 rounded-2xl border border-[#cbd8dc] bg-[#e4eceb] px-4 py-4 text-[#10222b] transition hover:bg-[#dbe6e4]">

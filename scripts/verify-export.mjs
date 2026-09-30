@@ -21,6 +21,8 @@ for (const route of routes) {
     assert(text.includes(post.title), `Missing article title for ${post.slug}`);
     assert(text.includes(post.sections[0].paragraphs[0]), `Missing full article content for ${post.slug}`);
   }
+  // Drive download endpoints can return valid SVG bytes but block browser image embedding.
+  assert(!/<img[^>]+src="https:\/\/drive\.google\.com\/uc\?/.test(html), `Non-embeddable Drive image on ${route}; publish a static mirror first`);
   // Every app-internal route and asset must remain inside its portfolio section.
   for (const match of html.matchAll(/(?:href|src)="(\/[^"?#]*)[^"]*"/g)) {
     if (!match[1].startsWith('//')) assert(match[1].startsWith(`${basePath}/`), `Unprefixed app URL ${match[1]} on ${route}`);

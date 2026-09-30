@@ -80,3 +80,21 @@ test('Daily data requires valid date, column and experiment relationships', () =
   experiment.experiments[0].related = ['does-not-exist'];
   assert.throws(() => validateContent(experiment), /unknown article/);
 });
+
+test('unknown extension fields survive validation and mirroring', () => withProject(async projectRoot => {
+  const expanded = structuredClone(fixture);
+  expanded.futureSection = { revision: 2, title: 'Preserve future content' };
+  expanded.posts[0].futureNote = 'Keep this extension';
+  const result = await syncContent({ projectRoot, fetchImpl: async () => new Response(JSON.stringify(expanded)) });
+  assert.equal(result.status.stale, false);
+  assert.deepEqual(result.content.futureSection, expanded.futureSection);
+  const saved = JSON.parse(await readFile(path.join(projectRoot, 'lib/blog/content.json'), 'utf8'));
+  assert.equal(saved.posts[0].futureNote, expanded.posts[0].futureNote);
+}));
+
+test('complete Drive JSON is mirrored byte-for-byte', () => withProject(async projectRoot => {
+  const raw = JSON.stringify(fixture, null, 3) + '\n';
+  const result = await syncContent({ projectRoot, fetchImpl: async () => new Response(raw) });
+  assert.equal(result.status.stale, false);
+  assert.equal(await readFile(path.join(projectRoot, 'lib/blog/content.json'), 'utf8'), raw);
+}));

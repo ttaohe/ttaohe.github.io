@@ -63,6 +63,6 @@ Keep the committed fallback current when publishing changes. Otherwise a later f
 
 Start articles with a clear question outline, followed by matching sections, evidence, takeaways and open questions. Distinguish reading notes, source analysis, design hypotheses and actually executed experiments. Never describe a cited benchmark or untested idea as a personal reproduction.
 
-Keep each SVG figure with its editable `.drawio` source. Built-in figures are `state-boundary`, `pd-critical-path` and `direct-linker`; new remote figures require publicly readable HTTPS links. All deployed material is public. Never include credentials, private conversations or unrelated personal data.
+Keep each SVG figure with its editable `.drawio` source. Built-in figures are `state-boundary`, `pd-critical-path` and `direct-linker`; new remote figures require HTTPS links verified in an actual browser. Drive download URLs may serve valid SVG bytes while blocking image embedding; publish a static SVG mirror and retain the editable Drive source link. All deployed material is public. Never include credentials, private conversations or unrelated personal data.
 
 This project is separate from `ttaoai-homepage` and does not use the `infra-daily` repository.

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-30T08:05:00Z",
+  "updatedAt": "2026-09-30T08:14:00Z",
   "posts": [
     {
       "slug": "state-recovery",
@@ -307,126 +307,259 @@
         }
       ],
       "disclosure": "本文由学习与讨论记录经 AI 辅助整理，基于 2026-09-30 06:46 UTC 已核验的 PR 元数据、代码与测试结构。GPU 测试未独立运行，性能收益尚无对照证据；所有实测数值均明确归于 PR 作者，后续实验为设想。"
+    },
+    {
+      "slug": "vllm-fp4-moe-live-rows",
+      "title": "Blackwell FP4 MoE：把 live-row 边界贯穿整个 FFN",
+      "subtitle": "从 vLLM #59044 看 padding 跳过、CUDA graph 动态计数与性能证据的边界",
+      "date": "2026-09-30",
+      "category": "引擎与算子",
+      "tags": [
+        "vLLM",
+        "MoE",
+        "DeepGEMM",
+        "FP4",
+        "Blackwell",
+        "CUDA Graph"
+      ],
+      "kind": "源码分析",
+      "summary": "9 月 29 日日报已经记录 #59044 的性能摘要。本篇进一步固定 PR head，分析 expert endpoint 如何连接 scatter、两次 grouped GEMM 与 fused SiLU 量化，以及为什么少做 padding 工作不等于释放 workspace。该 PR 仍未合并，所有 GPU 性能均为作者报告。",
+      "outline": [
+        "1. 为什么 GEMM 跳过 padding 还不够？",
+        "2. endpoint 到底编码了什么？",
+        "3. CUDA graph 重放时，哪些东西可以改变？",
+        "4. 9.36% 和 6.09× 分别证明了什么？",
+        "5. 如何验证这条路径值得部署？"
+      ],
+      "sections": [
+        {
+          "heading": "1. 为什么 GEMM 跳过 padding 还不够？",
+          "paragraphs": [
+            "MoE 先把 token 按 expert 聚集，再执行 gate/up 投影、激活与量化、down 投影，最后反排列与加权归并。实际路由数量随 batch 改变，但 grouped GEMM 的对齐和 CUDA graph 的容量预留会让物理 buffer 大于有效 token 集合。只让 GEMM 少算无效行，中间 SiLU+mul+FP8 quant 仍可能遍历完整 buffer。",
+            "#59044 的源码变化跨过了这个算子边界：scatter 生成每个 expert 的真实结束位置，两次 GEMM 使用 prefix-sum layout，中间 packed-UE8M0 激活量化也接收相同 endpoint。改变的是执行范围与布局元数据，而 activation workspace 仍按原来的 M_sum 容量分配。",
+            "截至 2026-09-30 08:00 UTC 核验，PR 为 open、draft=false、未合并；固定 head 是 85285b44a87257ece81f9df7560a3f79c35acb68。PR 正文还留有“draft”描述，本文按 GitHub API 的结构化状态记录，不能把实现存在写成正式版本已经发布。"
+          ],
+          "bullets": [
+            "本篇是对已有日报条目的源码深化，不把 9 月 28 日提交伪装为过去 24 小时的新功能",
+            "新 prefix-sum 分支由 SM10.x family guard 启用；作者硬件测试为 GB200，不能据此宣称 SM103 已验证",
+            "激活 masking 的具体入口是 SILU + UE8M0 packed scale；其他 gated activation 或 scale-format 分支不能直接套用同样的收益"
+          ]
+        },
+        {
+          "heading": "2. endpoint 到底编码了什么？",
+          "paragraphs": [
+            "这里的 prefix sum 不是对原始 token counts 做一次普通累加。设对齐量 A、expert e 的有效行数 n[e]：先对之前各 expert 的数量向上对齐，得到 start[e]；end[e] 再等于 start[e]+n[e]。因此 endpoint 包含之前 expert 留出的对齐间隙，却不把本 expert 的尾部 padding 算成 live row。",
+            "以 A=128、counts=[96,0,129,1] 为例，start=[0,128,128,384]，end=[96,128,257,385]。第二个 expert 为空，但其 endpoint 是 128；第三个 expert 从 128 开始，而不是从原始 counts 的累积值 96 开始。理解这点，才能正确地从上一 endpoint 重建当前起点。",
+            "源码中 scatter 在现有步骤内写出 int32 endpoint，不需要为了 activation 把 counts 读回 CPU。DeepGemmFP4Experts.apply 把同一个 grouped_layout 交给 FC1、_act_mul_quant 与 FC2。激活 kernel 用 program_id(2) 选 expert，只循环 [start,end)；输出 padding 保持未写，消费者必须继续遵守相同有效区间。",
+            "这是一份生产者与消费者共同遵守的范围契约：跳过写入之所以可行，是因为后面的 GEMM 不把间隙当成真实 token；不能把未写 buffer 当作已经清零。原有 mk_alignment_scope 与相关 zero-padding 保护也没有因这份元数据而被整体移除。"
+          ],
+          "code": "概念伪代码（根据源码独立整理）\nstart[0] = 0\nstart[e] = align_up(end[e-1], A)\nend[e] = start[e] + count[e]\nlive_rows[e] = [start[e], end[e])\n\nscatter → endpoint[E]\nFC1(endpoint) → SiLU+mul+quant(endpoint) → FC2(endpoint)\n\n注意：workspace capacity 保持原值；endpoint 不是新的 allocation size。",
+          "diagramUrl": "https://ai-infra-daily.ttaohe.chatgpt.site/diagrams/fp4-live-rows.svg",
+          "diagramDownloadUrl": "https://drive.google.com/uc?export=download&id=1KrOphHCy9l-NhTreK7S23rUtPDyTg5UU",
+          "diagramCaption": "概念示意：同一 endpoint 向量贯穿 FC1、packed SiLU 量化与 FC2；图中宽度和箭头不表示容量、时延或带宽比例。可下载 draw.io 文件继续编辑。"
+        },
+        {
+          "heading": "3. CUDA graph 重放时，哪些东西可以改变？",
+          "paragraphs": [
+            "图捕获需要稳定的工作区与 launch 结构，并不要求每次重放的 expert counts 相同。此实现保留容量与 endpoint tensor 的地址，让设备侧内容随当前路由更新。激活 launch 从原来的二维 grid 变为带 expert 维度的三维 grid，kernel 运行时读取 endpoint，再在 grid-stride loop 中遍历各自有效区间。",
+            "当调用方没有 expert_ends 时，wrapper 保留原 dense launch；EXPERT_ALIGNMENT 是编译期参数，缺少元数据时相关 load 会被编译掉。带 metadata 的路径会多做边界读取与调度，因此“全满 buffer”必须单独测，不能只展示高 padding 比例下的优势。",
+            "新增 GPU 测试先捕获 graph，再把 counts 反转后重放；把无效输入填成 NaN、无效输出填成字节哨兵，检查 live FP8 与 packed scale 逐位一致，并检查 padding 输出没被触碰。空 expert、全空 counts、clamp 和 group-size 变化也被纳入用例。它检验的是动态有效范围，而不仅是一次随机输入的近似数值一致。",
+            "本次另做了一个 CPU 范围模型检查，覆盖 2,004 组 counts，完成 24,048 项索引检查：验证 endpoint 递推与源码中“前序对齐 counts 求和”一致，以及模拟 grid-stride 访问恰好覆盖 live rows。它只检查整数索引语义，不运行 Triton、DeepGEMM、FP8 算术或 GPU graph，也不构成性能复现。"
+          ]
+        },
+        {
+          "heading": "4. 9.36% 和 6.09× 分别证明了什么？",
+          "paragraphs": [
+            "作者的主要 FFN 配对实验使用 8×GB200、DeepSeek-V4-Flash revision 60d8d70770c6776ff598c94bb586a859a38244f1、EP8/DP8/TP1、DeepEP V2 + DeepGEMM，取第 10 层同一份真实输入、每 GPU 512 tokens。基线与候选两边已经都启用 prefix-sum GEMM，差异只在 activation 是否拿到 expert bounds。完整 FFN 从 425.5 降至 385.7 μs，即延迟下降 9.36%，约 1.103×。",
+            "单独 profile 的 activation 是 76.0→20.7 μs；另一个独立量化 microbenchmark 在 3,072 live / 28,672 allocated rows、hidden=2,048 时为 63.984→10.510 μs，约 6.09×。不同 rank 的 expert 负载和 combine 汇合会影响完整 FFN，因此不能把局部 kernel 倍数直接写成模型吞吐提升。更早的 stock→prefix-sum 717.4→428.7 μs 来自另一轮配对，也不应和本轮结果拼成同一次端到端加速。",
+            "布局 metadata 从 28,672 个 int32 变为 32 个 int32，算术上是 112 KiB→128 bytes；这不是主 activation workspace 的缩小。满 buffer 对照还显示某些 shape 有成本：28,672×2,048 的 metadata-aware kernel 为 64.822 μs，对原 dense 的 64.082 μs，约慢 1.15%。",
+            "GSM8K 的 1,253/1,319→1,259/1,319 是作者准确性检查结果，不能称为质量提高。作者重复未改动的 control 也观察到答案正确性翻转。测试运行时是固定镜像加局部 Python/kernel 函数覆盖，不是完整重建当时 main；独立读者也未取得并重跑外部完整 FFN/评测编排。"
+          ]
+        },
+        {
+          "heading": "5. 如何验证这条路径值得部署？",
+          "paragraphs": [
+            "合理的判断是：当静态容量明显大于当前 live rows，且 packed activation 路径真实命中时，把布局边界贯穿 FFN 能减少无效工作。它没有自动解决 expert 负载倾斜、all-to-all 通信、工作区容量或整个 serving 栈的问题。",
+            "复现实验应分别保留 stock、prefix-sum only、prefix-sum+activation masking 三组，固定模型 revision、镜像、GPU 拓扑、路由输入与 graph 模式。先检查实际 dispatch 与 installed source hashes，再做正确性、kernel timing、完整 FFN 和端到端服务四层对照。下面是待验证计划，尚未在本次运行执行。",
+            "关联的 PD／C2C 专题讨论通信与计算的共同关键路径。本篇消除部分 expert 计算空耗后，dispatch、combine 或跨 rank 汇合在总时间中的占比可能上升；这只是后续 profiling 应检查的方向，并非已经观察到的新瓶颈。"
+          ],
+          "bullets": [
+            "覆盖 live/capacity 比、空 expert、倾斜路由、小 batch 与满 buffer；记录分 rank 分布，避免只看所有 rank 的中位数",
+            "对 GPU graph 连续改变 counts，验证 live 值、packed scales 与 invalid-row 哨兵；模型级检查用重复对照估计原有数值噪声",
+            "记录 FC1、activation、FC2、dispatch/combine 与同步等待的独立时间；服务层测吞吐、TPOT/P99 和延迟约束下的 goodput",
+            "峰值 HBM 与 workspace 大小单独测量，不能用 metadata 省下的约 112 KiB 代替显存容量结论",
+            "如果满 buffer 或小 batch 的调度成本抵消收益，应考虑适用范围或策略阈值；任何自动切换仍是待评估设计"
+          ]
+        }
+      ],
+      "takeaways": [
+        "endpoint 编码的是带对齐间隙的 live-row 结束位置，不是原始 counts 的普通前缀和",
+        "同一范围契约必须跨越两次 GEMM 与中间 activation；padding 未写要求消费者不读作有效数据",
+        "少执行、少 metadata、少 workspace 是三个不同结论；本实现没有缩小主 activation workspace",
+        "作者报告的 9.36% 是局部 FFN 配对收益，不能推广成全模型或全部 Blackwell 配置的承诺"
+      ],
+      "openQuestions": [
+        "真实 serving 流量中的 live/capacity 分布与最慢 expert rank 是否足以保留 FFN 收益？",
+        "在 SM103、其他激活函数或不同 scale format 下，dispatch 与性能边界如何变化？",
+        "动态启停 expert-aware activation 能否覆盖满 buffer 的额外成本，又不破坏 graph 稳定性？"
+      ],
+      "relatedSlugs": [
+        "pd-c2c-coordination"
+      ],
+      "sources": [
+        {
+          "title": "vLLM PR #59044：当前状态、作者测试与适用边界",
+          "url": "https://github.com/vllm-project/vllm/pull/59044"
+        },
+        {
+          "title": "固定 head：scatter 生成带对齐间隙的 endpoint",
+          "url": "https://github.com/vllm-project/vllm/blob/85285b44a87257ece81f9df7560a3f79c35acb68/vllm/model_executor/layers/fused_moe/deep_gemm_utils.py#L113-L159"
+        },
+        {
+          "title": "固定 head：布局元数据分配与原 scatter 路径",
+          "url": "https://github.com/vllm-project/vllm/blob/85285b44a87257ece81f9df7560a3f79c35acb68/vllm/model_executor/layers/fused_moe/deep_gemm_utils.py#L467-L559"
+        },
+        {
+          "title": "固定 head：设备/激活 guard 与三阶段数据流",
+          "url": "https://github.com/vllm-project/vllm/blob/85285b44a87257ece81f9df7560a3f79c35acb68/vllm/model_executor/layers/fused_moe/experts/deep_gemm_moe.py#L425-L678"
+        },
+        {
+          "title": "固定 head：packed SiLU kernel 的边界与 launch",
+          "url": "https://github.com/vllm-project/vllm/blob/85285b44a87257ece81f9df7560a3f79c35acb68/vllm/model_executor/layers/quantization/utils/fp8_utils.py#L140-L361"
+        },
+        {
+          "title": "固定 head：graph replay、poisoned padding 与 bitwise 测试",
+          "url": "https://github.com/vllm-project/vllm/blob/85285b44a87257ece81f9df7560a3f79c35acb68/tests/kernels/moe/test_silu_mul_per_token_group_quant_fp8_colmajor.py#L112-L179"
+        },
+        {
+          "title": "评审讨论：CUDA 与 ROCm 测试范围仍需区分",
+          "url": "https://github.com/vllm-project/vllm/pull/59044#discussion_r4135024175"
+        }
+      ],
+      "disclosure": "来源状态核验于 2026-09-30 08:00 UTC；本篇由 AI 辅助检索、阅读固定版本源码并整理，属于已有日报的源码深化。GPU 性能与模型准确性均来自 PR 作者报告，本次没有运行 GPU 或独立复现；仅执行了 CPU 整数范围模型检查，其结果不代表实际 kernel 正确性。原 PR 同样披露使用 Codex 辅助实现与验证。"
+    },
+    {
+      "slug": "vllm-aiter-a4w4-opt-in",
+      "title": "vLLM AITER a4w4：高并发收益，为什么仍需显式开启？",
+      "subtitle": "沿 DeepSeek V4.1 的 FP4 activation、权重布局与分发检查，区分合并代码和端到端证据",
+      "date": "2026-09-30",
+      "category": "MoE 与内核",
+      "tags": [
+        "vLLM",
+        "AITER",
+        "ROCm",
+        "MXFP4",
+        "MoE",
+        "DSpark"
+      ],
+      "kind": "源码解读",
+      "summary": "vLLM #58819 已合并，但 a4w4 仍是 DeepSeek V4.1 的显式选项。代码同时约束 activation dtype、加载布局和 AITER API；作者报告 c64 吞吐 +10.5%、c1 -1.0%，性能实验使用模拟接受长度，需要与真实拒绝采样的准确率证据分开。",
+      "outline": [
+        "1. 合并的是一条显式选择的执行路径",
+        "2. activation dtype 与权重布局必须成对切换",
+        "3. 微内核检查怎样漏过真实模型错误",
+        "4. +10.5% 的收益带着并发与采样前提",
+        "5. 部署判断先确认路径，再确认收益"
+      ],
+      "sections": [
+        {
+          "heading": "1. 合并的是一条显式选择的执行路径",
+          "paragraphs": [
+            "vLLM #58819 于 2026 年 9 月 30 日 07:07 UTC 合并，为 DeepSeek V4.1 的 ROCm／AITER MXFP4 MoE 增加 a4w4 路径。本文固定阅读提交 77e8b02c8d69。默认仍为 a8w4；VLLM_ROCM_USE_AITER_MOE_A4W4_DSV4=1 才申请 FP4 activation。两条路径权重均为 MXFP4。",
+            "开关在 FusedMoEConfig 初始化时解析，先要求 AITER fused MoE 已启用，再检查模型类型属于 deepseek_v41 或 deepseek_v41_text。其他模型类型会报错，包括同样采用 MoE 的 DeepSeek V4。合并代码还探测已安装的 aiter.fused_moe 是否接受 quant_dtype_a 参数；旧版本缺少该能力时，给出升级 AITER 或关闭开关的错误，而不是悄悄回退。",
+            "这些是模型与 API 能力边界。此次没有新增通用的 token 数、expert 数或隐藏维度白名单。实际执行仍受既有 backend、量化分支和 padding 约束，不能只凭开关判断最终使用的 GEMM。"
+          ]
+        },
+        {
+          "heading": "2. activation dtype 与权重布局必须成对切换",
+          "paragraphs": [
+            "沿调用链看，配置标记会同时进入 checkpoint MXFP4 和在线 MXFP4 的权重格式转换。oracle/mxfp4.py 将 use_separated_a4w4 转换为 is_guinterleave=False，交给 AITER 的 shuffle_weight 与 shuffle_scale；gate/up 权重及对应 scales 一起按 SEPARATED 布局准备。只在 forward 中强制 FP4，保留原来的 INTERLEAVE 布局，会破坏这组约定。",
+            "运行时的 rocm_aiter_fused_experts 在 MXFP4 分支选择 GateMode.SEPARATED，并将 q_dtype_a 设为 dtypes.fp4x2；封装层再以 quant_dtype_a 传给 AITER。原有 SITU 分支先于这个分支判断，继续使用自己的布局选择。默认 a8w4 则保留 INTERLEAVE，没有被该补丁统一替换。",
+            "因此这不是可以随意热切换的纯计算选项：布局在权重加载阶段已经确定，执行阶段必须读取匹配的布局。模型类型硬检查的价值也在这里。错误的开关可能影响加载格式，不能期待 forward 的另一条分支自动把已经变换的权重恢复回来。"
+          ]
+        },
+        {
+          "heading": "3. 微内核检查怎样漏过真实模型错误",
+          "paragraphs": [
+            "PR 作者报告，早期版本只强制 a4w4 activation，却保持 INTERLEAVE。该形状缺少调优后的 FP4 FlyDSL stage-1 配置，AITER 转入启发式 kernel。独立 MoE 测试的 cosine-similarity 检查没有发现问题，但真实模型 GSM8K 出现接近随机的准确率与乱码式推理。后续改为匹配的 SEPARATED 权重布局，才得到文中展示的模型结果。",
+            "独立算子的相似度不足以覆盖模型风险。加载变换、量化参数、路由分布与多层误差共同影响输出，测试样本也未必覆盖服务形状。上述失败经过来自作者报告，本文未独立重跑早期提交。",
+            "当前报告中，DeepSeek-V4.1-Flash、TP2、AITER MXFP4_BF16 backend 配合 DSpark 的真实 block rejection sampling，两条路径的 GSM8K strict／flexible 分数均为 0.9712／0.9704。作者另报 45 项测试通过、1 项既有 JIT 模块问题。相同分数支持该测试集上的一致表现，不等于逐 token 相同，也不是其他模型或任务的无损承诺。"
+          ]
+        },
+        {
+          "heading": "4. +10.5% 的收益带着并发与采样前提",
+          "paragraphs": [
+            "AgentX 性能测试每组运行 3600 秒，使用 aiperf 的 inferencex-agentx-mvp 场景，报告零请求错误。c1 的输出吞吐为 142.7 对 144.1 token/s，a4w4 下降约 1.0%；c8 为 404.1 对 404.5，基本持平；c64 为 303.4 对 274.5，上升约 10.5%。对应 c64 inter-token latency 为 138.8 对 149.0 ms，下降约 6.9%。这些结果来自 PR 作者，未在本站复现。",
+            "硬件来源也需分层：PR 正文未直接披露这组 A/B 的 GPU 型号与数量。链接的 InferenceX 参考 run 标有 MI355X，公开 job 同时包含 TP2 与 TP4；这确认了参考环境，不能据此补写作者实验的完整硬件配置。",
+            "关键边界是：这组 AgentX 性能数据使用 DSpark synthetic acceptance length 3.51；前面的 GSM8K 正确性测试使用真实拒绝采样。两组实验分别回答性能与模型行为问题，不能合并成“真实接受率下端到端提速 10.5%”的结论。也不能把不同并发点的吞吐直接解释为独立 kernel 的加速倍数。",
+            "数据呈现低并发略退、高并发受益的交叉，适合保留为 opt-in。PR 将其解释为量化固定成本与带宽收益的权衡，但两条路径的权重均为 MXFP4；仅凭这些数字不能归因为权重读取字节减半。activation 精度、布局和 kernel dispatch 同时变化，各自的贡献需要独立 profiling 或消融实验。"
+          ]
+        },
+        {
+          "heading": "5. 部署判断先确认路径，再确认收益",
+          "paragraphs": [
+            "准备评估时，先固定 vLLM 提交、AITER 版本和 checkpoint，记录模型类型、TP／EP、并发、实际 token 形状、shuffle 与最终 kernel。能力探测只证明参数可传入，无法保证目标形状的调优质量，也不替代模型准确率验证。",
+            "下一步可把实验分成两层：以固定 token／expert 分布测量量化、shuffle 之外的 steady-state GEMM、路由与通信时间；再使用真实 DSpark 接受行为、实际提示长度和请求分布，测输出吞吐、延迟尾部、错误率与任务准确率。该实验设计尚未执行，应保持默认 a8w4 作为配对基线。",
+            "这次合并把加载布局、运行时量化和 kernel API 作为同一契约。c64 的收益提供评估线索，c1 回退与兼容性检查划出使用边界。"
+          ]
+        }
+      ],
+      "takeaways": [
+        "FP4 activation、权重 shuffle 与运行时 gate mode 必须保持一致",
+        "模型类型和 AITER API 检查限定可用范围，无法替代目标形状的验证",
+        "AgentX 的并发收益来自模拟接受长度实验，真实服务收益仍需配对评估"
+      ],
+      "openQuestions": [
+        "真实 DSpark 接受率与长短请求混合后，c64 的收益是否保持？",
+        "activation 量化、布局和 kernel 选择各贡献多少时间变化？",
+        "AITER 后续调优能否减少低并发回退，并覆盖更多已验证模型？"
+      ],
+      "relatedSlugs": [
+        "vllm-fp4-moe-live-rows"
+      ],
+      "sources": [
+        {
+          "title": "vLLM #58819：合并状态、演进过程与作者的 GSM8K／AgentX 数据",
+          "url": "https://github.com/vllm-project/vllm/pull/58819"
+        },
+        {
+          "title": "固定合并提交 77e8b02：本篇源码基线",
+          "url": "https://github.com/vllm-project/vllm/commit/77e8b02c8d69f25867227fb9883797996fbfcd7b"
+        },
+        {
+          "title": "envs.py：a4w4 显式开关，仅接受 0／1",
+          "url": "https://github.com/vllm-project/vllm/blob/77e8b02c8d69f25867227fb9883797996fbfcd7b/vllm/envs.py#L1294-L1301"
+        },
+        {
+          "title": "FusedMoEConfig：模型类型、AITER 启用与 API 能力检查",
+          "url": "https://github.com/vllm-project/vllm/blob/77e8b02c8d69f25867227fb9883797996fbfcd7b/vllm/model_executor/layers/fused_moe/config.py#L1354-L1382"
+        },
+        {
+          "title": "AITER 封装：quant_dtype_a 能力探测",
+          "url": "https://github.com/vllm-project/vllm/blob/77e8b02c8d69f25867227fb9883797996fbfcd7b/vllm/_aiter_ops.py#L2496-L2511"
+        },
+        {
+          "title": "MoE 执行：SITU 优先分支、SEPARATED 与 fp4x2",
+          "url": "https://github.com/vllm-project/vllm/blob/77e8b02c8d69f25867227fb9883797996fbfcd7b/vllm/model_executor/layers/fused_moe/experts/rocm_aiter_moe.py#L379-L443"
+        },
+        {
+          "title": "MXFP4 格式转换：权重与 scales 的匹配 shuffle",
+          "url": "https://github.com/vllm-project/vllm/blob/77e8b02c8d69f25867227fb9883797996fbfcd7b/vllm/model_executor/layers/fused_moe/oracle/mxfp4.py#L1627-L1674"
+        },
+        {
+          "title": "单元测试：opt-in 行为与未验证模型类型拒绝",
+          "url": "https://github.com/vllm-project/vllm/blob/77e8b02c8d69f25867227fb9883797996fbfcd7b/tests/kernels/moe/test_rocm_aiter_moe.py#L641-L750"
+        },
+        {
+          "title": "InferenceX 参考 run 的 TP2／c64 job：公开 MI355X runner 标签",
+          "url": "https://github.com/SemiAnalysisAI/InferenceX/actions/runs/36101751233/job/108126783526"
+        }
+      ],
+      "disclosure": "本文由 AI 辅助研究与撰写，固定核对 vLLM #58819 于 2026-09-30 合并的提交，公开来源核验截至当日 08:05 UTC。性能与准确率数字来自 PR 作者，本站未运行 GPU 复现。代码机制、作者报告与待验证实验分别说明；结果不构成其他硬件、模型或流量下的收益保证。"
     }
   ],
   "daily": {
     "year": 2026,
-    "issueMeta": {
-      "09.30": {
-        "headline": "今日值得关注的 AI Infra 信号",
-        "subtitle": "本期 5 条 · 约 49 分钟",
-        "threadTitle": "优化正在从算子延伸到页表、恢复边界与读取编排",
-        "threadSummary": "Q8KV8 加速稀疏 Prefill，THP 与 cuMem 减少 Host state 的地址翻译压力；sliding-window backoff 和原生 ReadPlan 则让状态恢复边界与 layer-wise 数据消费顺序保持一致。"
-      },
-      "09.29": {
-        "headline": "今日值得关注的 AI Infra 信号",
-        "subtitle": "本期 5 条 · 约 46 分钟",
-        "threadTitle": "SGLang 让等待队列持续刷新 Prefix 热度，阻断 FCFS 下的 Cache Storm",
-        "threadSummary": "这几乎完整复现了流量上升→排队→前缀老化→重算→更长排队的正反馈链。它只改变 eviction order，不锁死页面，也不改变 FCFS admission 顺序。"
-      },
-      "09.28": {
-        "headline": "今日值得关注的 AI Infra 信号",
-        "subtitle": "本期 5 条 · 约 45 分钟",
-        "threadTitle": "MiniMax-M3 TP4 将 Index-K 扫描拆给各 Rank，128K Indexer 快 2.64×",
-        "threadSummary": "它优化的不是 cache capacity，而是 replicated index cache 带来的读取放大。短上下文和小 batch 会退化，因此目前保持 opt-in，且尚无 full-model serving 数据。"
-      },
-      "09.27": {
-        "headline": "今日值得关注的 AI Infra 信号",
-        "subtitle": "本期 5 条 · 约 40 分钟",
-        "threadTitle": "HiCache 尝试用 INT8 保存 Host KV，同容量可缓存 1.78× Tokens",
-        "threadSummary": "这首次让 HiCache L2 representation 与 L1 dtype 解耦，但代价是双向 staging buffer 和 encode/decode。真正值得跟进的是：更大命中窗口能否长期覆盖额外搬运与量化成本。"
-      },
-      "09.26": {
-        "headline": "今日值得关注的 AI Infra 信号",
-        "subtitle": "本期 5 条 · 约 34 分钟",
-        "threadTitle": "Mooncake HiCache L3 接通 MLA DCP 跨引擎共享",
-        "threadSummary": "这一步才把 DCP-aware L3 从本地文件扩展到可跨实例共享的 Store。对多 P 实例而言，KV 对象身份必须绑定逻辑 shard，而不能简单绑定写入它的 rank。"
-      },
-      "09.25": {
-        "headline": "今日值得关注的 AI Infra 信号",
-        "subtitle": "本期 5 条 · 约 36 分钟",
-        "threadTitle": "HiCache L3 首次支持 MLA DCP 跨引擎复用",
-        "threadSummary": "DCP 下每个 rank 只有交错 token shard，过去 rank-0-only backup 无法构成完整逻辑页。这个 PR 首次把“逻辑前缀”与“物理 shard 身份”对齐，为多 P 实例共享 L3 KV 补上关键拓扑语义。"
-      },
-      "09.24": {
-        "headline": "今日值得关注的 AI Infra 信号",
-        "subtitle": "本期 5 条 · 约 32 分钟",
-        "threadTitle": "全 SWA DFLASH Draft 不再按 Target 全长分配 KV",
-        "threadSummary": "这把缓存容量规划从“每个 target token 都给 draft 留一格”改成按 attention 可见范围分配。对 SWA/KDA 这类 bounded state，物理池大小不应继续绑定完整上下文长度。"
-      },
-      "09.22": {
-        "headline": "今日值得关注的 AI Infra 信号",
-        "subtitle": "本期 5 条 · 约 30 分钟",
-        "threadTitle": "Kimi K3 CUDA Graph 回放流从 96 条收敛到 4 条",
-        "threadSummary": "这说明异步分支不是越多越好：CUDA Graph 捕获顺序本身会放大 stream 拓扑和调度开销。对 KDA+MLA、DSpark 这类多分支 decode，profile 时应把 replay stream 数与 kernel 时间一起看。"
-      },
-      "09.21": {
-        "headline": "今日值得关注的 AI Infra 信号",
-        "subtitle": "本期 5 条 · 约 29 分钟",
-        "threadTitle": "HiCache serialized load-back：避免回载整条 Prefix 反噬可用容量",
-        "threadSummary": "它直接缓解 L3/L2 回载挤出 L1 热 KV 的问题；代价是无压力场景纯 load-back latency 增加约 41.8%，所以当前保持 opt-in。"
-      },
-      "09.20": {
-        "headline": "今日值得关注的 AI Infra 信号",
-        "subtitle": "本期 5 条 · 约 30 分钟",
-        "threadTitle": "vLLM 原生多级 KV Offloading：从单一 CPU 层走向多后端体系",
-        "threadSummary": "对你正在做的 L1/L2/L3 统一池最直接：可以重点比较它的 block ownership、回填路径和 Mooncake 的 store-centric 设计。"
-      },
-      "09.19": {
-        "headline": "今日值得关注的 AI Infra 信号",
-        "subtitle": "本期 1 条 · 约 6 分钟",
-        "threadTitle": "KDA + MLA 的 DCP Decode 已接入 UnifiedRadixCache 与 HiCache",
-        "threadSummary": "这直接对应你的混合 attention 状态管理：MLA 历史 KV 可以恢复，但 recurrent / bounded state 不能被当成同一种缓存对象处理。"
-      },
-      "09.18": {
-        "headline": "今日值得关注的 AI Infra 信号",
-        "subtitle": "本期 2 条 · 约 13 分钟",
-        "threadTitle": "TENT：用 Slice Spraying 调度 KV 的多路径传输",
-        "threadSummary": "它能提高多 rail 利用率，但尚不能主动识别或抢占 DeepEP；生产上仍需限制 in-flight bytes / WR，并给 EP 通信更高优先级。"
-      },
-      "09.17": {
-        "headline": "今日值得关注的 AI Infra 信号",
-        "subtitle": "本期 2 条 · 约 11 分钟",
-        "threadTitle": "Prefill + KV Transfer 慢 20% 的根因不是 RDMA，而是 Python GIL",
-        "threadSummary": "这是判断“网络争用”前必须排除的 CPU 提交阻塞：时间线上看似没有重叠，并不等于 NIC 已经饱和。"
-      },
-      "09.16": {
-        "headline": "今日值得关注的 AI Infra 信号",
-        "subtitle": "本期 3 条 · 约 24 分钟",
-        "threadTitle": "HiCache Buffer-only：减少 per-worker L2 重复与容量碎片",
-        "threadSummary": "收益取决于流量形态：共享前缀多时集中池更有利；session-sticky 且跨实例复用低时，本地 L2 仍可能更合适。"
-      },
-      "09.15": {
-        "headline": "今日值得关注的 AI Infra 信号",
-        "subtitle": "本期 2 条 · 约 15 分钟",
-        "threadTitle": "Partial-page Prefix Reuse：大物理页也能做精确前缀匹配",
-        "threadSummary": "在 page size 256、平均尾差约 2500 token 的假设下，尾部重算浪费约 5.1%；这个方案保留大页传输效率，同时降低 agent 长前缀浪费。"
-      },
-      "09.14": {
-        "headline": "今日值得关注的 AI Infra 信号",
-        "subtitle": "本期 1 条 · 约 5 分钟",
-        "threadTitle": "SMG 管流量与缓存局部性，RBG 管角色拓扑与生命周期",
-        "threadSummary": "两者解决的不是同一层：SMG 决定请求去哪里，RBG 决定这些角色怎样被组织、扩缩和恢复。"
-      },
-      "09.11": {
-        "headline": "今日值得关注的 AI Infra 信号",
-        "subtitle": "本期 1 条 · 约 10 分钟",
-        "threadTitle": "DeepSeek V4.1：Persistent KV 缩到 V4 的约 1/8",
-        "threadSummary": "它把不同 attention state 的生命周期彻底拆开：Global KV 可长期驻留超过 72 小时，SWA 与 recurrent state 则需要专门的恢复语义。"
-      },
-      "09.09": {
-        "headline": "今日值得关注的 AI Infra 信号",
-        "subtitle": "本期 1 条 · 约 8 分钟",
-        "threadTitle": "Mooncake 正从 KV Store 走向完整的 KV Data Infrastructure",
-        "threadSummary": "这条路线把你关心的 metadata、ownership、placement、迁移与异构恢复放在同一控制面，而不是继续堆叠一个更大的 L3。"
-      },
-      "09.08": {
-        "headline": "今日值得关注的 AI Infra 信号",
-        "subtitle": "本期 2 条 · 约 11 分钟",
-        "threadTitle": "Page-first Direct 在 L2→L1 回填上优于 Page-first Kernel",
-        "threadSummary": "实验验证的是清空 L1 后的 L2 load-back，不包含 Mooncake L3、H2D 暴露或 submission-head latency；可作为方向证据，不能直接外推到完整三级缓存。"
-      }
-    },
     "reports": {
       "09.30": [
         {
@@ -1750,7 +1883,123 @@
         "value": 60,
         "color": "bg-[#ffb15e]"
       }
-    ]
+    ],
+    "issueMeta": {
+      "09.30": {
+        "headline": "今日值得关注的 AI Infra 信号",
+        "subtitle": "本期 5 条 · 约 49 分钟",
+        "threadTitle": "优化正在从算子延伸到页表、恢复边界与读取编排",
+        "threadSummary": "Q8KV8 加速稀疏 Prefill，THP 与 cuMem 减少 Host state 的地址翻译压力；sliding-window backoff 和原生 ReadPlan 则让状态恢复边界与 layer-wise 数据消费顺序保持一致。"
+      },
+      "09.29": {
+        "headline": "今日值得关注的 AI Infra 信号",
+        "subtitle": "本期 5 条 · 约 46 分钟",
+        "threadTitle": "SGLang 让等待队列持续刷新 Prefix 热度，阻断 FCFS 下的 Cache Storm",
+        "threadSummary": "这几乎完整复现了流量上升→排队→前缀老化→重算→更长排队的正反馈链。它只改变 eviction order，不锁死页面，也不改变 FCFS admission 顺序。"
+      },
+      "09.28": {
+        "headline": "今日值得关注的 AI Infra 信号",
+        "subtitle": "本期 5 条 · 约 45 分钟",
+        "threadTitle": "MiniMax-M3 TP4 将 Index-K 扫描拆给各 Rank，128K Indexer 快 2.64×",
+        "threadSummary": "它优化的不是 cache capacity，而是 replicated index cache 带来的读取放大。短上下文和小 batch 会退化，因此目前保持 opt-in，且尚无 full-model serving 数据。"
+      },
+      "09.27": {
+        "headline": "今日值得关注的 AI Infra 信号",
+        "subtitle": "本期 5 条 · 约 40 分钟",
+        "threadTitle": "HiCache 尝试用 INT8 保存 Host KV，同容量可缓存 1.78× Tokens",
+        "threadSummary": "这首次让 HiCache L2 representation 与 L1 dtype 解耦，但代价是双向 staging buffer 和 encode/decode。真正值得跟进的是：更大命中窗口能否长期覆盖额外搬运与量化成本。"
+      },
+      "09.26": {
+        "headline": "今日值得关注的 AI Infra 信号",
+        "subtitle": "本期 5 条 · 约 34 分钟",
+        "threadTitle": "Mooncake HiCache L3 接通 MLA DCP 跨引擎共享",
+        "threadSummary": "这一步才把 DCP-aware L3 从本地文件扩展到可跨实例共享的 Store。对多 P 实例而言，KV 对象身份必须绑定逻辑 shard，而不能简单绑定写入它的 rank。"
+      },
+      "09.25": {
+        "headline": "今日值得关注的 AI Infra 信号",
+        "subtitle": "本期 5 条 · 约 36 分钟",
+        "threadTitle": "HiCache L3 首次支持 MLA DCP 跨引擎复用",
+        "threadSummary": "DCP 下每个 rank 只有交错 token shard，过去 rank-0-only backup 无法构成完整逻辑页。这个 PR 首次把“逻辑前缀”与“物理 shard 身份”对齐，为多 P 实例共享 L3 KV 补上关键拓扑语义。"
+      },
+      "09.24": {
+        "headline": "今日值得关注的 AI Infra 信号",
+        "subtitle": "本期 5 条 · 约 32 分钟",
+        "threadTitle": "全 SWA DFLASH Draft 不再按 Target 全长分配 KV",
+        "threadSummary": "这把缓存容量规划从“每个 target token 都给 draft 留一格”改成按 attention 可见范围分配。对 SWA/KDA 这类 bounded state，物理池大小不应继续绑定完整上下文长度。"
+      },
+      "09.22": {
+        "headline": "今日值得关注的 AI Infra 信号",
+        "subtitle": "本期 5 条 · 约 30 分钟",
+        "threadTitle": "Kimi K3 CUDA Graph 回放流从 96 条收敛到 4 条",
+        "threadSummary": "这说明异步分支不是越多越好：CUDA Graph 捕获顺序本身会放大 stream 拓扑和调度开销。对 KDA+MLA、DSpark 这类多分支 decode，profile 时应把 replay stream 数与 kernel 时间一起看。"
+      },
+      "09.21": {
+        "headline": "今日值得关注的 AI Infra 信号",
+        "subtitle": "本期 5 条 · 约 29 分钟",
+        "threadTitle": "HiCache serialized load-back：避免回载整条 Prefix 反噬可用容量",
+        "threadSummary": "它直接缓解 L3/L2 回载挤出 L1 热 KV 的问题；代价是无压力场景纯 load-back latency 增加约 41.8%，所以当前保持 opt-in。"
+      },
+      "09.20": {
+        "headline": "今日值得关注的 AI Infra 信号",
+        "subtitle": "本期 5 条 · 约 30 分钟",
+        "threadTitle": "vLLM 原生多级 KV Offloading：从单一 CPU 层走向多后端体系",
+        "threadSummary": "对你正在做的 L1/L2/L3 统一池最直接：可以重点比较它的 block ownership、回填路径和 Mooncake 的 store-centric 设计。"
+      },
+      "09.19": {
+        "headline": "今日值得关注的 AI Infra 信号",
+        "subtitle": "本期 1 条 · 约 6 分钟",
+        "threadTitle": "KDA + MLA 的 DCP Decode 已接入 UnifiedRadixCache 与 HiCache",
+        "threadSummary": "这直接对应你的混合 attention 状态管理：MLA 历史 KV 可以恢复，但 recurrent / bounded state 不能被当成同一种缓存对象处理。"
+      },
+      "09.18": {
+        "headline": "今日值得关注的 AI Infra 信号",
+        "subtitle": "本期 2 条 · 约 13 分钟",
+        "threadTitle": "TENT：用 Slice Spraying 调度 KV 的多路径传输",
+        "threadSummary": "它能提高多 rail 利用率，但尚不能主动识别或抢占 DeepEP；生产上仍需限制 in-flight bytes / WR，并给 EP 通信更高优先级。"
+      },
+      "09.17": {
+        "headline": "今日值得关注的 AI Infra 信号",
+        "subtitle": "本期 2 条 · 约 11 分钟",
+        "threadTitle": "Prefill + KV Transfer 慢 20% 的根因不是 RDMA，而是 Python GIL",
+        "threadSummary": "这是判断“网络争用”前必须排除的 CPU 提交阻塞：时间线上看似没有重叠，并不等于 NIC 已经饱和。"
+      },
+      "09.16": {
+        "headline": "今日值得关注的 AI Infra 信号",
+        "subtitle": "本期 3 条 · 约 24 分钟",
+        "threadTitle": "HiCache Buffer-only：减少 per-worker L2 重复与容量碎片",
+        "threadSummary": "收益取决于流量形态：共享前缀多时集中池更有利；session-sticky 且跨实例复用低时，本地 L2 仍可能更合适。"
+      },
+      "09.15": {
+        "headline": "今日值得关注的 AI Infra 信号",
+        "subtitle": "本期 2 条 · 约 15 分钟",
+        "threadTitle": "Partial-page Prefix Reuse：大物理页也能做精确前缀匹配",
+        "threadSummary": "在 page size 256、平均尾差约 2500 token 的假设下，尾部重算浪费约 5.1%；这个方案保留大页传输效率，同时降低 agent 长前缀浪费。"
+      },
+      "09.14": {
+        "headline": "今日值得关注的 AI Infra 信号",
+        "subtitle": "本期 1 条 · 约 5 分钟",
+        "threadTitle": "SMG 管流量与缓存局部性，RBG 管角色拓扑与生命周期",
+        "threadSummary": "两者解决的不是同一层：SMG 决定请求去哪里，RBG 决定这些角色怎样被组织、扩缩和恢复。"
+      },
+      "09.11": {
+        "headline": "今日值得关注的 AI Infra 信号",
+        "subtitle": "本期 1 条 · 约 10 分钟",
+        "threadTitle": "DeepSeek V4.1：Persistent KV 缩到 V4 的约 1/8",
+        "threadSummary": "它把不同 attention state 的生命周期彻底拆开：Global KV 可长期驻留超过 72 小时，SWA 与 recurrent state 则需要专门的恢复语义。"
+      },
+      "09.09": {
+        "headline": "今日值得关注的 AI Infra 信号",
+        "subtitle": "本期 1 条 · 约 8 分钟",
+        "threadTitle": "Mooncake 正从 KV Store 走向完整的 KV Data Infrastructure",
+        "threadSummary": "这条路线把你关心的 metadata、ownership、placement、迁移与异构恢复放在同一控制面，而不是继续堆叠一个更大的 L3。"
+      },
+      "09.08": {
+        "headline": "今日值得关注的 AI Infra 信号",
+        "subtitle": "本期 2 条 · 约 11 分钟",
+        "threadTitle": "Page-first Direct 在 L2→L1 回填上优于 Page-first Kernel",
+        "threadSummary": "实验验证的是清空 L1 后的 L2 load-back，不包含 Mooncake L3、H2D 暴露或 submission-head latency；可作为方向证据，不能直接外推到完整三级缓存。"
+      }
+    }
   },
   "experiments": [
     {
@@ -1828,6 +2077,47 @@
       "falsifier": "只在更大 batch 下取得吞吐提升，不能作为单请求内核或带宽变快的证据。",
       "related": [
         "pd-c2c-coordination"
+      ]
+    },
+    {
+      "id": "E-05",
+      "title": "FP4 MoE：live-row masking 能否改善服务关键路径？",
+      "hypothesis": "在 live/capacity 比较低且真实命中 SILU／packed-UE8M0 路径时，把 endpoint 范围贯穿 FFN 可降低空耗；但收益可能被 expert 负载倾斜、通信或满 buffer 调度成本抵消。",
+      "method": [
+        "未执行。固定 GB200 拓扑、DeepSeek-V4-Flash revision、vLLM／DeepGEMM 版本与路由输入；对照 stock、prefix-sum only、prefix-sum+activation masking 三组",
+        "覆盖小 batch、空 expert、偏斜路由、满 buffer 与不同 live/capacity 比；保持相同 graph 模式，连续改变 counts 并验证 live 值、packed scales 和 padding 哨兵",
+        "先检查实际 dispatch 与 installed source hashes，再分别测 kernel、完整 FFN 与固定 SLO 的服务吞吐；本次 CPU 索引检查不能代替 GPU 数值或性能实验"
+      ],
+      "metrics": [
+        "FC1／activation／FC2 分阶段耗时",
+        "各 rank 工作量与 dispatch／combine／同步等待",
+        "TPOT p50／p95／p99 与同 SLO goodput",
+        "主 workspace 与峰值 HBM；live FP8／scale 一致性"
+      ],
+      "falsifier": "如果只改善局部 activation，而完整 FFN 或同 SLO goodput 没有稳定改善，或满 buffer／偏斜路由造成更差尾延迟，就不足以支持默认启用；metadata 缩小也不能作为主 workspace 变小的证据。",
+      "related": [
+        "vllm-fp4-moe-live-rows",
+        "pd-c2c-coordination"
+      ]
+    },
+    {
+      "id": "E-06",
+      "title": "AITER a4w4：真实接受行为下是否仍有高并发收益？",
+      "hypothesis": "匹配 SEPARATED 加载布局的 FP4 activation 可能在高并发减少执行成本，但 PR 中 synthetic acceptance 的收益不一定能迁移到真实 DSpark 采样与目标流量。",
+      "method": [
+        "未执行。先明确并固定 GPU 型号／数量、ROCm／AITER／vLLM 提交、checkpoint、TP／EP 和真实 kernel dispatch；不能从参考 run 推断作者 A/B 硬件",
+        "在同一权重与提示轨迹下比较默认 a8w4 与显式 a4w4，分别测 c1／c8／c64 与真实请求混合；使用真实 block rejection sampling，单独记录接受长度分布",
+        "用配对重复运行测模型任务准确率、错误率和性能，再以固定 token／expert 分布做 profiling，区分 activation 量化、布局与 kernel 选择的贡献"
+      ],
+      "metrics": [
+        "输出吞吐与 ITL／TPOT 尾延迟",
+        "真实接受长度与 draft／verify 成本",
+        "量化、GEMM、路由与通信耗时",
+        "任务准确率／错误率与同 SLO goodput"
+      ],
+      "falsifier": "如果真实接受行为下 c64 收益消失、质量或错误率超出对照噪声，或目标流量以低并发为主而整体变慢，则拒绝在该部署开启；两臂均为 MXFP4 权重，不能将收益归因为权重读取字节减半。",
+      "related": [
+        "vllm-aiter-a4w4-opt-in"
       ]
     }
   ]

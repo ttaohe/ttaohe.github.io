@@ -37,7 +37,8 @@ export function validateContent(value) {
     }
   }
   if (!Number.isFinite(Date.parse(content.updatedAt))) throw new Error('Invalid content update timestamp');
-  return content;
+  // Validate known fields without stripping future extensions from the authoritative Drive mirror.
+  return value;
 }
 
 export async function readLimitedResponse(response) {
@@ -53,10 +54,14 @@ export async function readLimitedResponse(response) {
   return Buffer.concat(chunks).toString('utf8');
 }
 
-async function atomicJson(file, value) {
+async function atomicText(file, value) {
   const temp = `${file}.tmp`;
-  await writeFile(temp, `${JSON.stringify(value, null, 2)}\n`);
+  await writeFile(temp, value);
   await rename(temp, file);
+}
+
+async function atomicJson(file, value) {
+  await atomicText(file, `${JSON.stringify(value, null, 2)}\n`);
 }
 
 export async function syncContent({ projectRoot = root, fetchImpl = fetch, now = new Date() } = {}) {
@@ -73,7 +78,8 @@ export async function syncContent({ projectRoot = root, fetchImpl = fetch, now =
       signal: AbortSignal.timeout(20_000),
       headers: { Accept: 'application/json' },
     });
-    content = validateContent(JSON.parse(await readLimitedResponse(response)));
+    const rawFeed = await readLimitedResponse(response);
+    content = validateContent(JSON.parse(rawFeed));
     // A malformed or truncated feed must never silently remove published routes.
     const incoming = new Set(content.posts.map(post => post.slug));
     if (fallback.posts.some(post => !incoming.has(post.slug))) throw new Error('Feed omits a previously published article');
@@ -94,7 +100,9 @@ export async function syncContent({ projectRoot = root, fetchImpl = fetch, now =
       if (fallback.experiments.some(item => !incomingIds.has(item.id))) throw new Error('Feed omits a saved experiment');
     }
     content = validateContent(content);
-    await atomicJson(contentPath, content);
+    // Mirror a complete valid Drive payload byte-for-byte, including future fields and formatting.
+    if (missingSections.length === 0) await atomicText(contentPath, rawFeed);
+    else await atomicJson(contentPath, content);
     stale = missingSections.length > 0;
     reason = stale ? `Feed did not include ${missingSections.join(', ')}; saved sections retained.` : '';
     if (stale) console.warn(`::warning::${reason}`);
