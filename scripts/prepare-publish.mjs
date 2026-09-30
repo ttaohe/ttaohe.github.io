@@ -64,7 +64,7 @@ const assets = {
 let landing = (await readFile(path.join(root, 'portfolio/index.html'), 'utf8'))
   .replaceAll('{{CONTENT_UPDATED_AT}}', escapeHtml(content.updatedAt))
   .replaceAll('{{LAST_CONTENT_UPDATE}}', escapeHtml(shanghaiTimestamp(content.updatedAt)))
-  .replaceAll('{{NOTE_COUNT}}', String(content.posts.length).padStart(2, '0'))
+  .replaceAll('{{NOTE_COUNT}}', String(content.posts.length))
   .replace('<!-- FOCUS_DATE -->', focusDate ? `<time datetime="${escapeHtml(focusDate)}">${escapeHtml(focusDate)}</time>` : '')
   .replace('<!-- SELECTED_NOTES -->', noteMarkup)
   .replace('<!-- TOPIC_LINKS -->', topicMarkup)

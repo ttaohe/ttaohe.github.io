@@ -272,7 +272,7 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--green);outline-offs
 .project-card h3 a{display:flex;align-items:baseline;gap:10px;color:inherit}
 .project-card h3 a>span[lang]{min-width:0}
 .project-card h3 a:hover{color:var(--green)}
-.project-index{flex:none;min-width:27px;padding:1px 5px;border:1px solid var(--line);border-radius:4px;background:var(--raised);color:var(--muted);font:500 11px/1.6 var(--mono);letter-spacing:0;text-align:center}
+.project-index{flex:none;color:var(--dim);font:inherit;font-variant-numeric:tabular-nums;letter-spacing:0}
 .project-keywords{margin:7px 0 0;color:var(--muted);font:11px/1.8 var(--mono);overflow-wrap:anywhere}
 .project-card .project-keywords{display:flex;flex-wrap:wrap;gap:5px 7px;list-style:none;padding:0;margin-top:7px}
 .project-card .project-keywords li{min-width:0;padding:0 7px;border:1px solid var(--line);border-radius:4px;background:var(--raised);font-size:10px;line-height:1.8;letter-spacing:.01em}
@@ -298,10 +298,11 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--green);outline-offs
 .research-grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr);gap:clamp(28px,2.5vw,48px);align-items:stretch}
 .research-reading,.research-context{min-width:0}
 .research-reading{display:flex;flex-direction:column}
-.research-header{display:flex;justify-content:space-between;align-items:start;gap:18px}
-.research-header h3{font-size:21px;line-height:1.5;margin:0 0 9px;color:var(--heading)}
-.research-header p{margin:0;color:var(--muted);font-size:15px;max-width:540px}
-.research-tag{font:11px/1.6 var(--mono);color:var(--green);border:1px solid var(--tag-line);background:var(--tag-bg);padding:4px 9px;border-radius:4px;white-space:nowrap}
+.research-header{display:block}
+.research-title-row{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+.research-header h3{font-size:21px;line-height:1.5;margin:0;color:var(--heading)}
+.research-header p{margin:9px 0 0;color:var(--muted);font-size:15px;line-height:1.8}
+.research-tag{font:11px/1.6 var(--mono);color:var(--dim);white-space:nowrap}
 .research-subheading{display:flex;align-items:center;gap:16px;margin-top:22px;padding-bottom:10px;border-bottom:1px solid var(--line)}
 .research-subheading h4{font-size:13px;line-height:1.7;font-weight:500;color:var(--muted);margin:0}
 .research-subheading>span{margin-left:auto;font:10px/1.6 var(--mono);letter-spacing:.05em;color:var(--dim)}
@@ -406,7 +407,6 @@ a:focus-visible,button:focus-visible{outline:2px solid var(--green);outline-offs
 .school h3{font-size:16px;line-height:1.5;letter-spacing:-.035em;margin-bottom:8px}
 .school-detail{font-size:13px}
 .school-major{font-size:12px}
-.research-header{flex-direction:column;gap:13px}
 .research-header h3{font-size:20px}
 .countdown{padding:16px;max-width:min(100%,420px)}
 .countdown-top{grid-template-columns:112px minmax(0,1fr);gap:16px}

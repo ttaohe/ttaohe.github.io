@@ -24,6 +24,9 @@ test('project index aligns with the title and compact keywords wrap as a semanti
   assert(css.includes('.project-card h3 a{display:flex;align-items:baseline;gap:10px;'));
   assert(css.includes('.project-card .project-keywords{display:flex;flex-wrap:wrap;'));
   assert(css.includes('.project-card h3 a>span[lang]{min-width:0}'));
+  const indexStyle = css.match(/\.project-index\{([^}]+)\}/)?.[1];
+  assert(indexStyle?.includes('font:inherit'));
+  assert.doesNotMatch(indexStyle, /border|background|padding|font-size/);
 });
 
 test('project document is explicitly pending, navigable and respects reduced motion', () => {

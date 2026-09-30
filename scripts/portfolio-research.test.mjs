@@ -65,6 +65,7 @@ test('research reading precedes the supporting rail and clock in semantic order'
 test('homepage panels render full sourced content and six working topic shortcuts', async () => {
   const rendered = await render(source);
   const text = decode(rendered);
+  assert(rendered.includes(`class="research-tag">${source.posts.length} 篇笔记</span>`));
   const notes = [...source.posts].reverse().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3);
   for (const post of notes) {
     assert(text.includes(post.title));

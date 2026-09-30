@@ -32,6 +32,13 @@ test('research rhythm aligns natural-size panels without forced rail heights', (
   assert(!css.includes('line-clamp'));
 });
 
+test('research count is quiet title metadata and the introduction uses the full reading width', () => {
+  assert.match(html, /class="research-title-row"><h3>AI Infra Daily Notes<\/h3><span class="research-tag">\{\{NOTE_COUNT\}\} 篇笔记<\/span><\/div><p>/);
+  assert(css.includes('.research-title-row{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}'));
+  assert.doesNotMatch(css.match(/\.research-header p\{([^}]+)\}/)?.[1] ?? '', /max-width/);
+  assert.doesNotMatch(css.match(/\.research-tag\{([^}]+)\}/)?.[1] ?? '', /border|background|padding/);
+});
+
 test('profile portrait preserves the supplied pixels and has an intrinsic responsive size', async () => {
   assert.match(html, /<img class="profile-avatar" src="\/assets\/portfolio-avatar.jpg" width="1254" height="1254" alt="何涛的头像：夕阳下的男生与猫"/);
   assert(css.includes('clamp(148px,16vw,216px)'));
