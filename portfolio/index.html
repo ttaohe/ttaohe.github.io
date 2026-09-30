@@ -79,7 +79,6 @@
             <h3 id="mla-project-title"><a href="/projects/mla-tp-l2-cache-deduplication/" aria-label="项目 01：MLA L2 Host Cache Deduplication 研究记录"><span class="project-index">01 /</span> <span lang="en">MLA L2 Host Cache Deduplication</span></a></h3>
             <p class="project-keywords" lang="en">KV Cache · HiCache · Tensor Parallelism · Kimi 2.6 / 2.7</p>
             <p class="project-summary">针对 MLA Prefill 的 TP 部署中 Host KV Cache 重复保存的容量瓶颈，采用 <strong>TP0 单副本管理与统一命中判定</strong>，命中后由 TP0 从 L2 加载至 L1，再广播到其余 Rank。项目实测中，<strong>L2 有效容量达到原来的 8×，命中率由 80% 多提升至约 94%</strong>（理论约 95%）；相同并发下，<strong>高峰期一小时吞吐提升约 40%</strong>。完整负载、硬件与统计口径待补充。</p>
-            <p class="project-record"><a href="/projects/mla-tp-l2-cache-deduplication/">预览研究记录 · 待补充 <span aria-hidden="true">↗</span></a></p>
           </article>
         </section>
         <section tabindex="-1" id="research" class="section" aria-labelledby="research-title">
@@ -131,13 +130,8 @@
           </div>
         </section>
         <section tabindex="-1" id="resume" class="section" aria-labelledby="resume-title">
-          <div class="section-heading"><span class="hash" aria-hidden="true">#</span><h2 id="resume-title">简历</h2><span class="filename">resume.tex</span></div>
-          <div class="resume-preview">
-            <div class="resume-preview-heading"><div><h3>LaTeX 模板预览</h3><p>以下为 resume-ng 仓库现有示例 PDF，不代表个人经历；个人 LaTeX 版本待补充。</p></div><a href="https://github.com/ttaohe/resume-ng">模板源码 ↗</a></div>
-            <div class="resume-preview-toolbar"><span>使用 PDF 工具栏缩放，拖动选择文字</span><div><a href="/assets/resume-ng-template.pdf" target="_blank" rel="noopener">在新页打开</a><a href="/assets/resume-ng-template.pdf" download="resume-ng-template.pdf">下载 PDF</a></div></div>
-            <iframe class="resume-pdf" src="/assets/resume-ng-template.pdf#toolbar=1&amp;navpanes=0&amp;view=FitH" title="resume-ng LaTeX 模板 PDF 预览，可使用浏览器 PDF 工具栏缩放和选择文字" loading="lazy"></iframe>
-            <p class="resume-preview-note">若浏览器未显示内嵌预览或工具栏，可在新页打开 PDF。</p>
-          </div>
+          <div class="section-heading"><span class="hash" aria-hidden="true">#</span><h2 id="resume-title">简历模板</h2><a class="filename" href="/assets/resume-ng-template.pdf" target="_blank" rel="noopener" aria-label="在新页打开简历模板 PDF">template.pdf ↗</a></div>
+          <div class="resume-preview"><iframe class="resume-pdf" src="/assets/resume-ng-template.pdf#toolbar=1&amp;navpanes=0&amp;view=FitH" title="resume-ng 示例模板 PDF，非个人简历；可使用原生工具栏缩放、选字和下载" loading="lazy"></iframe></div>
         </section>
         <footer class="disclosure">
           <p>笔记含 AI 辅助整理，并区分来源结论、设计设想与已验证内容。</p>

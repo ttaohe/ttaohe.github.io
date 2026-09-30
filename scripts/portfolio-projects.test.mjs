@@ -12,8 +12,8 @@ test('first project has a stable accessible index and links to its real document
   assert(project.includes('aria-labelledby="mla-project-title"'));
   assert(project.includes('id="mla-project-title"'));
   assert(project.includes('<span class="project-index">01 /</span>'));
-  assert.deepEqual([...project.matchAll(/href="([^"]+)"/g)].map(m => m[1]), ['/projects/mla-tp-l2-cache-deduplication/', '/projects/mla-tp-l2-cache-deduplication/']);
-  assert(project.includes('预览研究记录 · 待补充'));
+  assert.deepEqual([...project.matchAll(/href="([^"]+)"/g)].map(m => m[1]), ['/projects/mla-tp-l2-cache-deduplication/']);
+  assert(!project.includes('project-record'));
   assert(!html.includes('整理中，后续补充'));
 });
 
@@ -38,6 +38,7 @@ test('project measurements preserve supplied scope and approximate qualifiers', 
 
 test('project entry is compact, theme-aware and naturally wraps its single paragraph', () => {
   assert(!css.includes('.project-metrics'));
+  assert.doesNotMatch(css, /\.project-summary\{[^}]*max-width:/);
   assert(css.includes('.project-card{padding:15px 16px}'));
   assert.match(css, /\.project-card\{[^}]*background:var\(--card\);scroll-margin-top:var\(--anchor-offset\)/);
   assert.match(css, /\.project-card h3\{[^}]*overflow-wrap:anywhere/);

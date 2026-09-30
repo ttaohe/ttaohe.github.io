@@ -8,13 +8,15 @@ const css = await readFile(new URL('../portfolio/styles.css', import.meta.url), 
 const section = html.match(/<section tabindex="-1" id="resume"[^]*?<\/section>/)?.[0];
 
 test('resume preview clearly identifies the template and provides native PDF controls and fallbacks', () => {
-  assert(section.includes('LaTeX 模板预览'));
-  assert(section.includes('不代表个人经历；个人 LaTeX 版本待补充'));
+  assert(section.includes('id="resume-title">简历模板'));
+  assert(section.includes('resume-ng 示例模板 PDF，非个人简历'));
   assert(section.includes('<iframe class="resume-pdf"'));
   assert(section.includes('#toolbar=1&amp;navpanes=0&amp;view=FitH'));
-  assert(section.includes('download="resume-ng-template.pdf"'));
+  assert(section.includes('template.pdf ↗'));
   assert(section.includes('target="_blank" rel="noopener"'));
-  assert(section.includes('若浏览器未显示内嵌预览或工具栏'));
+  assert(!section.includes('resume-preview-heading'));
+  assert(!section.includes('resume-preview-toolbar'));
+  assert(!section.includes('resume-preview-note'));
 });
 
 test('template PDF preserves the exact original binary and text is not substituted into the profile', async () => {

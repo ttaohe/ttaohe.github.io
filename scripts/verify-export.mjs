@@ -33,7 +33,7 @@ for (const route of routes) {
 const landing = await readFile(path.join(output, 'index.html'), 'utf8');
 assert(landing.includes(`href="${basePath}/"`), 'Portfolio landing page does not link to the notes section');
 assert(!landing.includes('知识地图 <'), 'Root must remain the portfolio landing page');
-for (const text of ['TaoHe', '何涛', 'Northwestern Polytechnical University', 'Wuhan University', '西北工业大学 · 本科 · 电子信息工程', '武汉大学 · 硕士 · 计算机应用技术', 'Electronic Information Engineering', 'Computer Application Technology', '经历与项目', 'MLA L2 Host Cache Deduplication', '预览研究记录 · 待补充', '距离下次资料检查', '上次内容更新']) assert(landing.includes(text), `Missing confirmed portfolio content: ${text}`);
+for (const text of ['TaoHe', '何涛', 'Northwestern Polytechnical University', 'Wuhan University', '西北工业大学 · 本科 · 电子信息工程', '武汉大学 · 硕士 · 计算机应用技术', 'Electronic Information Engineering', 'Computer Application Technology', '经历与项目', 'MLA L2 Host Cache Deduplication', '距离下次资料检查', '上次内容更新']) assert(landing.includes(text), `Missing confirmed portfolio content: ${text}`);
 assert(landing.includes('id="mla-tp-l2-cache-deduplication"') && landing.includes('href="/projects/mla-tp-l2-cache-deduplication/"'), 'Project index must link to its stable document');
 const projectDocument = await readFile(path.join(output, 'projects/mla-tp-l2-cache-deduplication/index.html'), 'utf8');
 assert(projectDocument.includes('id="record-status">待补充') && projectDocument.includes('href="/#mla-tp-l2-cache-deduplication"'), 'Project document must disclose pending content and link back to its summary');
@@ -56,13 +56,13 @@ if (latestFocusDate) {
   }
 }
 assert(!landing.includes('冯开宇') && !landing.includes('北京理工大学') && !landing.includes('GPA:'), 'Upstream sample resume content must never appear on the personal homepage');
-assert(landing.includes('LaTeX 模板预览') && landing.includes('不代表个人经历；个人 LaTeX 版本待补充'), 'Example PDF must be explicitly identified as a template, never a personal resume');
+assert(landing.includes('id="resume-title">简历模板') && landing.includes('resume-ng 示例模板 PDF，非个人简历'), 'Example PDF must be explicitly identified as a template, never a personal resume');
 assert(/<iframe class="resume-pdf" src="\/assets\/resume-ng-template\.[a-f0-9]{16}\.pdf#toolbar=1/.test(landing), 'Template must have a real fingerprinted interactive PDF embed');
 assert(landing.includes(content.updatedAt), 'Homepage countdown must use the authoritative content timestamp');
 assert(landing.includes('data-visit-counter') && landing.includes('统计首页加载次数，不是独立访客人数'), 'Homepage counter must disclose its pageview scope');
 assert(/src="\/assets\/portfolio-visits\.[a-f0-9]{16}\.js"/.test(landing), 'Homepage counter must use a fingerprinted asset');
 const assetUrls = [...landing.matchAll(/(?:href|src)="(\/assets\/[^"?#]+)[^"]*"/g)].map(match => match[1]);
-assert.equal(assetUrls.length, 13, 'Homepage must load its existing 10 assets plus 3 template PDF references');
+assert.equal(assetUrls.length, 12, 'Homepage must load its existing 10 assets plus the template PDF open link and iframe');
 for (const assetUrl of assetUrls) {
   assert(/\.[a-f0-9]{16}\.(?:css|js|jpg|gif|png|ico|pdf)$/.test(assetUrl), `Unversioned homepage asset ${assetUrl}`);
 }
