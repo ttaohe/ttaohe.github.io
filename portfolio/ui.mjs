@@ -34,7 +34,34 @@ export function applyTheme(root, buttons, value) {
   return theme;
 }
 
+// Native dialog supplies focus containment and Escape; links remain useful
+// without JavaScript or on browsers without dialog support.
+export function initContactDialog(doc) {
+  const dialog = doc.getElementById('wechat-dialog');
+  if (!dialog || typeof dialog.showModal !== 'function') return;
+  let opener;
+  for (const link of doc.querySelectorAll('[data-wechat-open]')) {
+    link.addEventListener('click', event => {
+      event.preventDefault();
+      if (dialog.open) return;
+      opener = link;
+      dialog.showModal();
+      doc.documentElement.classList.add('contact-open');
+    });
+  }
+  dialog.addEventListener('click', event => {
+    if (event.target !== dialog) return;
+    const rect = dialog.getBoundingClientRect();
+    if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close();
+  });
+  dialog.addEventListener('close', () => {
+    doc.documentElement.classList.remove('contact-open');
+    opener?.focus({ preventScroll: true });
+  });
+}
+
 export function initPortfolio(doc = document, win = window) {
+  initContactDialog(doc);
   const root = doc.documentElement;
   const buttons = [...doc.querySelectorAll('[data-theme-choice]')];
   // The blocking head bootstrap has already applied the saved palette before

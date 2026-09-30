@@ -5,8 +5,9 @@ import { createHash } from 'node:crypto';
 const html = await readFile(new URL('../portfolio/index.html', import.meta.url), 'utf8');
 const css = await readFile(new URL('../portfolio/styles.css', import.meta.url), 'utf8');
 
-test('editor chrome combines the active file and path into one bounded row', () => {
-  assert.match(html, /<div class="editor-bar"><span class="tab">[^]*?<span class="breadcrumb">[^]*?<\/span><\/div>\s*<main class="content">/);
+test('editor chrome is a compact site navigation rather than duplicate breadcrumbs', () => {
+  assert.match(html, /<nav class="editor-bar site-nav" aria-label="站点导航">[^]*?<\/nav>\s*<main class="content">/);
+  assert(!html.includes('class="breadcrumb"'));
   assert(!html.includes('class="tabs"'));
   assert(html.includes('<span class="window-title"><em>ttaohe.github.io</em></span>'));
   assert(!html.includes('personal-workspace'));

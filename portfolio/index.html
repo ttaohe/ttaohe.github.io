@@ -30,12 +30,17 @@
     </aside>
     <div class="editor">
       <nav class="mobile-nav" aria-label="主页章节"><a class="active" aria-current="location" href="#profile">关于</a><a href="#education">教育</a><a href="#experience">经历</a><a href="#research">笔记</a><a href="#resume">简历</a></nav>
-      <div class="editor-bar"><span class="tab"><b>M↓</b>README.md</span><span class="breadcrumb">taohe <span aria-hidden="true">/</span> README.md</span></div>
+      <nav class="editor-bar site-nav" aria-label="站点导航"><a href="/" aria-current="page">Home</a><a href="#experience">Projects</a><a href="/ai-infra-daily-notes/">Notes</a><a href="https://github.com/ttaohe" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a></nav>
       <main class="content">
         <header tabindex="-1" id="profile" class="hero">
           <div class="profile-copy">
           <p class="code-comment">// profile</p>
           <h1>TaoHe<span>何涛</span></h1>
+          <nav class="profile-social" aria-label="联系与社交">
+            <a href="https://www.zhihu.com/people/shi-he-yuan-fang-48-94" target="_blank" rel="noopener noreferrer" aria-label="知乎个人主页" data-label="知乎"><span class="zhihu-symbol" aria-hidden="true">知</span></a>
+            <a href="/assets/wechat-qr.png" data-wechat-open aria-haspopup="dialog" aria-controls="wechat-dialog" aria-label="微信二维码" data-label="微信"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.2 14.7a7.1 7.1 0 0 1-5.8.1L4 16l.9-2.8A5.2 5.2 0 0 1 3 9.3C3 6.4 6 4 9.7 4c3.7 0 6.7 2.4 6.7 5.3"/><path d="M21 14.3c0-2.6-2.6-4.6-5.7-4.6s-5.7 2-5.7 4.6 2.6 4.7 5.7 4.7a7 7 0 0 0 2.3-.4l2.8 1-.7-2.3a4.2 4.2 0 0 0 1.3-3Z"/><path d="M7.4 8.3h.1m4.4 0h.1m1.4 5.3h.1m3.6 0h.1" stroke-width="2.2"/></svg></a>
+            <a href="mailto:ttaohe828@gmail.com" aria-label="发送邮件至 ttaohe828@gmail.com" data-label="邮箱"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></a>
+          </nav>
           <div class="intro"><p>关注 <strong>AI Infra 与推理系统</strong>。</p></div>
           <section class="profile-experience" aria-labelledby="profile-experience-title" lang="en">
             <h2 id="profile-experience-title">Experience</h2>
@@ -144,6 +149,12 @@
   </div>
   <div class="statusbar"><span><span>⌘ personal</span><span>UTF-8</span></span><span class="encoding">Markdown · AI Infra Notebook</span></div>
 </div>
+<dialog id="wechat-dialog" class="contact-dialog" aria-labelledby="wechat-title" aria-describedby="wechat-description">
+  <div class="contact-dialog-heading"><h2 id="wechat-title">微信</h2><form method="dialog"><button type="submit" aria-label="关闭微信二维码" autofocus>×</button></form></div>
+  <img class="wechat-qr" src="/assets/wechat-qr.png" width="360" height="360" alt="何涛的微信好友二维码" decoding="async">
+  <p id="wechat-description">使用微信扫一扫，添加好友</p>
+  <a class="qr-download" href="/assets/wechat-qr.png" download="taohe-wechat-qr.png">保存二维码</a>
+</dialog>
 <footer class="outer-foot"><span>TaoHe / 何涛</span><span>Keep questions close to the source.</span></footer>
 <script type="module" src="/assets/portfolio-ui.js"></script>
 <script type="module" src="/assets/portfolio-countdown.js"></script>

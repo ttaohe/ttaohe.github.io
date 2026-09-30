@@ -86,7 +86,7 @@ test('scroll position selects first, middle and last chapters without hash depen
 
 test('desktop and mobile links target all real focusable chapters', () => {
   for (const id of ['profile','education','experience','research','resume']) {
-    assert.equal([...html.matchAll(new RegExp(`href="#${id}"`, 'g'))].length, 2);
+    assert.equal([...html.matchAll(new RegExp(`href="#${id}"`, 'g'))].length, id === 'experience' ? 3 : 2);
     assert(html.includes(`tabindex="-1" id="${id}"`));
   }
   for (const theme of THEMES) assert(html.includes(`type="button" data-theme-choice="${theme}"`));
