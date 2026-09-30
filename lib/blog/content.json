@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-30T16:03:46Z",
+  "updatedAt": "2026-09-30T20:08:00Z",
   "posts": [
     {
       "slug": "state-recovery",
@@ -734,17 +734,132 @@
           "id": "mooncake-disk-owner-retention-index",
           "rank": "11",
           "category": "MOONCAKE · STORE METADATA",
-          "title": "Mooncake 把过期副本清理扫描缩到磁盘 Owner，保留恢复与下线语义",
-          "summary": "9 月 30 日 13:07 UTC 新开的 #4429 给 Store Master 增加 LOCAL_DISK owner 候选索引，避免构造 retaining-client 集合时扫描所有 memory-only 客户端。索引在磁盘挂载、旧式注册及恢复路径补齐；磁盘卸载不立即移除候选，完成 client offboarding 才清理。16:02 UTC 核验 head 2560782，仍为 open draft、未合并。",
-          "why": "优化对象是元数据扫描规模，同时必须守住 liveness 与客户端 incarnation 边界。源码和新增五项回归覆盖 metadata-only owner、失败分块恢复已发布的副本及重新注册；RPC／snapshot 格式与 PutStart 锁边界不变。作者报告 CPU-only 326 tests／7 CTest targets 通过，但采用外部链接配置；WSL 微基准在 4096 客户端、64 disk owners 时为 446.81→2.50 μs，全磁盘情况反而 475.20→499.10 μs。这只是集合构造，不是 PutStart 或 RPC 时延；人工逐行审查仍待完成。本次未独立执行测试或性能复现。",
+          "title": "Mooncake 将 Owner 扫描升级为不可变保留快照，并维护可服务 Segment 计数",
+          "summary": "#4429 原始提出于 9 月 30 日 13:07 UTC；本条沿用原 ID，记录 16:25／17:08 UTC 两次实质修订。固定 head f4c4c16fdaa09aaf1b21281bd0e4000ae63b40b4，20:02 UTC 核验仍为 open draft、未合并。新版本不再每次遍历磁盘 Owner 构造集合：liveness 通知维护 retaining membership，成员不变时复用 shared immutable snapshot，变化后由下一读者复制一次；同时按 distinct serving segment name 维护计数，AllocateReplicas 用常数时间读数替代 getServingNames().size()。",
+          "why": "关键是两种状态谓词不同：ACTIVE／SUSPECTED 都保留磁盘资源，只有 ACTIVE 可参与 serving；普通心跳不触发重建。旧 RPC 持有不可变视图，重绑先取消旧 incarnation 订阅，同名多个 registration 只在 0↔1 时更新总数；placement snapshot 仍保留扫描，实际分配仍重查 liveness，因此计数只是并发条件下的 hint。作者最终报告 CPU-only 10 个 CTest targets、421 passed＋2 expected skips，使用外部 CMake 链接钩子；两项到期测试遇到 WSL 时钟回拨后隔离及整组重跑通过。新 jemalloc 稳态微基准在 4096 客户端／64 owners 为 218.852→0.040 μs，但不含成员变化后的 O(owners) 重建，不是 PutStart／RPC 时延；不能与上一版不同条件的数字直接拼接。人工逐行审查仍待完成，本次只核查生产 diff 与公开证据，未独立运行或复现性能。",
           "source": "https://github.com/kvcache-ai/Mooncake/pull/4429",
-          "sourceLabel": "Mooncake PR #4429 · head 2560782",
-          "reading": "6 min",
+          "sourceLabel": "Mooncake PR #4429 · revision f4c4c16",
+          "reading": "7 min",
           "signal": "medium",
           "columns": [
             "mooncake",
             "kv-cache"
-          ]
+          ],
+          "revisions": [
+            {
+              "supersededAt": "2026-09-30T20:08:00Z",
+              "sourceHead": "256078282a1ebdd8181910ed4ca70419e54b8872",
+              "record": {
+                "id": "mooncake-disk-owner-retention-index",
+                "rank": "11",
+                "category": "MOONCAKE · STORE METADATA",
+                "title": "Mooncake 把过期副本清理扫描缩到磁盘 Owner，保留恢复与下线语义",
+                "summary": "9 月 30 日 13:07 UTC 新开的 #4429 给 Store Master 增加 LOCAL_DISK owner 候选索引，避免构造 retaining-client 集合时扫描所有 memory-only 客户端。索引在磁盘挂载、旧式注册及恢复路径补齐；磁盘卸载不立即移除候选，完成 client offboarding 才清理。16:02 UTC 核验 head 2560782，仍为 open draft、未合并。",
+                "why": "优化对象是元数据扫描规模，同时必须守住 liveness 与客户端 incarnation 边界。源码和新增五项回归覆盖 metadata-only owner、失败分块恢复已发布的副本及重新注册；RPC／snapshot 格式与 PutStart 锁边界不变。作者报告 CPU-only 326 tests／7 CTest targets 通过，但采用外部链接配置；WSL 微基准在 4096 客户端、64 disk owners 时为 446.81→2.50 μs，全磁盘情况反而 475.20→499.10 μs。这只是集合构造，不是 PutStart 或 RPC 时延；人工逐行审查仍待完成。本次未独立执行测试或性能复现。",
+                "source": "https://github.com/kvcache-ai/Mooncake/pull/4429",
+                "sourceLabel": "Mooncake PR #4429 · head 2560782",
+                "reading": "6 min",
+                "signal": "medium",
+                "columns": [
+                  "mooncake",
+                  "kv-cache"
+                ]
+              }
+            }
+          ],
+          "sourceCreatedAt": "2026-09-30T13:07:21Z",
+          "sourceHead": "f4c4c16fdaa09aaf1b21281bd0e4000ae63b40b4",
+          "sourceVerifiedAt": "2026-09-30T20:02:01Z"
+        },
+        {
+          "id": "sglang-dflash-batch-adaptive-verify",
+          "rank": "12",
+          "category": "SGLANG · ADAPTIVE SPECULATION",
+          "title": "DFLASH 按批量切换 Verify 宽度，减少高并发 Target GEMM 浪费",
+          "summary": "9 月 30 日 19:58 UTC 新开的 #41921 将 --speculative-adaptive 接到 DFLASH：默认 batch＜12 验证完整 block，≥12 验证半宽；draft 始终生成完整 block，KV 容量也按完整 block 预留。每档使用独立 target attention workspace 与 decode graph，只捕获会路由到该档的 batch sizes。20:05 UTC 核验 head f5c23cd，open、未合并。",
+          "why": "作者在单 H200、Qwen3.5-4B＋公开 DFlash draft、关闭 Radix Cache 的测试中，相对静态 block 16，c32 吞吐提高 30.6%／36.8%（max_new_tokens 256／1536），c1 基本不变。机制只减少 target verify 工作，draft 仍有完整开销；分档使用 CUDA Graph 补齐后的 batch size。当前仅验证 NVIDIA CUDA，排除 DP attention、LoRA、Domino／LiLiCorr 与 full-prefill graph；accept-rate 仍按完整 draft 分母统计，不能误读成真实接受质量下降。作者未运行精确的 CI Llama 模型对，本次仅核源码与其报告，未做 GPU 复现。",
+          "source": "https://github.com/sgl-project/sglang/pull/41921",
+          "sourceLabel": "SGLang PR #41921 · head f5c23cd",
+          "reading": "9 min",
+          "signal": "high",
+          "columns": [
+            "sglang",
+            "models"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-09-30T19:58:55Z",
+            "head": "f5c23cd077f6438ea56502e49e8e07ea054c1b0c",
+            "merged_at": null,
+            "verifiedAt": "2026-09-30T20:05:08Z"
+          }
+        },
+        {
+          "id": "sglang-dsv41-gfx950-serving",
+          "rank": "13",
+          "category": "SGLANG · AMD MODEL SERVING",
+          "title": "DeepSeek-V4.1-Flash 的 gfx950 Serving 与 DSpark 集成已合入",
+          "summary": "9 月 26 日创建的 #41308 在 9 月 30 日 18:47 UTC 合入，merge 3a398442。它把 gfx950 的 compact attention、split index-K／FP4 indexer、MXFP8 dense 和 DSpark 串成服务路径，并在特定 TP4、1–8 行 decode／verify 场景融合 all-reduce 与 mHC post。另修复不同 verify graph 共用 capture 内 row-pointer 导致的长上下文访存故障，以及 eager DSpark 缺少 host seq-lens 的断言。",
+          "why": "这次增量是可运行的 AMD 模型集成，而不是又一组孤立 kernel。作者在 4×MI350X、TP4/EP4 分支测试中验证 32K 输入、c4 的故障复现从失败变为 8/8 完成，并测试 DSpark cookbook；当前部署需 AITER_BF16_FP8_MOE_BOUND=0 规避已 pin AITER 的小批 MoE 路径问题。TP8、V4-Pro 与 MI300 未验证，HIP prefill CP 仍不支持；部分性能数字对应较早开发 head，不能视作最终 merge 的独立验收。本次核验合入生产 diff，未做硬件复现。",
+          "source": "https://github.com/sgl-project/sglang/pull/41308",
+          "sourceLabel": "SGLang PR #41308 · merged 3a398442",
+          "reading": "10 min",
+          "signal": "high",
+          "columns": [
+            "sglang",
+            "models"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-09-26T05:14:09Z",
+            "head": "15eafd03452235dcf9425376ffe78e254bc5f578",
+            "merged_at": "2026-09-30T18:47:15Z",
+            "merge_commit_sha": "3a398442bfccac64a4e681093f1a1aec6a7d4cd1",
+            "verifiedAt": "2026-09-30T20:05:08Z"
+          }
+        },
+        {
+          "id": "vllm-mrv2-draft-budget-accounting",
+          "rank": "14",
+          "category": "VLLM · SPEC DECODE SCHEDULER",
+          "title": "vLLM 修正 MRV2 草稿槽位重复计费，让 DSpark 并发不再被 token budget 人为压低",
+          "summary": "9 月 30 日 17:19 UTC 新开的 Draft #59468 针对 MRV2：DFlash／DSpark 的草稿 query pass 独立执行，只在 max_num_seqs×(1+K) 能装入 max_num_batched_tokens 时，取消调度器额外扣除的 draft slots；否则保留原计费。作者在 GB300、DeepSeek-V4.1-Flash+DSpark K=5、TP4、budget=512 的受限配置中报告，运行请求由 51 增至 64、输出吞吐由 1,354 增至 3,448 tok/s。20:03 UTC 核验 head 4327437，仍 open、未合并。",
+          "why": "错误计费不仅压低并发，还可能让剩余小额预算切碎 prefill，使 decode 错过 FULL CUDA graph。收益不是普适的 2.55×：报告仅覆盖一个模型和配置、每臂两轮，DFlash 未端到端验证。核验中新 head 已简化为 scheduler.py 的 gate，PR 正文仍描述已从 diff 消失的 warning；本文不采用该陈旧说法，也未确认性能是否随最新 head 重跑。本次未独立运行 GPU。",
+          "source": "https://github.com/vllm-project/vllm/pull/59468",
+          "sourceLabel": "vLLM PR #59468 · head 4327437",
+          "reading": "7 min",
+          "signal": "high",
+          "columns": [
+            "vllm",
+            "models"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-09-30T17:19:35Z",
+            "head": "432743720f6d627693ff6252ce6f80f49cab4384",
+            "merged_at": null,
+            "verifiedAt": "2026-09-30T20:04:45Z"
+          }
+        },
+        {
+          "id": "vllm-minimax-m3-indexer-grid-splitk",
+          "rank": "15",
+          "category": "VLLM · MINIMAX-M3 KERNEL",
+          "title": "vLLM 合并 MiniMax-M3 Indexer 网格调优，SM12.0 短 Prefill 增加 Split-K",
+          "summary": "#56151 最初于 9 月 9 日提出，9 月 30 日 19:33 UTC 合并为 84f738f。CUDA Triton indexer 的 decode score／top-k target grid 分别由 512／64 增至 4,096／512；短 chunked-prefill 另在 SM12.0 按 K-block 拆 CTA，写入互不重叠的 block maxima，无需额外归约。作者在 8×RTX PRO 6000、MiniMax-M3-NVFP4+EAGLE3、TP8 c10 报告：移除网格调优会损失 4.6% 吞吐，decode step p50 为 49.2→39.6 ms。",
+          "why": "稀疏注意力的辅助 indexer 也需要按 batch 和硬件补足并行度。decode 网格调整覆盖这条 CUDA Triton 路径，prefill split-K 仅限 SM12.0，ROCm 路径未改。作者另报短 cached extend 263→200 ms，来自早期版本的 leave-one-out，不宜拼成完整补丁的总体加速率。新增测试覆盖强制 split 与非均匀分段；作者报告 95 passed／58 skipped。本次核验合并 diff，未独立复现 GPU 性能。",
+          "source": "https://github.com/vllm-project/vllm/pull/56151",
+          "sourceLabel": "vLLM PR #56151 · merged 84f738f",
+          "reading": "7 min",
+          "signal": "high",
+          "columns": [
+            "vllm",
+            "models"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-09-09T20:53:16Z",
+            "head": "a7a47162f2fef6fb0a83d0847aacc7214b89acf8",
+            "merged_at": "2026-09-30T19:33:24Z",
+            "merge_commit_sha": "84f738f1878ff2ab7664f1a4464b7f9f3cdb063d",
+            "verifiedAt": "2026-09-30T20:04:45Z"
+          }
         }
       ],
       "09.29": [
@@ -1983,9 +2098,9 @@
     "issueMeta": {
       "09.30": {
         "headline": "今日值得关注的 AI Infra 信号",
-        "subtitle": "本期 11 条 · 约 88 分钟",
-        "threadTitle": "从恢复身份、路由生命周期，到有边界的小批优化",
-        "threadSummary": "前七条保留；16:00 UTC 批次新增 TP 分片 Mamba 文件身份、AMD 小批 MoE 排序、权重重载后的路由采集重绑，以及 Mooncake 磁盘 owner 索引。四项均未合并；源码事实、作者实验条件和本次未复现边界分别标明。"
+        "subtitle": "本期 15 条 · 约 122 分钟",
+        "threadTitle": "推测解码的预算与宽度，以及模型适配和元数据热路径",
+        "threadSummary": "20:00 UTC 批次新增 DFLASH 自适应 verify 宽度、gfx950 V4.1 部署、MRV2 草稿槽位预算与 MiniMax-M3 indexer；另原位修订 Mooncake #4429 的不可变保留快照及 serving-name 计数。保留原始提出日期，区分已合并代码、开放提案和作者实验，既有正文及未验证实验完整保留。"
       },
       "09.29": {
         "headline": "今日值得关注的 AI Infra 信号",
