@@ -4,7 +4,7 @@
 
 网站首页展示知识地图；`/notes/<slug>` 原生渲染完整文章；原日报保留在 `/daily`；`/research` 是知识地图兼容入口。Google Drive 的 GPTLink 保存笔记、索引、图源与源码备份。公开博客内容文件为 `00-博客内容索引.json`，固定文件 ID `1UxQrRjgTwJzSuYnSLmOJ0MvWoAH4SIvz`，更新时保留此 ID，不另建同名文件。
 
-网站读取该公开文件，缓存最多约五分钟；临时读取失败时显示最后已保存的内容快照，不用每次改文章都重新构建网站。数据发布后，应核验网站正文，而不是只核对文件写入成功。
+原站读取该公开文件，缓存最多约五分钟；临时读取失败时显示最后已保存的内容快照，不用每次改文章都重新构建原站。GitHub Pages 使用静态构建，内容更新必须重新构建后才会发布。数据发布后，应分别核验两站正文，而不是只核对文件写入成功。
 
 ## JSON 格式
 
@@ -50,3 +50,67 @@ Google Drive 的 SVG 原始下载链接即使匿名下载成功，也不保证�
 
 SVG 与可编辑 draw.io 继续在 GPTLink 归档。网页 diagramUrl 应使用经实际浏览器验证可嵌入的 HTTPS 静态图像地址；diagramDownloadUrl 可继续指向已核验的 Drive draw.io 下载。只作图片渲染，不嵌入脚本或私密外部资源。新增图像应在文章内滚动到图像、打开画板／放大界面，检查自然尺寸大于零并查看截图；同时核验桌面与窄屏、两站正文和下载链接。若图源读取失败，应明确呈现不可用状态，不能留下无提示的空白图。
 
+## 本仓库开发与部署
+
+以下说明从 README 移入，适用于 `ttaohe/ttaohe.github.io`。
+
+### 页面与目录
+
+- `/`：代码风格的个人主页，包含已确认的教育经历，以及经历、项目和个人简历占位
+- `/ai-infra-daily-notes/`：知识地图与研究笔记
+- `/ai-infra-daily-notes/notes/<slug>/`：完整文章
+- `/ai-infra-daily-notes/daily/`：当前及历史简报、主题筛选和浏览器本地书签
+- `/ai-infra-daily-notes/research/`：知识地图兼容入口
+- `/ai-infra-daily-notes/experiments/`：明确标为待验证的实验设想
+- `/ai-infra-daily-notes/diagrams/`：静态 SVG 与可编辑 draw.io 图源
+
+早期根路径下的文章、Daily、research 和 experiments 地址保留跳转页，兼容已分享链接。本项目独立于 `ttaoai-homepage`，不使用 `infra-daily` 仓库。
+
+### 本地运行与检查
+
+使用 Node.js 24 和 pnpm 11.19.0。
+
+```bash
+pnpm install --frozen-lockfile
+pnpm dev
+```
+
+提交前检查：
+
+```bash
+pnpm test
+pnpm lint
+pnpm build
+```
+
+构建先验证公开 Drive 数据源，再将 Next.js 导出到 `out/`，最后整理为 `publish/`。博客位于 `publish/ai-infra-daily-notes/`；根主页模板是 `portfolio/index.html`。构建会核验配置前缀下的内部路由与资源链接。可用 `python3 -m http.server 4173 --directory publish` 预览完整静态站点。
+
+`lib/site-config.json` 是路径前缀与站点 origin 的唯一配置；`sitePath()` 为应用内链接和资源加前缀，保留外部链接与片段地址。
+
+GitHub Pages 不需要运行时服务器、数据库、私有 API key 或 Cloudflare 服务。GitHub Actions 使用短期部署凭据，外部 actions 固定到已核验的提交 SHA。
+
+### GitHub Pages 设置与刷新
+
+默认分支为 `main`；Settings → Pages → Source 应选 **GitHub Actions**，工作流只上传 `publish/`。
+
+推送、手动触发和每四小时一次的补偿计划都会启动构建；计划时间为 UTC 每四小时的第 23 分钟。GitHub 定时任务可能延迟，也可能因公开仓库长期无活动而停用，停止刷新时应检查 Actions。
+
+`lib/blog/feed-config.json` 指向统一的公开 Drive JSON。维护时先更新并验证 Drive，再把完全相同的有效内容同步到 `main` 上的 `lib/blog/content.json`，由推送触发构建。定时构建会读取当前数据源，但不会自动提交回仓库。
+
+Drive 保存权威内容、源码归档与原始资料；本仓库保存可部署源码和已验证的回退快照。两站可能在刷新期间短暂显示不同版本，必须核对内容时间戳与线上正文，不能宣称即时同步。
+
+### 读取失败与回退
+
+`scripts/sync-content.mjs` 读取公开原始 JSON，验证文章结构、HTTPS 来源链接、唯一标识、关联文章、日报日期与栏目、响应大小和内容时间戳；若数据源遗漏已提交的文章、日报或实验，会拒绝更新。
+
+获取或验证失败时保留 `lib/blog/content.json`，所有博客页面显示琥珀色的内容可能过期提示。旧版仅含 posts 的数据源仍可读取，缺失的 daily 或 experiments 使用保存的数据，并显示同样提示；完整刷新成功后移除提示。根主页不依赖数据源的实时可用性。
+
+发布时务必同步提交回退快照，否则后续失败会退回旧的已提交版本。`lib/blog/feed-status.json` 记录构建的数据源状态与内容时间戳；`daily-snapshot.json` 和 `experiments.ts` 保留向后兼容的本地默认值，正常页面使用统一内容数据。
+
+### 主页资料与倒计时边界
+
+`portfolio/index.html` 仅展示已确认的教育经历（NWPU EE 本科，2019–2023；WHU CS 硕士，2023–2026）和研究方向。经历、项目与个人 PDF 简历仍为待补充状态；`resume-ng` 只是排版模板来源，不使用上游示例经历充当个人信息。
+
+最新文章链接和内容更新时间由权威内容快照生成。`lib/update-schedule.ts` 同时供 React 博客和根主页倒计时模块使用。资料检查计划在每四小时 UTC 整点进行，也对应北京时间的每四小时整点；此计划与 GitHub 的第 23 分钟补偿构建不同。
+
+倒计时把固定截止时间保存在会话本地存储中；归零显示“等待更新检查”，只有观察到严格更新的内容时间戳才开启新一轮倒计时。它不代表任务实际执行、完成或保证发布。
