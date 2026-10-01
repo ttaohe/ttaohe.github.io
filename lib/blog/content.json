@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-10-01T08:15:00Z",
+  "updatedAt": "2026-10-01T12:10:00Z",
   "posts": [
     {
       "slug": "state-recovery",
@@ -657,11 +657,11 @@
           "id": "vllm-pd-sliding-window-backoff",
           "rank": "04",
           "category": "VLLM · KV CONNECTOR",
-          "title": "vLLM 修正 Sliding-window PD 的最后一 Token 回退，新增双端一致性约束与实测",
-          "summary": "9 月 30 日的 #59330 将 NIXL／Mooncake 的 Mamba N−1 backoff 扩展到 sliding-window、chunked-local 与 circular-buffer groups：P 端少算最后一 token，D 端从同一位置恢复。固定 head 5a7171a，23:14 UTC 更新后仍 open、未合并。全 prompt 加载后的回退新增断言，拒绝从已丢失必需状态的位置恢复。",
-          "why": "本次更新已补 DeepSeek-V4.1-Flash、NIXL 1P1D TP4＋TP4、GSM8K 5-shot c512 两遍测试：作者报告补丁 pass1／pass2 为 0.9249／0.9310；main 两次运行约 0.9174–0.9249／0.9189–0.9219。有限轮次不能证明统计显著提分。更重要的是 P/D 必须同时升级：单独升级 D 端可在 N%block_size==1 时让尾部配块错一位；prompt logprobs 会省略最后一 prompt token。MoRIIO、offloading 与 NIXL handshake 仍有后续工作。单测存在两支共有的环境失败，并非全套无失败；本次核源码与公开报告，未独立 GPU 复现。",
+          "title": "PD 最后一 Token 回退改为全模型契约；NIXL 双向拉取再限制 KV 结束位置",
+          "summary": "#59330 在 10 月 1 日 09:24 UTC 新增双向 NIXL 修复：P 端只拉取结束于本次恢复点的 D 端旧 KV；远端 KV 覆盖或超过截短后 prompt 时不拉取，避免按尾部配对的 blocks 整体错位。当前 head 3ba8d2b 也已把 NIXL／Mooncake 的最后一 token 回退改为全模型默认，包括 full attention，而非旧条目中的特定 stateful groups。仍 open、未合并，保留 9 月 30 日原条目。",
+          "why": "固定源码下，NIXL backoff=max(1, prefill-lookahead−1)，Mooncake 此 head 仍只回退 1；不能按正文概述推断两者都已接好多模块 MTP backoff。新增双向测试覆盖 prompt／remote 长度 80／160、65／65 均不拉取，以及 80／64 拉取 64 tokens；单 token prompt 保留原处理。作者新增 Qwen3-30B-A3B full-attention P/D、NIXL TP4＋TP4、GSM8K 两遍：0.9431／0.9431，main 0.9439／0.9431；报告 3,363 项单测通过，但仍有 main 共有的环境失败。已有 DeepSeek-V4.1 实测来自前序条件式 backoff，不应标为当前 head 重跑。P/D 必须同步升级；prompt logprobs 省略末 token，N%block_size==1 时少传一块。源码与作者证据分别核验，本次未独立运行 GPU。",
           "source": "https://github.com/vllm-project/vllm/pull/59330",
-          "sourceLabel": "vLLM PR #59330 · revised head 5a7171a",
+          "sourceLabel": "vLLM PR #59330 · revised head 3ba8d2b",
           "reading": "8 min",
           "signal": "high",
           "columns": [
@@ -692,15 +692,96 @@
                   "network"
                 ]
               }
+            },
+            {
+              "supersededAt": "2026-10-01T12:10:00Z",
+              "reason": "09:24 新增 NIXL 双向结束边界修复；当前 head 已改为全模型回退，并补 full-attention 证据。原 ID、09.30 日期桶和完整旧 record 保留。",
+              "record": {
+                "id": "vllm-pd-sliding-window-backoff",
+                "rank": "04",
+                "category": "VLLM · KV CONNECTOR",
+                "title": "vLLM 修正 Sliding-window PD 的最后一 Token 回退，新增双端一致性约束与实测",
+                "summary": "9 月 30 日的 #59330 将 NIXL／Mooncake 的 Mamba N−1 backoff 扩展到 sliding-window、chunked-local 与 circular-buffer groups：P 端少算最后一 token，D 端从同一位置恢复。固定 head 5a7171a，23:14 UTC 更新后仍 open、未合并。全 prompt 加载后的回退新增断言，拒绝从已丢失必需状态的位置恢复。",
+                "why": "本次更新已补 DeepSeek-V4.1-Flash、NIXL 1P1D TP4＋TP4、GSM8K 5-shot c512 两遍测试：作者报告补丁 pass1／pass2 为 0.9249／0.9310；main 两次运行约 0.9174–0.9249／0.9189–0.9219。有限轮次不能证明统计显著提分。更重要的是 P/D 必须同时升级：单独升级 D 端可在 N%block_size==1 时让尾部配块错一位；prompt logprobs 会省略最后一 prompt token。MoRIIO、offloading 与 NIXL handshake 仍有后续工作。单测存在两支共有的环境失败，并非全套无失败；本次核源码与公开报告，未独立 GPU 复现。",
+                "source": "https://github.com/vllm-project/vllm/pull/59330",
+                "sourceLabel": "vLLM PR #59330 · revised head 5a7171a",
+                "reading": "8 min",
+                "signal": "high",
+                "columns": [
+                  "vllm",
+                  "kv-cache",
+                  "models",
+                  "network"
+                ],
+                "revisions": [
+                  {
+                    "supersededAt": "2026-10-01T00:44:20Z",
+                    "reason": "新增 PD GSM8K 实测、connector contract 与同步升级警告使旧条目 TODO 不再准确；保持原 ID 原日期并留存旧 record",
+                    "record": {
+                      "id": "vllm-pd-sliding-window-backoff",
+                      "rank": "04",
+                      "category": "VLLM · KV CONNECTOR",
+                      "title": "vLLM 修正 Sliding-window PD 的最后一 Token 回退，避免静默错误与 NaN",
+                      "summary": "9 月 30 日的 Draft #59330 发现 NIXL/Mooncake 会先加载全部 N 个 prompt tokens，再让 Decode 回退重算最后一个 token；对 sliding-window state，这可能提前丢掉 N−W 所在 block，使约 1/block_size 的请求读到 null block。新逻辑让所有 resume-dependent groups 在 P 端只传 N−1 tokens、D 端从 N−1 恢复，DeepSeek-V4.1 原先在 1,023/4,095/8,191 tokens 出现的 NaN 由此被结构性避免。",
+                      "why": "PD 传输边界必须和模型状态的保留窗口一致，不能只按 full-attention KV 的语义处理。当前 2,234 个单元测试通过，但完整 TP4+TP4 GSM8K 验证仍是 TODO。",
+                      "source": "https://github.com/vllm-project/vllm/pull/59330",
+                      "sourceLabel": "vLLM PR #59330",
+                      "reading": "8 min",
+                      "signal": "high",
+                      "columns": [
+                        "vllm",
+                        "kv-cache",
+                        "models",
+                        "network"
+                      ]
+                    }
+                  }
+                ],
+                "sourceVersion": {
+                  "created_at": "2026-09-30T00:36:29Z",
+                  "head": "5a7171ac4bc39a240f77d59829bfa5f24865f990",
+                  "updated_at": "2026-09-30T23:14:35Z",
+                  "merged_at": null,
+                  "verifiedAt": "2026-10-01T00:07:45Z"
+                }
+              }
             }
           ],
           "sourceVersion": {
             "created_at": "2026-09-30T00:36:29Z",
-            "head": "5a7171ac4bc39a240f77d59829bfa5f24865f990",
-            "updated_at": "2026-09-30T23:14:35Z",
+            "updated_at": "2026-10-01T10:36:11Z",
+            "head": "3ba8d2bf38133f43b0b9e951e7e726325ef864d5",
+            "base": "4ed438b79ceaff5fe5d6d4a98b09bfb8718cceaa",
+            "state": "open",
+            "draft": true,
             "merged_at": null,
-            "verifiedAt": "2026-10-01T00:07:45Z"
-          }
+            "merge_commit_sha": null,
+            "revisionCommittedAt": "2026-10-01T09:24:25Z",
+            "verifiedAt": "2026-10-01T12:10:00Z",
+            "observationWindowEnd": "2026-10-01T12:00:00Z"
+          },
+          "supportingSources": [
+            {
+              "title": "固定 head：NIXL 全模型 backoff 与短 prompt 条件",
+              "url": "https://github.com/vllm-project/vllm/blob/3ba8d2bf38133f43b0b9e951e7e726325ef864d5/vllm/distributed/kv_transfer/kv_connector/v1/nixl/base_scheduler.py#L383-L433"
+            },
+            {
+              "title": "09:24 修复：双向拉取严格限制结束位置",
+              "url": "https://github.com/vllm-project/vllm/blob/3ba8d2bf38133f43b0b9e951e7e726325ef864d5/vllm/distributed/kv_transfer/kv_connector/v1/nixl/pull_scheduler.py#L81-L109"
+            },
+            {
+              "title": "固定 head：Mooncake 在此仍为单 token 回退",
+              "url": "https://github.com/vllm-project/vllm/blob/3ba8d2bf38133f43b0b9e951e7e726325ef864d5/vllm/distributed/kv_transfer/kv_connector/v1/mooncake/mooncake_connector.py#L935-L970"
+            },
+            {
+              "title": "固定 head：双向拉取边界回归",
+              "url": "https://github.com/vllm-project/vllm/blob/3ba8d2bf38133f43b0b9e951e7e726325ef864d5/tests/v1/kv_connector/unit/test_bidirectional_kv_transfer.py#L277-L308"
+            },
+            {
+              "title": "固定 head：Connector 的恢复位置契约",
+              "url": "https://github.com/vllm-project/vllm/blob/3ba8d2bf38133f43b0b9e951e7e726325ef864d5/vllm/distributed/kv_transfer/kv_connector/v1/base.py#L510-L523"
+            }
+          ]
         },
         {
           "id": "mooncake-native-layerwise-read-plan",
@@ -3007,6 +3088,555 @@
             }
           ],
           "rank": "23"
+        },
+        {
+          "id": "sglang-pd-prefill-continuous-input-polling",
+          "rank": "24",
+          "category": "SGLANG · PD SCHEDULING",
+          "title": "PD Prefill 提案在等待结果期间继续收请求，以跨 Rank 就绪检查维持两批流水",
+          "summary": "10 月 1 日 09:36 UTC 新开的 #42035 将 Prefill overlap loop 对最老结果的阻塞等待改成 copy_done.query() 与 TP CPU 组的 MIN 归约；未全体就绪时继续接收请求和 bootstrap arrivals，有空位便准备下一批，但最多保留两个 forward。固定 head 0249d58，默认关闭，open、未合并；它叠在指标改动 #42025 上。",
+          "why": "源码中的保护不只是 query 替代 synchronize：pause 及其后面的输入延后到结果处理边界，result_queue 纳入 abort／timeout／权重版本的在途盘点，storage prefetch 重试按调度步而非轮询次数推进，chunk 处理用标记避免重复；TP1 还短暂 sleep 让后台线程取得 GIL。开关仅支持 attention DP=CP=1、无推测的自回归生成，其他形态回退原等待逻辑。作者报告真实事件循环的 CPU 控制事件测试与双进程 Gloo FIFO 一致性测试；明确未采集本版 GPU 端到端 PD 数字。本次核固定生产代码及测试结构，不把更早接收等同于 TTFT 或吞吐已改善；每次轮询的小 collective 与 CPU 成本仍需测量。",
+          "source": "https://github.com/sgl-project/sglang/pull/42035",
+          "sourceLabel": "SGLang PR #42035 · open 0249d58",
+          "reading": "10 min",
+          "signal": "high",
+          "columns": [
+            "sglang",
+            "kv-cache",
+            "network"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-10-01T09:36:36Z",
+            "updated_at": "2026-10-01T09:38:10Z",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "head": "0249d589790661f4f73c909a6617e9884cb69fbb",
+            "base": "971f66fb712bb9d12ea6b3266627828a48d4ed9a",
+            "merge_commit_sha": null,
+            "verifiedAt": "2026-10-01T12:06:00Z",
+            "head_committed_at": "2026-10-01T09:20:43Z"
+          },
+          "supportingSources": [
+            {
+              "title": "固定 head：两批上限、形态门槛与 TP 一致就绪",
+              "url": "https://github.com/sgl-project/sglang/blob/0249d589790661f4f73c909a6617e9884cb69fbb/python/sglang/srt/disaggregation/prefill.py#L727-L880"
+            },
+            {
+              "title": "固定 head：延后 pause、在途盘点与 storage retry",
+              "url": "https://github.com/sgl-project/sglang/blob/0249d589790661f4f73c909a6617e9884cb69fbb/python/sglang/srt/managers/scheduler.py"
+            },
+            {
+              "title": "固定 head：默认关闭的输入轮询开关",
+              "url": "https://github.com/sgl-project/sglang/blob/0249d589790661f4f73c909a6617e9884cb69fbb/python/sglang/srt/environ.py"
+            },
+            {
+              "title": "固定 head：受控事件、暂停与 Gloo FIFO 回归",
+              "url": "https://github.com/sgl-project/sglang/blob/0249d589790661f4f73c909a6617e9884cb69fbb/test/registered/unit/disaggregation/test_prefill_result_polling.py"
+            },
+            {
+              "title": "前置指标 PR #42025：不同增量，非本条性能证据",
+              "url": "https://github.com/sgl-project/sglang/pull/42025"
+            }
+          ]
+        },
+        {
+          "id": "sglang-interleave-cp-dp-ep-kda-boundaries",
+          "rank": "25",
+          "category": "SGLANG · CP / EP / HYBRID MODEL",
+          "title": "SGLang 的 CP 栈提案连接 Attention DP、Dense TP 与 EP，并恢复 GLM-5.3-Flash 的 KDA 边界",
+          "summary": "10 月 1 日新开的 #42036→#42038→#42041→#42044→#42045 把 interleave CP 通信放进声明式层边界：保留 attention DP 与 dense TP，修正按真实 shard 行数分配 gather 输出和 DP 返回时 CP 副本恢复；EP dispatch 使用各 CP rank 的有效 token 数，排除物理 padding。GLM-5.3-Flash 的 KDA 则在 CP 组上按 head 做 TP。五项截至核验均 open，须按栈合并。",
+          "why": "固定 #42044 head ac5865f 可见：KDA 输入 gather 后恢复序列顺序，输出补齐并恢复 rank 顺序，再先完成 CP partial sum 才进入 mHC 的非线性更新／读出；residual 与系数仍留在各 context shard。DSA query 保持本地，KPool 的 key／score 按序 gather 后写复制的 index／tail cache，并没有 cache layer-split。#42038 对不能整除 CP×TP 的小 batch 回退 all-reduce 加 DP slicing，#42041 避免用完整 attention-DP token 数路由本地 shard。作者报告 CPU 回归及栈顶模型验收，#42045 新增 CP4／KDA TP4／MoE TP4 的测试配方；本次仅审源码与测试定义，不作吞吐或独立精度声明。GLM 路径要求 --language-only，明确拒绝 CP+PD，因为 state transfer 尚不理解 KDA 的 CP head ownership；不能把 EP 和模型配方概括为任意并行组合均可用。",
+          "source": "https://github.com/sgl-project/sglang/pull/42044",
+          "sourceLabel": "SGLang CP stack #42036–#42045 · open ac5865f",
+          "reading": "13 min",
+          "signal": "high",
+          "columns": [
+            "sglang",
+            "models",
+            "network",
+            "kv-cache"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-10-01T10:20:18Z",
+            "updated_at": "2026-10-01T11:09:41Z",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "head": "ac5865f91c3d41454c92b53478c2e577ddea483c",
+            "base": "7db1d293b2622062bf1e25100e6b2bb9e5c41e7b",
+            "merge_commit_sha": null,
+            "verifiedAt": "2026-10-01T12:06:00Z",
+            "head_committed_at": "2026-10-01T10:59:01Z",
+            "stack": [
+              {
+                "pr": 42036,
+                "created_at": "2026-10-01T09:37:09Z",
+                "updated_at": "2026-10-01T10:21:35Z",
+                "state": "open",
+                "draft": false,
+                "merged_at": null,
+                "head": "12013eb5fe6a8b7cf7c321a4636eff9bfccd8604",
+                "base": "f45c004e18d22222356928eac0a5c26d7af3398f",
+                "merge_commit_sha": null,
+                "verifiedAt": "2026-10-01T12:06:00Z"
+              },
+              {
+                "pr": 42038,
+                "created_at": "2026-10-01T09:41:32Z",
+                "updated_at": "2026-10-01T11:05:48Z",
+                "state": "open",
+                "draft": false,
+                "merged_at": null,
+                "head": "36fff1d7accef354d543cab1e0cd3e3f4d7a5fb8",
+                "base": "12013eb5fe6a8b7cf7c321a4636eff9bfccd8604",
+                "merge_commit_sha": null,
+                "verifiedAt": "2026-10-01T12:06:00Z",
+                "head_committed_at": "2026-10-01T10:55:55Z"
+              },
+              {
+                "pr": 42041,
+                "created_at": "2026-10-01T09:50:05Z",
+                "updated_at": "2026-10-01T11:12:27Z",
+                "state": "open",
+                "draft": false,
+                "merged_at": null,
+                "head": "7db1d293b2622062bf1e25100e6b2bb9e5c41e7b",
+                "base": "36fff1d7accef354d543cab1e0cd3e3f4d7a5fb8",
+                "merge_commit_sha": null,
+                "verifiedAt": "2026-10-01T12:06:00Z",
+                "head_committed_at": "2026-10-01T10:55:56Z"
+              },
+              {
+                "pr": 42045,
+                "created_at": "2026-10-01T10:20:38Z",
+                "updated_at": "2026-10-01T11:12:35Z",
+                "state": "open",
+                "draft": false,
+                "merged_at": null,
+                "head": "5874fcf5c9160019e39b94467bf9774dc3807d18",
+                "base": "ac5865f91c3d41454c92b53478c2e577ddea483c",
+                "merge_commit_sha": null,
+                "verifiedAt": "2026-10-01T12:06:00Z",
+                "head_committed_at": "2026-10-01T10:59:19Z"
+              }
+            ]
+          },
+          "supportingSources": [
+            {
+              "title": "栈底 #42036：CP boundary collectives",
+              "url": "https://github.com/sgl-project/sglang/pull/42036"
+            },
+            {
+              "title": "#42038：attention DP、dense TP 与 DP 返回修复",
+              "url": "https://github.com/sgl-project/sglang/pull/42038"
+            },
+            {
+              "title": "固定 #42038：小 batch fallback 与 CP／TP 副本恢复",
+              "url": "https://github.com/sgl-project/sglang/blob/36fff1d7accef354d543cab1e0cd3e3f4d7a5fb8/python/sglang/srt/layers/dp_attention.py#L997-L1041"
+            },
+            {
+              "title": "固定 #42041：EP dispatch 的有效本地行数",
+              "url": "https://github.com/sgl-project/sglang/blob/7db1d293b2622062bf1e25100e6b2bb9e5c41e7b/python/sglang/srt/layers/cp/interleave.py#L66-L88"
+            },
+            {
+              "title": "固定 #42044：KDA 序列／rank 排序及 gather 尺寸",
+              "url": "https://github.com/sgl-project/sglang/blob/ac5865f91c3d41454c92b53478c2e577ddea483c/python/sglang/srt/layers/cp/interleave_boundary.py"
+            },
+            {
+              "title": "固定 #42044：query 本地、KPool 压缩输入复制",
+              "url": "https://github.com/sgl-project/sglang/blob/ac5865f91c3d41454c92b53478c2e577ddea483c/python/sglang/srt/layers/cp/interleave_kpool.py"
+            },
+            {
+              "title": "固定 #42044：text-only 与 CP+PD 拒绝条件",
+              "url": "https://github.com/sgl-project/sglang/blob/ac5865f91c3d41454c92b53478c2e577ddea483c/python/sglang/srt/arg_groups/parallel_hook.py#L70-L86"
+            },
+            {
+              "title": "固定 #42045：新增 CP4 模型验收定义",
+              "url": "https://github.com/sgl-project/sglang/blob/5874fcf5c9160019e39b94467bf9774dc3807d18/test/registered/e2e/models/test_glm53_flash_b200.py#L134-L158"
+            }
+          ]
+        },
+        {
+          "id": "sglang-hicache-cgroup-reclaimable-file-cache",
+          "rank": "26",
+          "category": "SGLANG · HICACHE CAPACITY ACCOUNTING",
+          "title": "HiCache 修正提案从 cgroup 已用量中扣除可回收文件页，避免加载权重后误拒 Host Pool",
+          "summary": "10 月 1 日 09:43 UTC 新开的 #42039 针对 checkpoint 与容器镜像的 page cache 被算作不可用内存：每级 cgroup 使用量减去 active_file＋inactive_file，v1 使用相应 total_* 层级计数，并将结果夹到零；最终仍取所有可见层级限额与 host MemAvailable 的较小值。固定 head 6d3d61b，open、未合并。",
+          "why": "这改变初始化时的预算口径，不会压缩 KV 或增加物理 RAM。源码没有直接扣 memory.stat 的 file／cache 总项，因此测试中的 shmem 诱饵仍占预算；v2 同时检查 memory.max 与 memory.high，v1 采用祖先层级约束。作者报告无 GPU 的 Slurm/cgroup v2 实验：读入 151 GiB checkpoint 后，旧 headroom 为 173.1 GiB、新值为 348.4 GiB，并用 mlock 作为 pinned memory 替代验证可回收页；该结果属于特定节点与限额，不保证实际 CUDA pinning、并发分配或内存压力下同等可用。新增单测覆盖 v1/v2、shmem 与计数夹零。本次核完整固定实现和测试，未独立执行分配实验，也不把容量修正写成命中率或性能收益。",
+          "source": "https://github.com/sgl-project/sglang/pull/42039",
+          "sourceLabel": "SGLang PR #42039 · open 6d3d61b",
+          "reading": "7 min",
+          "signal": "high",
+          "columns": [
+            "sglang",
+            "kv-cache"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-10-01T09:43:56Z",
+            "updated_at": "2026-10-01T10:28:32Z",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "head": "6d3d61bd65a87fab3e33c325927d939233482745",
+            "base": "f45c004e18d22222356928eac0a5c26d7af3398f",
+            "merge_commit_sha": null,
+            "verifiedAt": "2026-10-01T12:06:00Z",
+            "head_committed_at": "2026-10-01T09:28:03Z"
+          },
+          "supportingSources": [
+            {
+              "title": "固定 head：逐级 cgroup 文件 LRU 扣除及 host 上界",
+              "url": "https://github.com/sgl-project/sglang/blob/6d3d61bd65a87fab3e33c325927d939233482745/python/sglang/srt/mem_cache/host_memory.py#L66-L123"
+            },
+            {
+              "title": "固定 head：v1 层级计数、shmem 诱饵与 clamp 测试",
+              "url": "https://github.com/sgl-project/sglang/blob/6d3d61bd65a87fab3e33c325927d939233482745/test/registered/unit/mem_cache/test_host_memory.py#L82-L106"
+            }
+          ]
+        },
+        {
+          "id": "sglang-mooncake-state-stride-guard",
+          "rank": "27",
+          "category": "SGLANG · MOONCAKE PD CORRECTNESS",
+          "title": "Mooncake PD 合入 State Stride 校验：传输成功也不能代表写到了正确状态槽",
+          "summary": "#41607 于 10 月 1 日 10:47 UTC 合并为 1a0250c。generic state transfer 把 Decode 已注册的 entry size 传到发送端，在 layer-ID 配对或现有 PP／压缩层映射后逐项核对 stride；不相等便将该请求标成 Failed、停止剩余 state 与 aux 写入，再走清理。兼容布局的传输计划与 wire format 保持不变。",
+          "why": "原路径把 Prefill item_len 同时用于目的地址步长和复制长度：若源为 32 B、Decode 为 64 B，slot 5 会按 160 B 而非 320 B 定位。新增检查阻断的是这种错槽写入，不能把 transport 返回成功当成语义正确。固定 merge 代码将 mismatch 与实际 transport failure 分开：前者只失败受影响请求，不进入 session blacklist；测试分别覆盖 positional／layer-ID、普通 PP／grouped C4 地址映射、并发请求清理及后续请求继续。作者报告 CPU wire/batching 回归通过，transport 为 mock，没有推理或吞吐验收。本次核 merge 生产代码与测试结构，不能推广为所有 KV 后端或任意异构 state 布局均兼容；此版本仍在携带 state 的发送路径逐请求校验。",
+          "source": "https://github.com/sgl-project/sglang/pull/41607",
+          "sourceLabel": "SGLang PR #41607 · merged 1a0250c",
+          "reading": "8 min",
+          "signal": "high",
+          "columns": [
+            "sglang",
+            "mooncake",
+            "kv-cache",
+            "network"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-09-29T01:06:15Z",
+            "updated_at": "2026-10-01T10:47:42Z",
+            "state": "closed",
+            "draft": false,
+            "merged_at": "2026-10-01T10:47:42Z",
+            "head": "bf4ed94e94e617964b2c558ca6c1c15e9f855d23",
+            "base": "517cfa218cfee933ed79d9878ca1ee36f85c1dc0",
+            "merge_commit_sha": "1a0250c5b6f25d2b59d39855e3636ce701d06248",
+            "verifiedAt": "2026-10-01T12:06:00Z"
+          },
+          "supportingSources": [
+            {
+              "title": "固定 merge：合入记录",
+              "url": "https://github.com/sgl-project/sglang/commit/1a0250c5b6f25d2b59d39855e3636ce701d06248"
+            },
+            {
+              "title": "固定 merge：layer-ID／PP 映射后的 stride 校验",
+              "url": "https://github.com/sgl-project/sglang/blob/1a0250c5b6f25d2b59d39855e3636ce701d06248/python/sglang/srt/disaggregation/mooncake/conn.py#L826-L882"
+            },
+            {
+              "title": "固定 merge：失败停止 state／aux 写与正常请求继续的回归",
+              "url": "https://github.com/sgl-project/sglang/blob/1a0250c5b6f25d2b59d39855e3636ce701d06248/test/registered/unit/disaggregation/test_disaggregation_wire.py#L76-L274"
+            }
+          ]
+        },
+        {
+          "id": "vllm-mrv2-mtp-per-module-lm-head",
+          "rank": "28",
+          "category": "VLLM · MTP DRAFT CORRECTNESS",
+          "title": "MRV2 多模块 MTP 合入逐步 LM Head 选择，避免后续 Draft 仍用第 0 层输出头",
+          "summary": "#58921 于 10 月 1 日 08:09 UTC 合并为 c4fc3c7。MultiModuleMTPSpeculator 现在把 spec_step_idx 同时传入模型 forward、logits 与本地 argmax 路径；普通 drafter 的默认 hook 仍忽略这个参数。Step-3.x 还改为使用 draft 自己的文本与量化配置，并声明保留每层独立 LM head，避免加载时被 target 的输出头覆盖。",
+          "why": "草稿隐状态来自第 i 个模块，不代表采样也选中了第 i 个 head／norm。固定 merge 代码补齐这条索引链。作者在 4×GB200、Step-3.7-Flash-FP8、TP4、MTP3、GSM8K 500 题 5-shot、温度 0 中，将仅修复加载问题的版本与完整补丁比较：第 1／2 个后续位置接受率 0.743／0.526→0.786／0.592，平均接受长度 3.20→3.31；第 0 位近似不变。GSM8K 为 0.910→0.902，不能据此宣称质量提高，也没有吞吐测量。合并 diff 仅含六个生产文件，没有新增测试文件；公开 E2E 是作者报告，本次核固定源码，未独立 GPU 复现。",
+          "source": "https://github.com/vllm-project/vllm/pull/58921",
+          "sourceLabel": "vLLM PR #58921 · merged c4fc3c7",
+          "reading": "7 min",
+          "signal": "high",
+          "columns": [
+            "vllm",
+            "models"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-09-27T15:59:26Z",
+            "updated_at": "2026-10-01T08:09:15Z",
+            "head": "6734e499066f925b9e7a4fbc2a5a04d767e0972b",
+            "base": "4ed438b79ceaff5fe5d6d4a98b09bfb8718cceaa",
+            "state": "closed",
+            "draft": false,
+            "merged_at": "2026-10-01T08:09:15Z",
+            "merge_commit_sha": "c4fc3c7d322bbcd1b25307ccbd9770c8eebc5c09",
+            "revisionCommittedAt": "2026-10-01T08:09:14Z",
+            "verifiedAt": "2026-10-01T12:10:00Z",
+            "observationWindowEnd": "2026-10-01T12:00:00Z"
+          },
+          "supportingSources": [
+            {
+              "title": "固定合并：MTP 逐步 logits 与 argmax hook",
+              "url": "https://github.com/vllm-project/vllm/blob/c4fc3c7d322bbcd1b25307ccbd9770c8eebc5c09/vllm/v1/worker/gpu/spec_decode/multi_module_mtp/speculator.py#L256-L265"
+            },
+            {
+              "title": "固定合并：采样显式接收本步索引",
+              "url": "https://github.com/vllm-project/vllm/blob/c4fc3c7d322bbcd1b25307ccbd9770c8eebc5c09/vllm/v1/worker/gpu/spec_decode/multi_module_mtp/speculator.py#L417-L442"
+            },
+            {
+              "title": "固定合并：独立输出头与 draft 配置",
+              "url": "https://github.com/vllm-project/vllm/blob/c4fc3c7d322bbcd1b25307ccbd9770c8eebc5c09/vllm/model_executor/models/step3p5_mtp.py#L142-L175"
+            },
+            {
+              "title": "固定合并：不再覆盖声明自有的层内输出头",
+              "url": "https://github.com/vllm-project/vllm/blob/c4fc3c7d322bbcd1b25307ccbd9770c8eebc5c09/vllm/v1/worker/gpu/spec_decode/eagle/utils.py#L15-L31"
+            }
+          ]
+        },
+        {
+          "id": "vllm-mori-mxfp4-activation-dispatch",
+          "rank": "29",
+          "category": "VLLM · ROCM MOE EP",
+          "title": "MoRI MXFP4 提案修复启动回归：发送 Packed FP4＋E8M0，而非误走 FP8 量化",
+          "summary": "10 月 1 日 11:58 UTC 新开的 #59596，为 AITER MXFP4 W4A4 MoE 优先选择 MoRI FP4 dispatch：activation 每字节打包两个值，每 32 元素配一份 E8M0 scale；scale 不预先 shuffle，交给专家核处理。MoRI token buffer 仍按未打包 hidden size 配置，以容纳 BF16 combine；专家输出尺寸与 padding 则显式还原打包前宽度。固定 head ffa4ee3 于 11:46 UTC 提交，open、未合并。",
+          "why": "这不是单纯换传输 dtype：dispatch、scale 元数据、专家输入和输出缓冲必须同意打包布局，才能修复 #57074 后的启动量化报错。固定源码新增 gfx950、双 rank、7 种形状的 MXFP4 数值回归，M=32 还捕获并重放 CUDA Graph；测试入口使用 mori_high_throughput，不能称为两种后端都被单测覆盖。作者正文在 12:00 窗口后观测、元数据更新于 12:01：其报告 21 项通过及 4 节点 2P2D、每实例 DP16/EP16 的 Kimi-K2.6-MXFP4 GSM8K strict 0.9356，属于补充报告，无法确认这些文字在截点前已存在。E2E 使用 nightly overlay，前后 nightly 不同，没有速度或网络吞吐对照；本次核预截点代码，未独立 GPU／多节点复现。",
+          "source": "https://github.com/vllm-project/vllm/pull/59596",
+          "sourceLabel": "vLLM PR #59596 · head ffa4ee3",
+          "reading": "8 min",
+          "signal": "high",
+          "columns": [
+            "vllm",
+            "models",
+            "network"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-10-01T11:58:42Z",
+            "updated_at": "2026-10-01T12:01:11Z",
+            "head": "ffa4ee35a03a9849d89742890a1a112526bea12e",
+            "base": "ab5266769e702434a0968d47319d0731d8ccac35",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "merge_commit_sha": null,
+            "revisionCommittedAt": "2026-10-01T11:46:31Z",
+            "verifiedAt": "2026-10-01T12:10:00Z",
+            "observationWindowEnd": "2026-10-01T12:00:00Z",
+            "bodyObservedAt": "2026-10-01T12:03:47Z",
+            "timingNote": "PR created and fixed code committed before 12:00 UTC; mutable PR body was observed after the cutoff and updated_at is 12:01:11. Author validation is supplementary, not proven pre-cutoff evidence."
+          },
+          "supportingSources": [
+            {
+              "title": "预截点固定 head：FP4、E8M0 与通信缓冲配置",
+              "url": "https://github.com/vllm-project/vllm/blob/ffa4ee35a03a9849d89742890a1a112526bea12e/vllm/model_executor/layers/fused_moe/all2all_utils.py#L322-L378"
+            },
+            {
+              "title": "预截点固定 head：1×32 量化与 dispatch",
+              "url": "https://github.com/vllm-project/vllm/blob/ffa4ee35a03a9849d89742890a1a112526bea12e/vllm/model_executor/layers/fused_moe/prepare_finalize/mori.py#L98-L119"
+            },
+            {
+              "title": "预截点固定 head：packed 输入对应的输出宽度",
+              "url": "https://github.com/vllm-project/vllm/blob/ffa4ee35a03a9849d89742890a1a112526bea12e/vllm/model_executor/layers/fused_moe/experts/rocm_aiter_moe.py#L532-L552"
+            },
+            {
+              "title": "预截点固定 head：双 rank、误差界和 graph replay 测试",
+              "url": "https://github.com/vllm-project/vllm/blob/ffa4ee35a03a9849d89742890a1a112526bea12e/tests/kernels/moe/test_mori_moe.py#L173-L240"
+            }
+          ]
+        },
+        {
+          "id": "mooncake-tent-owned-completion-metadata",
+          "rank": "30",
+          "category": "MOONCAKE · TENT METADATA LIFETIME",
+          "title": "TENT 提案让 Slice 自持 NIC 与机器标识，避免元数据刷新后的 Completion 悬空读取",
+          "summary": "10 月 1 日 08:15 UTC 新开的 #4437，把 RdmaSlice 中借用的源／目标 NIC 名称指针和目标 machine ID 指针改成自持字符串。generatePostPath 在每次选路或重试时复制标识；异步 completion 的 GDR 失败记录与恢复记录读取这些副本。RouteHint 只在选路调用期间保活快照，不能为之后的完成处理保证生命周期。固定 head b3ca6b0，open、未合并。",
+          "why": "它修复的是控制元数据的存活边界，而非 payload 完成、缓存持久化或传输性能。作者给出的 A/B ASan 复现，在替换本地快照后触发旧 NIC 名称的 heap-use-after-free；新版本通过。已提交回归还刷新本地与远端快照，断言旧对象确实释放，并注入合成成功 CQE，检查原 NIC／机器组合的 GDR 恢复记录仍正确；作者报告 ASan 1/1。该测试没有证明真实 RDMA、多节点或故障恢复全链路通过，也没有吞吐结果。本次核对固定结构、生产 completion 分支与回归源码，未独立运行 ASan／RDMA。",
+          "source": "https://github.com/kvcache-ai/Mooncake/pull/4437",
+          "sourceLabel": "Mooncake PR #4437 · head b3ca6b0",
+          "reading": "6 min",
+          "signal": "high",
+          "columns": [
+            "mooncake",
+            "network"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-10-01T08:15:34Z",
+            "updated_at": "2026-10-01T08:22:07Z",
+            "head": "b3ca6b0d8fd506092e26c7de656de6a6b3e827c1",
+            "base": "0d1a8040faebb7c127c8901840a38c2ff57e80c5",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "merge_commit_sha": null,
+            "revisionCommittedAt": "2026-10-01T06:33:33Z",
+            "verifiedAt": "2026-10-01T12:10:00Z",
+            "observationWindowEnd": "2026-10-01T12:00:00Z"
+          },
+          "supportingSources": [
+            {
+              "title": "固定 head：Slice 自持字符串",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/b3ca6b0d8fd506092e26c7de656de6a6b3e827c1/mooncake-transfer-engine/tent/include/tent/transport/rdma/slice.h#L144-L155"
+            },
+            {
+              "title": "固定 head：选路时复制快照内的标识",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/b3ca6b0d8fd506092e26c7de656de6a6b3e827c1/mooncake-transfer-engine/tent/src/transport/rdma/workers.cpp#L1799-L1812"
+            },
+            {
+              "title": "固定 head：失败与成功 completion 消费自持标识",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/b3ca6b0d8fd506092e26c7de656de6a6b3e827c1/mooncake-transfer-engine/tent/src/transport/rdma/workers.cpp#L1089-L1153"
+            },
+            {
+              "title": "固定 head：快照释放与合成 CQE 回归",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/b3ca6b0d8fd506092e26c7de656de6a6b3e827c1/mooncake-transfer-engine/tent/tests/rdma_transport_test.cpp#L568-L624"
+            }
+          ]
+        },
+        {
+          "id": "mooncake-tent-canceled-reservation-drain",
+          "rank": "31",
+          "category": "MOONCAKE · TENT QUEUE LIVENESS",
+          "title": "TENT 队列补丁新增取消占位清理：没有 Inflight 工作，也必须回收已发布槽位",
+          "summary": "旧 PR #3661 于 10 月 1 日 10:32 UTC 新增 92f3bae，修复原子多 worker 准入的后续活性问题：后面的队列拒绝时，前面已预留的槽位以空项取消；这些空项不增加 inflight_slices，旧 idle worker 因而可能永远不消费。新逻辑按队首 publication 判断 ready、取消后唤醒 worker，并在 send-quota 检查之前清掉空项。当前 open、未合并。",
+          "why": "“没有真实传输”不等于“没有需要处理的队列状态”。固定源码用 acquire 读取发布序号，在 processing 与 wait predicate 中都检查 ready；清理只到真实项或未发布队首为止，保留 FIFO，真实流量与本地 overflow 仍受配额约束。作者在 CPU 上新编译队列测试，报告 13/13 与重复 100 次的 1,300 passes；独立队列／worker-order 模型里，旧顺序 8 次取消耗尽槽位，新顺序处理 32 次且不发送真实请求。这里的“独立模型”是作者验证，并非本次复现。新 head 未重跑完整生产 build、RDMA 集成、TSAN 或多节点测试；不能沿用前序 245-target build 当作这次通过。本次只核新增 commit、固定源码和测试。",
+          "source": "https://github.com/kvcache-ai/Mooncake/pull/3661",
+          "sourceLabel": "Mooncake PR #3661 · revised head 92f3bae",
+          "reading": "7 min",
+          "signal": "high",
+          "columns": [
+            "mooncake",
+            "network"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-08-25T07:40:19Z",
+            "updated_at": "2026-10-01T10:34:31Z",
+            "head": "92f3baef66f3c6dde2a26004000fbd678ff9a0d8",
+            "base": "42c66414aafa7fa7d07f3cdac8484ff919eac52c",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "merge_commit_sha": null,
+            "revisionCommittedAt": "2026-10-01T10:32:21Z",
+            "verifiedAt": "2026-10-01T12:10:00Z",
+            "observationWindowEnd": "2026-10-01T12:00:00Z"
+          },
+          "supportingSources": [
+            {
+              "title": "10:32 UTC 新增提交：清理取消占位",
+              "url": "https://github.com/kvcache-ai/Mooncake/commit/92f3baef66f3c6dde2a26004000fbd678ff9a0d8"
+            },
+            {
+              "title": "固定 head：publication readiness 与 FIFO 清理",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/92f3baef66f3c6dde2a26004000fbd678ff9a0d8/mooncake-transfer-engine/tent/include/tent/common/concurrent/bounded_mpsc_queue.h#L99-L129"
+            },
+            {
+              "title": "固定 head：先清理空项再判断发送配额",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/92f3baef66f3c6dde2a26004000fbd678ff9a0d8/mooncake-transfer-engine/tent/src/transport/rdma/workers.cpp#L768-L776"
+            },
+            {
+              "title": "固定 head：worker 处理与等待谓词",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/92f3baef66f3c6dde2a26004000fbd678ff9a0d8/mooncake-transfer-engine/tent/src/transport/rdma/workers.cpp#L1229-L1263"
+            },
+            {
+              "title": "固定 head：零 inflight、配额关闭及 FIFO 回归",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/92f3baef66f3c6dde2a26004000fbd678ff9a0d8/mooncake-transfer-engine/tent/tests/bounded_mpsc_queue_test.cpp#L149-L322"
+            }
+          ]
+        },
+        {
+          "id": "purlin-scaleup-collective-orchestration",
+          "rank": "32",
+          "category": "论文补读 · SCALE-UP COLLECTIVES",
+          "title": "Purlin 分开 Collective 编排与搬运：SGLang 收益需区分低负载与过载排队",
+          "summary": "9 月 29 日 v1，作为补读。Purlin 用布局描述 collective，SNAC 统一协调 staging／通知／消费，再由硬件特化 Atom 执行 copy／reduce。作者在单台八卡 A100、H200、B200 上集成 SGLang 0f18d38；45 种离线配置相对 stock SGLang 的几何平均收益为 1.11×，摘要中的 1.13× 则汇总了三个基线的 135 次比较。",
+          "why": "在线实验用八张 H200、DeepSeek-V4-Flash FP8 回放 1,000 个 Mooncake 请求。最高 2.85× interactivity 增益发生在过载区，不能当作可持续到达率提升；每个应用配置只有一轮完整运行，部分高并发设置落后 MSCCL++。这补充了 scale-up collective 的执行分层视角，并未证明跨节点 RDMA／DeepEP 协同收益。本次未独立运行 GPU 复现。",
+          "source": "https://arxiv.org/html/2609.36954v1",
+          "sourceLabel": "Purlin · arXiv v1（9 月 29 日版本）",
+          "reading": "12 min",
+          "signal": "high",
+          "columns": [
+            "sglang",
+            "network",
+            "models"
+          ],
+          "sourceVersion": {
+            "kind": "paper",
+            "version": "v1",
+            "firstSubmittedAt": "2026-09-29T07:57:27Z",
+            "versionSubmittedAt": "2026-09-29T07:57:27Z",
+            "verifiedAt": "2026-10-01T12:06:07Z",
+            "references": [
+              "https://arxiv.org/abs/2609.36954v1",
+              "https://arxiv.org/html/2609.36954v1#S3",
+              "https://arxiv.org/html/2609.36954v1#S5",
+              "https://arxiv.org/html/2609.36954v1#A3"
+            ]
+          },
+          "supportingSources": [
+            {
+              "title": "固定论文：SNAC／Atom 设计",
+              "url": "https://arxiv.org/html/2609.36954v1#S3"
+            },
+            {
+              "title": "固定论文：应用指标、过载边界与单轮测量",
+              "url": "https://arxiv.org/html/2609.36954v1#S5.SS3"
+            },
+            {
+              "title": "固定论文：软件与配置",
+              "url": "https://arxiv.org/html/2609.36954v1#A3.SS1"
+            },
+            {
+              "title": "作者公开实现（仅核对范围与接口，不等同论文测试提交）",
+              "url": "https://github.com/purlin-project/purlin/tree/3695a38bb78b38b18deb160a80be50df71751d27"
+            }
+          ]
+        },
+        {
+          "id": "clm-suffix-cache-reuse-stale-state",
+          "rank": "33",
+          "category": "论文补读 · AGENT CONTEXT / KV",
+          "title": "CLM 的 Suffix Cache Reuse 保留编辑前状态：少重算之外，还要付显存与近似语义成本",
+          "summary": "9 月 29 日 v1，作为补读。Context Language Models 让模型编辑当前上下文；配套 SCR 保留未改动后缀的旧 KV、重旋转 RoPE，而 hybrid 层从旧 prompt 末尾的 recurrent snapshot 继续。作者在 Qwen3.6-27B／BrowseComp-Plus 上报告相近任务表现、经验 prefix-reuse FLOPs 减少 35%；这是近似状态复用，不能解释为编辑后精确重算等价或服务吞吐提升 35%。",
+          "why": "固定发布实现 18dc111 是 SGLang 0.5.16 的启动 monkeypatch，文档支持 Qwen3.6-27B、TP1；默认 K=6，另为 12×30,000-token 全注意力 KV 分配约 21.97 GiB side buffer，并保留每段尾部重算。省下重算不等于省显存；旧状态仍编码已删前缀，事实纠正与删除后行为须单测。论文额外复用的 7.8 个 prompt-token 百分点中，5.3 来自历史 reasoning stripping，2.5 来自其他编辑。本次仅阅读论文与固定源码，未做 GPU／质量复现。",
+          "source": "https://arxiv.org/html/2609.37725v1",
+          "sourceLabel": "Context Language Models / SCR · arXiv v1",
+          "reading": "13 min",
+          "signal": "high",
+          "columns": [
+            "sglang",
+            "kv-cache",
+            "models"
+          ],
+          "sourceVersion": {
+            "kind": "paper",
+            "version": "v1",
+            "firstSubmittedAt": "2026-09-29T14:50:08Z",
+            "versionSubmittedAt": "2026-09-29T14:50:08Z",
+            "verifiedAt": "2026-10-01T12:06:07Z",
+            "implementationHead": "18dc11115f50f261233c5bba7937834491e307e8",
+            "references": [
+              "https://arxiv.org/abs/2609.37725v1",
+              "https://arxiv.org/html/2609.37725v1#S5.SS3",
+              "https://arxiv.org/html/2609.37725v1#A2",
+              "https://github.com/facebookresearch/context-language-models/blob/18dc11115f50f261233c5bba7937834491e307e8/suffix_cache_reuse/README.md"
+            ]
+          },
+          "supportingSources": [
+            {
+              "title": "固定论文：SCR 结果",
+              "url": "https://arxiv.org/html/2609.37725v1#S5.SS3"
+            },
+            {
+              "title": "固定论文：近似状态、K 与收益来源",
+              "url": "https://arxiv.org/html/2609.37725v1#A2"
+            },
+            {
+              "title": "固定实现：supported versions、side buffer 与操作边界",
+              "url": "https://github.com/facebookresearch/context-language-models/blob/18dc11115f50f261233c5bba7937834491e307e8/suffix_cache_reuse/README.md#L96-L244"
+            },
+            {
+              "title": "固定实现：显式 side-buffer 分配",
+              "url": "https://github.com/facebookresearch/context-language-models/blob/18dc11115f50f261233c5bba7937834491e307e8/suffix_cache_reuse/suffix_cache_reuse/overlay.py#L256-L270"
+            },
+            {
+              "title": "固定实现：默认 K／尾部重算／side-buffer 规模",
+              "url": "https://github.com/facebookresearch/context-language-models/blob/18dc11115f50f261233c5bba7937834491e307e8/suffix_cache_reuse/suffix_cache_reuse/config.py#L14-L29"
+            },
+            {
+              "title": "固定实现：经验 FLOPs 的 token 计数代理",
+              "url": "https://github.com/facebookresearch/context-language-models/blob/18dc11115f50f261233c5bba7937834491e307e8/suffix_cache_reuse/analysis/scr_report.py#L18-L46"
+            }
+          ]
         }
       ]
     },
@@ -3305,9 +3935,9 @@
       },
       "10.01": {
         "headline": "今日值得关注的 AI Infra 信号",
-        "subtitle": "本期 23 条 · 约 196 分钟",
-        "threadTitle": "从调度活性到状态身份：模型、通信与 Agent 轨迹",
-        "threadSummary": "保留前两批全部记录；08:00 增补 HIP／DP 调度、Mamba 尾部 checkpoint、FP8 RoPE 双池传输、ROCm shared-expert 舍入与路由、GDN 分组页号、GLM 稀疏 MHA 和 TENT rail 策略。Rufus-Air 与 KITE 为明确标注原始版本日期的旧文补读。HiCache Host 分片原位修订为后续组合 Draft；E-08 保留旧计划，E-09 仅为未运行的 CPU 轨迹一致性实验。"
+        "subtitle": "本期 33 条 · 约 287 分钟",
+        "threadTitle": "从传输就绪到上下文编辑：状态边界、调度活性与有效收益",
+        "threadSummary": "保留此前全部记录；12:00 批次增补 PD Prefill 输入轮询、CP／EP／KDA 栈、HiCache cgroup 预算、Mooncake state-stride 校验、逐步 MTP 输出头、MoRI MXFP4 dispatch，以及 TENT 元数据生命周期和取消队列活性。Purlin 与 CLM/SCR 按 9 月 29 日原始 v1 补读；SCR 的旧状态语义与额外显存单列，E-10 仅为未运行的质量／同 HBM 对照。另在 9 月 30 日原条目修订 NIXL 双向恢复边界，保留旧记录。"
       }
     }
   },
@@ -3579,6 +4209,38 @@
           "url": "https://arxiv.org/html/2609.29421v2#S4.SS2"
         }
       ]
+    },
+    {
+      "id": "E-10",
+      "title": "SCR：编辑敏感任务中，旧状态收益能否覆盖语义偏差与额外显存？",
+      "hypothesis": "待验证：在可丢弃的冗余上下文编辑中，SCR 可能降低重算成本；但事实纠正、明确删除及高并发下，旧 KV／recurrent state 和私有 side buffer 可能抵消收益。该方案本身是近似方法，不能以逐 token 等价作为其已承诺性质。",
+      "method": [
+        "未执行。最小实验固定公开 Qwen3.6-27B revision、SGLang 0.5.16 与 SCR 18dc11115f50f261233c5bba7937834491e307e8，在单 GPU、TP1 上比较 SCR off 与默认 K=6／fork；先锁定一个可容纳模型和 side buffer 的硬件配置，记录全部分配与启动日志。",
+        "构造三类可公开短会话，各含至少 1,024-token 公共前缀和足够长的保留后缀以命中规划条件：冗余段删除；把唯一正确事实由旧值改为新值；明确删除含目标值的段后询问仅能从保留文本回答的问题。编辑位置、长度和总 prompt 长度配对，加入无编辑／append-only 对照，并记录实际 relocated tokens，避免把 fallback 当 SCR。",
+        "先用并发 1 做配对重复的任务准确率／旧值残留率与 TTFT；再扫描并发与 side-session 容量，给两臂相同总 HBM 上限，将额外 side buffer 计入预算。单独统计会话匹配、slot 不足、回退和尾部重算；不同 cache_salt 加隔离对照。",
+        "先预注册任务质量容忍阈值与服务 SLO，再采集实测延迟及 goodput；报告 token-based FLOPs proxy 与 GPU 时间的差别。此方案不进行训练、不声称研究新颖性，也不把原论文 35% 直接换算成吞吐。"
+      ],
+      "metrics": [
+        "被纠正事实的准确率、旧值残留率与删除后错误回答率（配对置信区间）",
+        "实际 relocated／forwarded tokens、fallback 和 session-match 分布",
+        "TTFT／TPOT p50、p95、p99；固定 SLO goodput",
+        "模型、主 KV pool、side buffer 与峰值 HBM 实占；额外 copy／RoPE 重旋转时间"
+      ],
+      "falsifier": "若事实纠正／删除子集的错误率超过预注册容忍值，或同 HBM 上限下 side-buffer 开销令尾延迟／goodput 不改善，则拒绝在该任务上采用 SCR；即使 token-based FLOPs 下降也不改变这一结论。若大量请求未实际启用 relocation，则只能判定实验未覆盖目标路径。",
+      "related": [
+        "state-recovery"
+      ],
+      "sources": [
+        {
+          "title": "Context Language Models · v1 的近似 SCR",
+          "url": "https://arxiv.org/html/2609.37725v1#A2"
+        },
+        {
+          "title": "固定公开实现与支持范围",
+          "url": "https://github.com/facebookresearch/context-language-models/blob/18dc11115f50f261233c5bba7937834491e307e8/suffix_cache_reuse/README.md"
+        }
+      ],
+      "status": "unvalidated"
     }
   ]
 }
