@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-10-01T04:06:35Z",
+  "updatedAt": "2026-10-01T08:15:00Z",
   "posts": [
     {
       "slug": "state-recovery",
@@ -2305,11 +2305,11 @@
           "id": "sglang-hicache-tp-rank-sharded-host",
           "rank": "10",
           "category": "SGLANG · HICACHE HOST SHARD",
-          "title": "HiCache 提出按 TP Rank 分片 Host 层：减少重复 KV，回载增加广播与前向屏障",
-          "summary": "10 月 1 日 03:41 UTC 新开的 Draft #41984 让 DSA 的 MLA KV／index-K Host 层轮流归属 TP Rank；D2H 只备份自有层，H2D 后由 owner 经专用 NCCL group 逐层广播，树和槽位分配仍复制。相同 Host 预算下，理想均衡时独有 token 容量接近 TP 倍；也可保留容量而减少 Host 占用。固定 head fd73224，默认关闭、未合并，GitHub 确认与 main 冲突。",
-          "why": "容量去重不等于恢复必然更快：代码增加 staging gather／scatter、广播及全交换完成后的 forward gate，防止独立 communicator 的阻塞通信与前向 collective 交错死锁。入口限 CUDA、单节点、PP1、TP>1、无 DP attention／CP／DCP、direct＋page_first_direct、非 FP4 DSA，排除 L3、HiSparse 和 PD Decode。作者报告 4／8-rank Gloo 模拟与叠加开发栈 GSM8K，但此独立分支的 E2E 精度仍待跑，也无公开量化速度对照；9 月 13 日旧基线尚待 rebase，最终 diff 无新增测试文件。本次核关键固定源码，未复现，不把容量比例当作吞吐收益。",
-          "source": "https://github.com/sgl-project/sglang/pull/41984",
-          "sourceLabel": "SGLang PR #41984 · draft fd73224",
+          "title": "HiCache 分片 Host 提案转入组合 Draft，新增 D2H 分块发起与空闲同步跳过",
+          "summary": "原 #41984 于 10 月 1 日 05:58 UTC 关闭未合并，转入同日 05:58 创建的 #42009，合并 #41978 的 direct D2H 分块发起与 #41983 的 idle ready-count all-reduce 跳过。三项均默认关闭；固定 head b9e28fd，仍为与 main 冲突的 open draft，不能把重组当作合入或验收。",
+          "why": "TP 分层所有权、owner H2D 后广播和 forward gate 的机制保留。新增 chunking 按页在同一 stream 依次发起；idle skip 仅在 ack 队列为空、无 storage backend 等条件满足时跳过，并在连续 512 次后强制同步，不能由本地完成事件单独决定。源码入口仍限 CUDA 单节点、PP1、TP>1、无 DP attention／CP／DCP、direct＋page_first_direct 的非 FP4 DSA，排除 L3、HiSparse 与 PD Decode；idle skip 还排除所有 PD 模式及 buffer-only。作者报告模拟与叠加栈结果，组合分支 E2E 仍待跑且没有公开量化速度对照。本次核固定生产补丁；独立测量必须分开三个开关，不把容量倍数或组合栈收益归给单项。",
+          "source": "https://github.com/sgl-project/sglang/pull/42009",
+          "sourceLabel": "SGLang Draft #42009 · supersedes #41984",
           "reading": "10 min",
           "signal": "high",
           "columns": [
@@ -2318,25 +2318,83 @@
             "network"
           ],
           "sourceVersion": {
-            "created_at": "2026-10-01T03:41:18Z",
-            "updated_at": "2026-10-01T03:41:29Z",
-            "head": "fd73224d47b24171418d64174e5df647a6e9b8da",
+            "created_at": "2026-10-01T05:58:31Z",
+            "updated_at": "2026-10-01T05:58:43Z",
+            "head": "b9e28fd4032c357f0910eb9fb7ed31e6420e49e6",
             "merged_at": null,
             "merge_commit_sha": null,
-            "verifiedAt": "2026-10-01T04:03:19Z"
+            "state": "open",
+            "draft": true,
+            "verifiedAt": "2026-10-01T08:11:41Z",
+            "predecessor": {
+              "pr": 41984,
+              "created_at": "2026-10-01T03:41:18Z",
+              "closed_at": "2026-10-01T05:58:41Z",
+              "merged_at": null,
+              "head": "fd73224d47b24171418d64174e5df647a6e9b8da"
+            }
           },
           "supportingSources": [
             {
-              "title": "固定 head：所有权、适用条件及回载广播",
-              "url": "https://github.com/sgl-project/sglang/blob/fd73224d47b24171418d64174e5df647a6e9b8da/python/sglang/srt/mem_cache/hicache_rank_shard.py"
+              "title": "原 #41984：作者确认转入 #42009",
+              "url": "https://github.com/sgl-project/sglang/pull/41984#issuecomment-5925658785"
             },
             {
-              "title": "固定 head：load fence 与 forward gate",
-              "url": "https://github.com/sgl-project/sglang/blob/fd73224d47b24171418d64174e5df647a6e9b8da/python/sglang/srt/mem_cache/l2_transfer.py"
+              "title": "固定 head：rank ownership、广播及 forward gate",
+              "url": "https://github.com/sgl-project/sglang/blob/b9e28fd4032c357f0910eb9fb7ed31e6420e49e6/python/sglang/srt/mem_cache/hicache_rank_shard.py"
             },
             {
-              "title": "固定 head：仅 DSA indexer sidecar 入口接线",
-              "url": "https://github.com/sgl-project/sglang/blob/fd73224d47b24171418d64174e5df647a6e9b8da/python/sglang/srt/mem_cache/hybrid_cache/hybrid_pool_assembler.py#L999-L1018"
+              "title": "固定 head：idle skip 条件与每 512 次强制同步",
+              "url": "https://github.com/sgl-project/sglang/blob/b9e28fd4032c357f0910eb9fb7ed31e6420e49e6/python/sglang/srt/mem_cache/unified_radix_cache.py"
+            },
+            {
+              "title": "固定 head：D2H 发起分块",
+              "url": "https://github.com/sgl-project/sglang/blob/b9e28fd4032c357f0910eb9fb7ed31e6420e49e6/python/sglang/srt/mem_cache/pool_host/base.py"
+            }
+          ],
+          "revisions": [
+            {
+              "revisedAt": "2026-10-01T08:11:41Z",
+              "reason": "原 PR 关闭且组合 PR 增加两个独立开关；保留原条目完整记录。",
+              "record": {
+                "id": "sglang-hicache-tp-rank-sharded-host",
+                "rank": "10",
+                "category": "SGLANG · HICACHE HOST SHARD",
+                "title": "HiCache 提出按 TP Rank 分片 Host 层：减少重复 KV，回载增加广播与前向屏障",
+                "summary": "10 月 1 日 03:41 UTC 新开的 Draft #41984 让 DSA 的 MLA KV／index-K Host 层轮流归属 TP Rank；D2H 只备份自有层，H2D 后由 owner 经专用 NCCL group 逐层广播，树和槽位分配仍复制。相同 Host 预算下，理想均衡时独有 token 容量接近 TP 倍；也可保留容量而减少 Host 占用。固定 head fd73224，默认关闭、未合并，GitHub 确认与 main 冲突。",
+                "why": "容量去重不等于恢复必然更快：代码增加 staging gather／scatter、广播及全交换完成后的 forward gate，防止独立 communicator 的阻塞通信与前向 collective 交错死锁。入口限 CUDA、单节点、PP1、TP>1、无 DP attention／CP／DCP、direct＋page_first_direct、非 FP4 DSA，排除 L3、HiSparse 和 PD Decode。作者报告 4／8-rank Gloo 模拟与叠加开发栈 GSM8K，但此独立分支的 E2E 精度仍待跑，也无公开量化速度对照；9 月 13 日旧基线尚待 rebase，最终 diff 无新增测试文件。本次核关键固定源码，未复现，不把容量比例当作吞吐收益。",
+                "source": "https://github.com/sgl-project/sglang/pull/41984",
+                "sourceLabel": "SGLang PR #41984 · draft fd73224",
+                "reading": "10 min",
+                "signal": "high",
+                "columns": [
+                  "sglang",
+                  "kv-cache",
+                  "network"
+                ],
+                "sourceVersion": {
+                  "created_at": "2026-10-01T03:41:18Z",
+                  "updated_at": "2026-10-01T03:41:29Z",
+                  "head": "fd73224d47b24171418d64174e5df647a6e9b8da",
+                  "merged_at": null,
+                  "merge_commit_sha": null,
+                  "verifiedAt": "2026-10-01T04:03:19Z"
+                },
+                "supportingSources": [
+                  {
+                    "title": "固定 head：所有权、适用条件及回载广播",
+                    "url": "https://github.com/sgl-project/sglang/blob/fd73224d47b24171418d64174e5df647a6e9b8da/python/sglang/srt/mem_cache/hicache_rank_shard.py"
+                  },
+                  {
+                    "title": "固定 head：load fence 与 forward gate",
+                    "url": "https://github.com/sgl-project/sglang/blob/fd73224d47b24171418d64174e5df647a6e9b8da/python/sglang/srt/mem_cache/l2_transfer.py"
+                  },
+                  {
+                    "title": "固定 head：仅 DSA indexer sidecar 入口接线",
+                    "url": "https://github.com/sgl-project/sglang/blob/fd73224d47b24171418d64174e5df647a6e9b8da/python/sglang/srt/mem_cache/hybrid_cache/hybrid_pool_assembler.py#L999-L1018"
+                  }
+                ]
+              }
             }
           ]
         },
@@ -2475,6 +2533,480 @@
               "url": "https://github.com/kvcache-ai/Mooncake/blob/7943c052be6aab81c71b60fea9483952dec21141/docs/source/api-reference/python/mooncake-store.md#L1549-L1613"
             }
           ]
+        },
+        {
+          "id": "sglang-dspark-hip-scheduling-verify-width",
+          "rank": "14",
+          "category": "SGLANG · SCHEDULING & SPECULATION",
+          "title": "DSpark 提案减少 HIP 同步与准入尾延迟，并按每步收益选择 Verify 宽度",
+          "summary": "10 月 1 日 04:28 UTC 新开的 #41994 将 HIP、PP1 的推测 overlap scheduling 放到 forward stream，用同队列事件等待替代 host synchronize；当全部 waiting requests 已能放入空槽时，也不再等待最低空槽门槛。另有默认关闭的 DSpark verify-width 控制器，按每位置接受率和部署 SPS 表选择本步统一宽度。固定 head 5a931fe，open、未合并。",
+          "why": "三项改动需要分开读：作者在 4×MI355X、DeepSeek-V4.1-Flash TP4/EP4 的 ABBA 对照中，报告调度改动使 batch1 decode +6.11%，256 请求突发 output throughput +8.58%，最大 TTFT 75.1→15.7 秒而中位数略增；在此分支上再开启窄 verify，batch256 decode +14.58%，不能与前组直接相乘。draft proposal 不变，额外宽度各自捕获 attention backend、graph 与 epilogue；测得启动增加约 60 秒。宽度自适应只支持 static verify，排除 attention DP、PP、Mamba targets 等，grammar／logprob／sampling mask 保持全宽。作者报告精度与多项 AMD 测试，也披露既有 flaky/failing 测试；本次核生产补丁与单测，未独立 GPU 复现。",
+          "source": "https://github.com/sgl-project/sglang/pull/41994",
+          "sourceLabel": "SGLang PR #41994 · head 5a931fe",
+          "reading": "11 min",
+          "signal": "high",
+          "columns": [
+            "sglang",
+            "models"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-10-01T04:28:35Z",
+            "updated_at": "2026-10-01T04:54:01Z",
+            "head": "5a931fe674cd85bd9abf6c3d5d1322a65293ca7f",
+            "merged_at": null,
+            "merge_commit_sha": null,
+            "state": "open",
+            "draft": false,
+            "verifiedAt": "2026-10-01T08:09:15Z"
+          },
+          "supportingSources": [
+            {
+              "title": "固定 head：HIP forward-stream scheduling",
+              "url": "https://github.com/sgl-project/sglang/blob/5a931fe674cd85bd9abf6c3d5d1322a65293ca7f/python/sglang/srt/managers/scheduler.py"
+            },
+            {
+              "title": "固定 head：等待请求可全部准入时停止 delay",
+              "url": "https://github.com/sgl-project/sglang/blob/5a931fe674cd85bd9abf6c3d5d1322a65293ca7f/python/sglang/srt/managers/min_free_slots_delayer.py"
+            },
+            {
+              "title": "固定 head：verify-width policy、限制与独立 runtime",
+              "url": "https://github.com/sgl-project/sglang/blob/5a931fe674cd85bd9abf6c3d5d1322a65293ca7f/python/sglang/srt/speculative/dspark_components/dspark_verify_width.py"
+            },
+            {
+              "title": "固定 head：分宽度接受率与选择策略测试",
+              "url": "https://github.com/sgl-project/sglang/blob/5a931fe674cd85bd9abf6c3d5d1322a65293ca7f/test/registered/unit/spec/test_dspark_verify_width_policy.py"
+            }
+          ]
+        },
+        {
+          "id": "sglang-mamba-prefill-tail-margin",
+          "rank": "15",
+          "category": "SGLANG · AGENT CHECKPOINT",
+          "title": "Mamba Checkpoint 向前留出 Tail Margin，避免 Agent 重写提示尾部后整段重算",
+          "summary": "10 月 1 日 06:25 UTC 新开的 Draft #42015 增加默认 0 的 --mamba-prefill-checkpoint-margin。非 DCP 的 final-prefill forward 若有足够空间，会把唯一 donated checkpoint 选到离 extension 尾部至少 N tokens 的 grid 点；较早的 chunk 保持原边界。固定 head 4ec18ab，open draft、未合并。",
+          "why": "它针对移动预算提醒等少量尾部改写：前缀虽大部分相同，旧 checkpoint 若在分歧之后就不能恢复。代价是该 forward 用 margin checkpoint 替代 branching-point checkpoint，而非额外保存两份。作者在 v0.5.20 overlay、4×B200 TP4、GLM-5.3-Flash FP8 fine-tune、EAGLE MTP3 的 100 秒 agent traffic 测试中，margin192 使 32 sessions 的 computed prompt tok/s 13,269→8,339，calls/s 1.04→1.15；这不是 main 分支或当前 PR head 的端到端验收。恢复与冷算 logprob 差异被作者报告为冷跑间噪声水平，不能写成 bit-exact。新增单测覆盖 margin、短 extension、chunk 和 branching 取舍，DCP 逻辑不变；本次仅核源码与报告，未独立复现。",
+          "source": "https://github.com/sgl-project/sglang/pull/42015",
+          "sourceLabel": "SGLang Draft #42015 · head 4ec18ab",
+          "reading": "8 min",
+          "signal": "high",
+          "columns": [
+            "sglang",
+            "kv-cache",
+            "models"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-10-01T06:25:19Z",
+            "updated_at": "2026-10-01T06:26:10Z",
+            "head": "4ec18ab01438c92fbf5a1a281418f5fa03ec332c",
+            "merged_at": null,
+            "merge_commit_sha": null,
+            "state": "open",
+            "draft": true,
+            "verifiedAt": "2026-10-01T08:09:15Z"
+          },
+          "supportingSources": [
+            {
+              "title": "固定 head：checkpoint 深度与 branching 取舍",
+              "url": "https://github.com/sgl-project/sglang/blob/4ec18ab01438c92fbf5a1a281418f5fa03ec332c/python/sglang/srt/managers/schedule_batch.py"
+            },
+            {
+              "title": "固定 head：默认关闭的 margin 参数",
+              "url": "https://github.com/sgl-project/sglang/blob/4ec18ab01438c92fbf5a1a281418f5fa03ec332c/python/sglang/srt/arg_groups/fields/exec_.py"
+            },
+            {
+              "title": "固定 head：checkpoint 深度回归",
+              "url": "https://github.com/sgl-project/sglang/blob/4ec18ab01438c92fbf5a1a281418f5fa03ec332c/test/registered/unit/managers/test_mamba_checkpoint_depth.py"
+            }
+          ]
+        },
+        {
+          "id": "sglang-dsv4-fp8-rope-transfer",
+          "rank": "16",
+          "category": "SGLANG · KV TRANSFER CORRECTNESS",
+          "title": "DeepSeek-V4 FP8 双池补齐 RoPE：Direct Linker 修复与 PD 注册支持分别合入",
+          "summary": "#40471 于 10 月 1 日 04:46 UTC 合并为 f02828e，给 direct external linker 注册 C4／C128 的 BF16 RoPE sibling；原先仅恢复每行 512 B FP8 nope，遗漏 128 B RoPE。#39166 于 06:42 UTC 合并为 9c3262d，把 compressed pages 与 SWA ring 的双池布局接入 PD 注册，解除原先的启动拒绝。两项都要求保留同一行／页索引对应关系。",
+          "why": "这是不同路径上的完整性修复。Direct linker 的 UMBP 作者实验需在 flush 时毒化旧 RoPE 才显露错误，因为普通 flush 不覆写内存，旧值可能掩盖漏传；修复也经共享 pool assembler 接到 Mooncake，但不能当作 Mooncake GPU 验收。PD 仍需两端 FP8 开关一致，拒绝 PP>1 与 HiSparse，未新增后端 send 算法。作者报告 MI355X 上 Flash 同机 Mooncake TCP、Pro 两节点 TCP／MORI 的 GSM8K 与 RoPE 检查；Mooncake RDMA 在其集群仍卡在 MR 注册，NIXL 没有此处的完整实测。没有性能矩阵，不能把双池支持写成吞吐增益；本次核两份固定 merge 生产代码与测试，未独立 GPU 复现。",
+          "source": "https://github.com/sgl-project/sglang/pull/40471",
+          "sourceLabel": "SGLang #40471 + #39166 · both merged",
+          "reading": "10 min",
+          "signal": "high",
+          "columns": [
+            "sglang",
+            "mooncake",
+            "kv-cache",
+            "network"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-09-20T15:47:27Z",
+            "updated_at": "2026-10-01T04:46:58Z",
+            "head": "5d6e963b5a0a6ff40294b543a70d4f8e1d699764",
+            "merged_at": "2026-10-01T04:46:57Z",
+            "merge_commit_sha": "f02828ea395aea88f1c83367db565b32bdfc4684",
+            "state": "closed",
+            "draft": false,
+            "verifiedAt": "2026-10-01T08:09:15Z",
+            "companion": {
+              "pr": 39166,
+              "created_at": "2026-09-12T03:36:51Z",
+              "updated_at": "2026-10-01T06:42:32Z",
+              "head": "fe234ce0d1b4461ea945ee1bff8c3650caf3dd84",
+              "merged_at": "2026-10-01T06:42:31Z",
+              "merge_commit_sha": "9c3262d855072e5e273a681d22b24f7e61339da5",
+              "state": "closed",
+              "draft": false,
+              "verifiedAt": "2026-10-01T08:09:15Z"
+            }
+          },
+          "supportingSources": [
+            {
+              "title": "固定合并：Direct linker 增加 C4／C128 RoPE pool",
+              "url": "https://github.com/sgl-project/sglang/blob/f02828ea395aea88f1c83367db565b32bdfc4684/python/sglang/srt/mem_cache/hybrid_cache/linker_pool_assembler.py"
+            },
+            {
+              "title": "PD 双池注册 PR #39166",
+              "url": "https://github.com/sgl-project/sglang/pull/39166"
+            },
+            {
+              "title": "固定合并：Compressed／SWA ring 双池 wire layout",
+              "url": "https://github.com/sgl-project/sglang/blob/9c3262d855072e5e273a681d22b24f7e61339da5/python/sglang/srt/mem_cache/deepseek_v4_memory_pool.py"
+            },
+            {
+              "title": "固定合并：PD 的 PP／HiSparse 限制",
+              "url": "https://github.com/sgl-project/sglang/blob/9c3262d855072e5e273a681d22b24f7e61339da5/python/sglang/srt/model_executor/pool_configurator.py"
+            },
+            {
+              "title": "固定合并：拒绝单双池布局不匹配",
+              "url": "https://github.com/sgl-project/sglang/blob/9c3262d855072e5e273a681d22b24f7e61339da5/python/sglang/srt/disaggregation/common/conn.py"
+            }
+          ]
+        },
+        {
+          "id": "sglang-amd-shared-expert-requant-routing",
+          "rank": "17",
+          "category": "SGLANG · AMD MOE CORRECTNESS",
+          "title": "ROCm Shared-Expert Fusion 提案同时修正 requant 舍入与路由输出契约",
+          "summary": "10 月 1 日 06:22 UTC 新开的 #42011 针对 DSV4.1-Flash 的 shared-expert fusion：ROCm 的 FP8→MXFP4 requant 改用 round-to-nearest-even 与 AITER scaling；满足条件的 sqrtsoftplus decode gate 在同一 launch 写入 shared-expert ID／weight，后处理按输出宽度避免重复 append，并从 routed-expert 记录中排除 shared 列。另将 AITER sorting dispatch 默认设为 multi-phase，可用 policy=0 恢复 auto。固定 head 4d42b86，open、未合并。",
+          "why": "融合不只是减少 launch：FP8 来源频繁落在 E2M1 midpoint，作者指出旧的向零 tie rounding 会缩小 shared-expert 权重。新增正负 midpoint packing 测试，以及 gate+append、select_experts、sorting policy 的对照用例。作者在 MI355X TP2 报告 requant 修改的 GSM8K 从 0.891 到 0.906，另报加入 router 修改后为 0.897／0.901／0.900；因此不能把前一组恢复结果当作最终组合已证明无精度影响。性能报告称 DSpark 每 decode step 的 router、sorting 分别少 0.41／0.13 ms，仅适用于其测试配置。固定 head 的 AMD CI 仍 queued；本次没有独立运行 GPU 或端到端复现。",
+          "source": "https://github.com/sgl-project/sglang/pull/42011",
+          "sourceLabel": "SGLang PR #42011 · open 4d42b86",
+          "reading": "8 min",
+          "signal": "high",
+          "columns": [
+            "sglang",
+            "models"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-10-01T06:22:30Z",
+            "updated_at": "2026-10-01T07:42:26Z",
+            "state": "open",
+            "draft": false,
+            "head": "4d42b869ab21d7f217fa0fb8d8d27f42a8f1d126",
+            "base": "315080a0de9ae5c2867fe294d27210025ddfe94e",
+            "merged_at": null,
+            "verifiedAt": "2026-10-01T08:10:19Z"
+          },
+          "supportingSources": [
+            {
+              "title": "固定 head：HIP requant 的 RNE 与 scaling 实现",
+              "url": "https://github.com/sgl-project/sglang/blob/4d42b869ab21d7f217fa0fb8d8d27f42a8f1d126/python/sglang/srt/layers/quantization/fp8_utils.py#L1712-L1779",
+              "head": "4d42b869ab21d7f217fa0fb8d8d27f42a8f1d126"
+            },
+            {
+              "title": "固定 head：router 同 launch 写 shared columns",
+              "url": "https://github.com/sgl-project/sglang/blob/4d42b869ab21d7f217fa0fb8d8d27f42a8f1d126/python/sglang/kernels/ops/moe/rocm_router_gate.py#L215-L321",
+              "head": "4d42b869ab21d7f217fa0fb8d8d27f42a8f1d126"
+            },
+            {
+              "title": "固定 head：shared 列去重与 routed-expert 记录",
+              "url": "https://github.com/sgl-project/sglang/blob/4d42b869ab21d7f217fa0fb8d8d27f42a8f1d126/python/sglang/srt/layers/moe/topk.py#L2275-L2410",
+              "head": "4d42b869ab21d7f217fa0fb8d8d27f42a8f1d126"
+            },
+            {
+              "title": "固定 head：AITER sorting dispatch 接入",
+              "url": "https://github.com/sgl-project/sglang/blob/4d42b869ab21d7f217fa0fb8d8d27f42a8f1d126/python/sglang/srt/layers/moe/moe_runner/aiter.py#L327-L335",
+              "head": "4d42b869ab21d7f217fa0fb8d8d27f42a8f1d126"
+            },
+            {
+              "title": "AMD CI：固定 head 尚在排队",
+              "url": "https://github.com/sgl-project/sglang/actions/runs/36826755875",
+              "head": "4d42b869ab21d7f217fa0fb8d8d27f42a8f1d126"
+            }
+          ]
+        },
+        {
+          "id": "vllm-dp-idle-rank-wave-announce",
+          "rank": "18",
+          "category": "VLLM · DP SCHEDULER",
+          "title": "DP 空闲 Rank 收到新请求后主动唤醒同组，修复 Pause／Resume 后的 Collective 挂起",
+          "summary": "10 月 1 日 07:04 UTC 新开的 #59559 修复跨 socket 时序漏洞：前端的唤醒可能被仍暂停的 peer 丢弃，而请求在 resume 后才到达本 rank；旧逻辑在 wave 相同时不再通告，导致单 rank 进入 collective。固定 head 643a86e 的新逻辑让有 coordinator、空闲且未暂停的 rank 收到请求时总是发布 start_wave，由 coordinator 去重；当前 open、未合并。",
+          "why": "这使“前端已发送唤醒”不再被当成“所有 rank 已开始执行”。作者在 2×H200、PowerMoE-3b、DP2+EP、nightly 镜像挂载补丁下报告：受控原版复现 60 秒超时，补丁通过，相关分布式测试 28 passed／4 skipped。代价是每次 idle→busy 多一次通告，必要时多一次广播；两轮冷启动对照的中位延迟有 0.5–2 ms 单请求、0.5–4.7 ms burst 增量，不能宣称零开销或吞吐提升。本次核验生产 diff 与固定源码，未独立执行 GPU 测试。",
+          "source": "https://github.com/vllm-project/vllm/pull/59559",
+          "sourceLabel": "vLLM PR #59559 · head 643a86e",
+          "reading": "6 min",
+          "signal": "high",
+          "columns": [
+            "vllm",
+            "models",
+            "network"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-10-01T07:04:11Z",
+            "updated_at": "2026-10-01T07:04:48Z",
+            "head": "643a86e8bfdcfbd72cb9737cd74dc7454b79e208",
+            "base": "aee8fe202a2fbd79a7a33cae70b310edc5960aa5",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "merge_commit_sha": null,
+            "verifiedAt": "2026-10-01T08:11:20Z",
+            "references": [
+              "https://github.com/vllm-project/vllm/blob/643a86e8bfdcfbd72cb9737cd74dc7454b79e208/vllm/v1/engine/core.py#L2160-L2176",
+              "https://github.com/vllm-project/vllm/pull/59559"
+            ]
+          },
+          "supportingSources": [
+            {
+              "title": "固定版本源码与补充证据",
+              "url": "https://github.com/vllm-project/vllm/blob/643a86e8bfdcfbd72cb9737cd74dc7454b79e208/vllm/v1/engine/core.py#L2160-L2176"
+            },
+            {
+              "title": "固定版本源码与补充证据",
+              "url": "https://github.com/vllm-project/vllm/pull/59559"
+            }
+          ]
+        },
+        {
+          "id": "vllm-gdn-checkpoint-group-regather",
+          "rank": "19",
+          "category": "VLLM · HYBRID STATE CORRECTNESS",
+          "title": "GDN 跨 Cache Group 复用元数据时，重新查找各组自己的 Checkpoint 页",
+          "summary": "10 月 1 日 04:14 UTC 提出的 #59536 在 06:10 UTC 改写方案：当前 head b797691 保留跨组 batch 元数据共享，把 checkpoint 的 request rows 与 block columns 一并保存，再用目标组原始 block table 重算 state_indices；此操作先于 aligned active-state table 替换。它避免 active state 已更新到新组、checkpoint 却仍指向旧组页号的静默写错；当前 open、未合并。",
+          "why": "恢复边界相同不意味着物理页身份相同。固定源码和新增回归分别检查普通／推测路径的目标组页号，不能继续采用 PR 正文仍保留的“两行关闭复用”描述。原方案作者报告 GLM-5.3-Flash 46 项诊断由 36/46 到 46/46，其中 9 项乱码消失；该 serving 结果不属于当前 regather 版本。07:05 UTC 最新评论仅宣布新 head 重跑已经启动，截至本次核验未见结果，性能代价也未测。本次只核验源码、提交历史与公开报告，未独立运行测试或模型。",
+          "source": "https://github.com/vllm-project/vllm/pull/59536",
+          "sourceLabel": "vLLM PR #59536 · revised head b797691",
+          "reading": "7 min",
+          "signal": "high",
+          "columns": [
+            "vllm",
+            "models",
+            "kv-cache"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-10-01T04:14:10Z",
+            "updated_at": "2026-10-01T07:05:39Z",
+            "head": "b797691bc8376aa55cffaf28c7dcf67f624b7a30",
+            "base": "70be6aae19587a251987c405b5bdf2d540da5991",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "merge_commit_sha": null,
+            "verifiedAt": "2026-10-01T08:11:20Z",
+            "references": [
+              "https://github.com/vllm-project/vllm/blob/b797691bc8376aa55cffaf28c7dcf67f624b7a30/vllm/model_executor/layers/mamba/checkpoint.py#L61-L89",
+              "https://github.com/vllm-project/vllm/blob/b797691bc8376aa55cffaf28c7dcf67f624b7a30/vllm/v1/attention/backends/gdn_attn.py#L611-L665",
+              "https://github.com/vllm-project/vllm/pull/59536#issuecomment-5926440861"
+            ]
+          },
+          "supportingSources": [
+            {
+              "title": "固定版本源码与补充证据",
+              "url": "https://github.com/vllm-project/vllm/blob/b797691bc8376aa55cffaf28c7dcf67f624b7a30/vllm/model_executor/layers/mamba/checkpoint.py#L61-L89"
+            },
+            {
+              "title": "固定版本源码与补充证据",
+              "url": "https://github.com/vllm-project/vllm/blob/b797691bc8376aa55cffaf28c7dcf67f624b7a30/vllm/v1/attention/backends/gdn_attn.py#L611-L665"
+            },
+            {
+              "title": "固定版本源码与补充证据",
+              "url": "https://github.com/vllm-project/vllm/pull/59536#issuecomment-5926440861"
+            }
+          ]
+        },
+        {
+          "id": "vllm-glm53-sparse-mha-skip-mqa-prep",
+          "rank": "20",
+          "category": "VLLM · GLM-5.3 ATTENTION",
+          "title": "GLM-5.3 稀疏 MHA 跳过无用 MQA 查询准备已合并；作者报告 TTFT 降 4.4–7.7%",
+          "summary": "#58845 原始提出于 9 月 26 日，10 月 1 日 07:13 UTC 合并为 4d6874d。稀疏 MHA 路径不再提前计算用不到的 q_nope×W_UK_T，并关闭这份 MQA query 的 FP8 量化；FULL CUDA graph、正在 capture 或无 attention metadata 时保留原准备路径。CuTe fused_q 同时增加不量化分支；不是无条件移除全部 attention 的归一化。",
+          "why": "优化按实际 attention dispatch 删除无用工作，避免把 MQA 的准备成本强加给 MHA。作者在 GLM-5.3 TP4+MTP5、8K/1K 合成请求的 c1/c4/c16 对照报告平均 TTFT 360.5→332.9、406.1→377.9、454.7→434.5 ms；但 c4 吞吐 412.4→398.5 tok/s，不能泛化为全并发吞吐改善。公开报告未说明 GPU 型号或重复次数；GSM8K 的小幅差异不证明提分。本次核验合并源码与作者报告，未独立复现，SM100 CuTe 支持条件也不等于作者测试硬件证据。",
+          "source": "https://github.com/vllm-project/vllm/pull/58845",
+          "sourceLabel": "vLLM PR #58845 · merged 4d6874d",
+          "reading": "7 min",
+          "signal": "high",
+          "columns": [
+            "vllm",
+            "models"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-09-26T14:49:23Z",
+            "updated_at": "2026-10-01T07:14:00Z",
+            "head": "dce8f472ad49ea8411d2474080e0c9dca9e6070d",
+            "base": "5ba2e3090b4c6bb6d5b4fd8ed3045107e787309e",
+            "state": "closed",
+            "draft": false,
+            "merged_at": "2026-10-01T07:13:58Z",
+            "merge_commit_sha": "4d6874d13756868453f78d5e717b2fbe9f8281d0",
+            "verifiedAt": "2026-10-01T08:11:20Z",
+            "references": [
+              "https://github.com/vllm-project/vllm/blob/4d6874d13756868453f78d5e717b2fbe9f8281d0/vllm/models/deepseek_v32/attention.py#L286-L298",
+              "https://github.com/vllm-project/vllm/blob/4d6874d13756868453f78d5e717b2fbe9f8281d0/vllm/models/deepseek_v32/attention.py#L419-L449",
+              "https://github.com/vllm-project/vllm/blob/4d6874d13756868453f78d5e717b2fbe9f8281d0/vllm/models/deepseek_v32/nvidia/ops/fused_q_cutedsl.py#L32-L55"
+            ]
+          },
+          "supportingSources": [
+            {
+              "title": "固定版本源码与补充证据",
+              "url": "https://github.com/vllm-project/vllm/blob/4d6874d13756868453f78d5e717b2fbe9f8281d0/vllm/models/deepseek_v32/attention.py#L286-L298"
+            },
+            {
+              "title": "固定版本源码与补充证据",
+              "url": "https://github.com/vllm-project/vllm/blob/4d6874d13756868453f78d5e717b2fbe9f8281d0/vllm/models/deepseek_v32/attention.py#L419-L449"
+            },
+            {
+              "title": "固定版本源码与补充证据",
+              "url": "https://github.com/vllm-project/vllm/blob/4d6874d13756868453f78d5e717b2fbe9f8281d0/vllm/models/deepseek_v32/nvidia/ops/fused_q_cutedsl.py#L32-L55"
+            }
+          ]
+        },
+        {
+          "id": "mooncake-tent-peer-rail-allocation-mask",
+          "rank": "21",
+          "category": "MOONCAKE · TENT RAIL POLICY",
+          "title": "TENT 在分配 Slice 配额前校验 Peer Rail，避免预分配绕过禁止网卡",
+          "summary": "10 月 1 日 04:49 UTC 新开的 #4435 在 aggregate quota 分配和 lazy per-slice 选择两处，将请求 device mask 与目标内存允许的 peer rail 本地网卡集合取交集。跨多个 memory location 的请求改走逐 slice 分配，避免用最大重叠位置代表整次传输；固定 head 26776e3，当前 open、未合并。",
+          "why": "传输策略必须在分配资源时生效，不能等 worker 收到预选 NIC 后才检查。源码将静态兼容性与可变 admission/probe 状态分开，并保留同机同 NIC loopback；因此过滤不会消耗恢复探针，也不把 paused rail 永久排除。作者报告 14+4 项单测通过，双节点 1 MiB、batch64、4线程、一秒 RDMA write 中，禁止的 mlx5_0 selected_bytes 从 77,925,974,016 变为 0。这是设备选择计数的策略证据，非有效吞吐、服务 SLO 或与 DeepEP 协同优先级证明。本次核验固定生产源码，未独立运行 RDMA。",
+          "source": "https://github.com/kvcache-ai/Mooncake/pull/4435",
+          "sourceLabel": "Mooncake PR #4435 · head 26776e3",
+          "reading": "7 min",
+          "signal": "high",
+          "columns": [
+            "mooncake",
+            "network"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-10-01T04:49:51Z",
+            "updated_at": "2026-10-01T05:12:48Z",
+            "head": "26776e3d6325dd9795332830bbba12b62e9aa55f",
+            "base": "0d1a8040faebb7c127c8901840a38c2ff57e80c5",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "merge_commit_sha": null,
+            "verifiedAt": "2026-10-01T08:11:20Z",
+            "references": [
+              "https://github.com/kvcache-ai/Mooncake/blob/26776e3d6325dd9795332830bbba12b62e9aa55f/mooncake-transfer-engine/tent/src/transport/rdma/workers.cpp#L1532-L1627",
+              "https://github.com/kvcache-ai/Mooncake/blob/26776e3d6325dd9795332830bbba12b62e9aa55f/mooncake-transfer-engine/tent/src/transport/rdma/rail_monitor.cpp#L112-L136"
+            ]
+          },
+          "supportingSources": [
+            {
+              "title": "固定版本源码与补充证据",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/26776e3d6325dd9795332830bbba12b62e9aa55f/mooncake-transfer-engine/tent/src/transport/rdma/workers.cpp#L1532-L1627"
+            },
+            {
+              "title": "固定版本源码与补充证据",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/26776e3d6325dd9795332830bbba12b62e9aa55f/mooncake-transfer-engine/tent/src/transport/rdma/rail_monitor.cpp#L112-L136"
+            }
+          ]
+        },
+        {
+          "id": "rufus-air-token-authoritative-rollouts",
+          "category": "论文补读 · AGENT RL",
+          "title": "Rufus-Air：让多轮 Rollout 的原始 Token 轨迹成为训练依据",
+          "summary": "9 月 25 日 v2，作为旧文补读。基于 GLM-4.5-Air-Base 的八阶段后训练报告，把 SGLang rollout 的 token IDs、logprobs、loss masks 与专家路由原样交给训练端，避免每轮重渲染历史再分词。Rollout Routing Replay 处理 MoE 路由造成的训练／采样偏差；它不等于消除精度等全部差异。",
+          "why": "多轮工具交互的正确性还包括终止原因与执行状态：论文区分完成、预算耗尽、上下文溢出和运行失败；非幂等命令只在确认尚未开始执行时自动重试。该配方建立在 Slime、Megatron-LM 与 SGLang 上；阶段顺序并未被证明最优。本次核验论文 §4、§6 与附录配置，没有源码审计或训练复现。",
+          "source": "https://arxiv.org/html/2609.29421v2",
+          "sourceLabel": "Rufus-Air · arXiv v2（9 月 25 日版本）",
+          "reading": "12 min",
+          "signal": "high",
+          "columns": [
+            "sglang",
+            "models"
+          ],
+          "sourceVersion": {
+            "kind": "paper",
+            "version": "v2",
+            "firstSubmittedAt": "2026-09-24T11:45:03Z",
+            "versionSubmittedAt": "2026-09-25T05:52:41Z",
+            "verifiedAt": "2026-10-01T08:10:00Z",
+            "references": [
+              "https://arxiv.org/abs/2609.29421v2",
+              "https://arxiv.org/html/2609.29421v2#S4",
+              "https://arxiv.org/html/2609.29421v2#S6",
+              "https://arxiv.org/html/2609.29421v2#A3"
+            ]
+          },
+          "supportingSources": [
+            {
+              "title": "固定论文版本与章节",
+              "url": "https://arxiv.org/abs/2609.29421v2"
+            },
+            {
+              "title": "固定论文版本与章节",
+              "url": "https://arxiv.org/html/2609.29421v2#S4"
+            },
+            {
+              "title": "固定论文版本与章节",
+              "url": "https://arxiv.org/html/2609.29421v2#S6"
+            },
+            {
+              "title": "固定论文版本与章节",
+              "url": "https://arxiv.org/html/2609.29421v2#A3"
+            }
+          ],
+          "rank": "22"
+        },
+        {
+          "id": "kite-kv-invariant-model-expansion",
+          "category": "论文补读 · MODEL ARCHITECTURE",
+          "title": "KITE 将新增容量放进 KV 读取侧，成本优势仍是分析估算",
+          "summary": "9 月 23 日 v1，作为旧文补读。Step Scale Transformer（SST）先训练较小模型，再增加读取已有 KV 的 Decoder，并联合续训两塔。批量 prompt prefill 只需 Prefiller；首 token 仍需末位置 Decoder，每个 decode token 也仍经过两塔。“KV 不变”是结构约束，不是冻结权重或 KV 数值。",
+          "why": "作者在可比累计理论训练 FLOPs 下报告 67B SST 的 loss 低于 47B／63B 基线。6.7%／31.6% 的推理成本下降来自 active-body 参数代理、75:25 的 prefill／decode 成本权重，并非 token 比例或实测服务加速。代理排除 embedding／head；OpenRouter 账单占比也不测量 GPU 成本。本次核验 §2–4 与附录 A–D，未做 GPU 复现。",
+          "source": "https://arxiv.org/html/2609.27294v1",
+          "sourceLabel": "KITE / SST · arXiv v1（9 月 23 日版本）",
+          "reading": "10 min",
+          "signal": "medium",
+          "columns": [
+            "models",
+            "kv-cache"
+          ],
+          "sourceVersion": {
+            "kind": "paper",
+            "version": "v1",
+            "firstSubmittedAt": "2026-09-23T03:31:54Z",
+            "versionSubmittedAt": "2026-09-23T03:31:54Z",
+            "verifiedAt": "2026-10-01T08:10:00Z",
+            "references": [
+              "https://arxiv.org/abs/2609.27294v1",
+              "https://arxiv.org/html/2609.27294v1#S2",
+              "https://arxiv.org/html/2609.27294v1#S4",
+              "https://arxiv.org/html/2609.27294v1#A1",
+              "https://arxiv.org/html/2609.27294v1#A2"
+            ]
+          },
+          "supportingSources": [
+            {
+              "title": "固定论文版本与章节",
+              "url": "https://arxiv.org/abs/2609.27294v1"
+            },
+            {
+              "title": "固定论文版本与章节",
+              "url": "https://arxiv.org/html/2609.27294v1#S2"
+            },
+            {
+              "title": "固定论文版本与章节",
+              "url": "https://arxiv.org/html/2609.27294v1#S4"
+            },
+            {
+              "title": "固定论文版本与章节",
+              "url": "https://arxiv.org/html/2609.27294v1#A1"
+            },
+            {
+              "title": "固定论文版本与章节",
+              "url": "https://arxiv.org/html/2609.27294v1#A2"
+            }
+          ],
+          "rank": "23"
         }
       ]
     },
@@ -2773,9 +3305,9 @@
       },
       "10.01": {
         "headline": "今日值得关注的 AI Infra 信号",
-        "subtitle": "本期 13 条 · 约 110 分钟",
-        "threadTitle": "正确性边界与模型落地：集体通信、缓存身份与状态租约",
-        "threadSummary": "保留 00:00 批次七项记录；04:00 增补 HiCache PD collective 修复、MiMo FA4 默认、TP 分层 Host 去重草案、Kimi-K3 packed KDA、LoRA 路径身份和递归 checkpoint 选择性续租。原位修订此前 Engram 合并方案及 Mooncake 主机反亲和，保留原始日期与旧版证据。作者结果、合并状态和本次源码核验分别标明。"
+        "subtitle": "本期 23 条 · 约 196 分钟",
+        "threadTitle": "从调度活性到状态身份：模型、通信与 Agent 轨迹",
+        "threadSummary": "保留前两批全部记录；08:00 增补 HIP／DP 调度、Mamba 尾部 checkpoint、FP8 RoPE 双池传输、ROCm shared-expert 舍入与路由、GDN 分组页号、GLM 稀疏 MHA 和 TENT rail 策略。Rufus-Air 与 KITE 为明确标注原始版本日期的旧文补读。HiCache Host 分片原位修订为后续组合 Draft；E-08 保留旧计划，E-09 仅为未运行的 CPU 轨迹一致性实验。"
       }
     }
   },
@@ -2931,7 +3463,8 @@
       "title": "TP 分片 Host KV：容量去重何时覆盖回载广播与前向屏障成本？",
       "hypothesis": "在复制 MLA／index-K 的 DSA 部署中，按层分片可减少 Host 复制字节并扩大独有缓存；只有这些收益超过 staging、TP 广播与整次回载屏障的代价，才会改善端到端服务。固定独有容量与固定 Host 总预算需分开检验。",
       "method": [
-        "未执行。先将 #41984 rebase 到可运行的固定 SGLang 提交并记录 diff，锁定一个公开 DSA checkpoint、CUDA 单节点 TP 拓扑、PP1、direct/page_first_direct；不开 DP attention、CP/DCP、L3、HiSparse 或 PD Decode。若独立分支无法完成正确性验收则停止，不把叠加开发栈结果当作复现。",
+        "未执行。原 #41984 已关闭未合并；后续实现候选改为 #42009 head b9e28fd4032c357f0910eb9fb7ed31e6420e49e6。该分支仍与 main 冲突，先 rebase 到可运行的固定提交并记录新 SHA、完整 diff 与三个开关；锁定公开 DSA checkpoint、CUDA 单节点 TP、PP1、direct/page_first_direct 的 aggregated serving，不开 DP attention、CP/DCP、L3、HiSparse 或任何 PD。若独立分支无法通过正确性验收则停止，不把模拟或叠加开发栈结果当作复现。",
+        "先做同一提交、同一请求轨迹的最小四臂消融：全部关闭；仅 SGLANG_ENABLE_HICACHE_RANK_SHARD；仅 SGLANG_HICACHE_D2H_ISSUE_CHUNK_PAGES（记录页数）；仅 SGLANG_ENABLE_HICACHE_IDLE_SYNC_SKIP。rank-shard 两组容量对照中，另外两项始终关闭；单项正确性完成后才补组合臂观察交互，不将 all-on 结果归因给单项，也不把三个收益相乘。idle-skip 臂覆盖空闲、重新出现 ack、512 次强制同步和 storage attach 后禁用；chunk 臂检查页顺序、字节量与完成事件一致。",
         "两组配对对照：A 固定独有 token 容量，比较 replicated baseline 与 KEEP_CAPACITY=1 的 rank-sharded host；B 固定全节点 Host KV 字节预算，允许分片增加容量。固定请求轨迹、HBM 预算与并发，报告实际 Host 分配、index-K、额外 HBM staging 和层数不整除 TP 带来的不均衡，不用配置值代替实占。",
         "使用可公开的合成多轮／分支请求，扫描复用间隔、回载批量、并发和 TP size；先固定命中请求测 D2H、H2D、广播、gather/scatter 与 forward gate，再让容量影响命中率，测整条请求关键路径。",
         "正确性覆盖：人为延迟单 Rank 的 H2D、非均匀层归属、强制淘汰与连续回载、排队或回载期间取消请求。核对各 Rank 的恢复页及确定性 logits/logprob、slot/ack 回收与容量恢复；在隔离的限时负对照中制造 host-page 索引分歧，要求校验发现而非静默继续。记录超时／死锁；不在生产运行故障注入。"
@@ -2940,7 +3473,8 @@
         "独有缓存容量、实际 adopted tokens／命中率、重算 token 数",
         "各 Rank D2H/H2D 字节与时长、广播字节／时间、gather/scatter、CPU issue 与 forward gate 等待",
         "TTFT／TPOT p50、p95、p99 和同 SLO goodput；固定命中条件与容量放开条件分别报告",
-        "Host 与 staging HBM 峰值、跨 Rank 页一致性、logits/logprob 误差、取消后的槽位／ack 回收和故障检测"
+        "Host 与 staging HBM 峰值、跨 Rank 页一致性、logits/logprob 误差、取消后的槽位／ack 回收和故障检测",
+        "逐臂记录 ready-count all-reduce 次数／时长、连续 skip 与强制同步、D2H chunk 数及 CPU issue→copy 时间线；组合臂单列交互，不并入 rank-shard 主效应"
       ],
       "falsifier": "若固定独有容量下少搬 Host 字节却因广播或屏障增加服务尾延迟，且固定 Host 预算下更高命中也不能补回同 SLO goodput，则不支持在该工作负载启用。任何静默跨 Rank 状态分歧、取消后泄漏或正常时序死锁，均使正确性前提不成立。",
       "related": [
@@ -2955,9 +3489,96 @@
         {
           "title": "固定 head：分片所有权、广播与 gate",
           "url": "https://github.com/sgl-project/sglang/blob/fd73224d47b24171418d64174e5df647a6e9b8da/python/sglang/srt/mem_cache/hicache_rank_shard.py"
+        },
+        {
+          "title": "后续组合 Draft #42009（未合并；待 rebase 与 E2E）",
+          "url": "https://github.com/sgl-project/sglang/pull/42009"
+        },
+        {
+          "title": "固定候选 head：分片所有权与广播",
+          "url": "https://github.com/sgl-project/sglang/blob/b9e28fd4032c357f0910eb9fb7ed31e6420e49e6/python/sglang/srt/mem_cache/hicache_rank_shard.py"
+        },
+        {
+          "title": "固定候选 head：idle skip 与 512 次同步边界",
+          "url": "https://github.com/sgl-project/sglang/blob/b9e28fd4032c357f0910eb9fb7ed31e6420e49e6/python/sglang/srt/mem_cache/unified_radix_cache.py"
+        },
+        {
+          "title": "固定候选 head：D2H chunking",
+          "url": "https://github.com/sgl-project/sglang/blob/b9e28fd4032c357f0910eb9fb7ed31e6420e49e6/python/sglang/srt/mem_cache/pool_host/base.py"
+        },
+        {
+          "title": "#41984 关闭迁移说明",
+          "url": "https://github.com/sgl-project/sglang/pull/41984#issuecomment-5925658785"
         }
       ],
-      "status": "unvalidated"
+      "status": "unvalidated",
+      "revisions": [
+        {
+          "revisedAt": "2026-10-01T08:11:41Z",
+          "reason": "原 #41984 关闭并转入 #42009；保留未验证状态与假设，补三个开关的单项消融并保留旧实验完整记录。",
+          "record": {
+            "id": "E-08",
+            "title": "TP 分片 Host KV：容量去重何时覆盖回载广播与前向屏障成本？",
+            "hypothesis": "在复制 MLA／index-K 的 DSA 部署中，按层分片可减少 Host 复制字节并扩大独有缓存；只有这些收益超过 staging、TP 广播与整次回载屏障的代价，才会改善端到端服务。固定独有容量与固定 Host 总预算需分开检验。",
+            "method": [
+              "未执行。先将 #41984 rebase 到可运行的固定 SGLang 提交并记录 diff，锁定一个公开 DSA checkpoint、CUDA 单节点 TP 拓扑、PP1、direct/page_first_direct；不开 DP attention、CP/DCP、L3、HiSparse 或 PD Decode。若独立分支无法完成正确性验收则停止，不把叠加开发栈结果当作复现。",
+              "两组配对对照：A 固定独有 token 容量，比较 replicated baseline 与 KEEP_CAPACITY=1 的 rank-sharded host；B 固定全节点 Host KV 字节预算，允许分片增加容量。固定请求轨迹、HBM 预算与并发，报告实际 Host 分配、index-K、额外 HBM staging 和层数不整除 TP 带来的不均衡，不用配置值代替实占。",
+              "使用可公开的合成多轮／分支请求，扫描复用间隔、回载批量、并发和 TP size；先固定命中请求测 D2H、H2D、广播、gather/scatter 与 forward gate，再让容量影响命中率，测整条请求关键路径。",
+              "正确性覆盖：人为延迟单 Rank 的 H2D、非均匀层归属、强制淘汰与连续回载、排队或回载期间取消请求。核对各 Rank 的恢复页及确定性 logits/logprob、slot/ack 回收与容量恢复；在隔离的限时负对照中制造 host-page 索引分歧，要求校验发现而非静默继续。记录超时／死锁；不在生产运行故障注入。"
+            ],
+            "metrics": [
+              "独有缓存容量、实际 adopted tokens／命中率、重算 token 数",
+              "各 Rank D2H/H2D 字节与时长、广播字节／时间、gather/scatter、CPU issue 与 forward gate 等待",
+              "TTFT／TPOT p50、p95、p99 和同 SLO goodput；固定命中条件与容量放开条件分别报告",
+              "Host 与 staging HBM 峰值、跨 Rank 页一致性、logits/logprob 误差、取消后的槽位／ack 回收和故障检测"
+            ],
+            "falsifier": "若固定独有容量下少搬 Host 字节却因广播或屏障增加服务尾延迟，且固定 Host 预算下更高命中也不能补回同 SLO goodput，则不支持在该工作负载启用。任何静默跨 Rank 状态分歧、取消后泄漏或正常时序死锁，均使正确性前提不成立。",
+            "related": [
+              "state-recovery",
+              "pd-c2c-coordination"
+            ],
+            "sources": [
+              {
+                "title": "SGLang #41984 · rank-sharded HiCache draft fd73224",
+                "url": "https://github.com/sgl-project/sglang/pull/41984"
+              },
+              {
+                "title": "固定 head：分片所有权、广播与 gate",
+                "url": "https://github.com/sgl-project/sglang/blob/fd73224d47b24171418d64174e5df647a6e9b8da/python/sglang/srt/mem_cache/hicache_rank_shard.py"
+              }
+            ],
+            "status": "unvalidated"
+          }
+        }
+      ]
+    },
+    {
+      "title": "多轮 Agent Rollout：原始 Token 轨迹能否阻止历史漂移？",
+      "status": "unvalidated",
+      "hypothesis": "在同一 tokenizer 与 chat template 下，逐轮重渲染／重分词可能改写已采样的历史 token 或掩码边界；原始 token 追加路径应保持历史前缀和训练元数据逐项一致。这个假设针对序列化链路，不声称已证明 RL 收益。",
+      "metrics": [
+        "历史 token 前缀一致率与首个差异位置",
+        "loss-mask／logprob 索引错位率",
+        "展示层修复进入训练序列的样本比例",
+        "每轮序列化 CPU 时间与存储开销"
+      ],
+      "falsifier": "若 A 在目标模板、测试集合与修复注入条件下始终保持相同 token 和元数据，而 B 没有额外正确性收益，则不能主张该目标 harness 需要此改造；若 B 仍改写历史或掩码错位，方案本身失败。",
+      "id": "E-09",
+      "method": [
+        "未执行。固定一个公开 tokenizer、chat template 的具体 revision。构造含多轮工具调用、特殊 token、空白、Unicode、长工具输出与异常终止的合成轨迹，保留每轮原始 token IDs 和可追溯的 loss-mask／logprob 索引。无需 GPU。",
+        "实现两个受测路径：A 每轮从文本记录重建完整 prompt；B 保留历史 token buffer，仅编码新增环境片段，并按模型模板协议追加。两者共享完全相同的输入、截断与终止规则。",
+        "逐轮与采样时保存的历史前缀做精确比较；另注入日志展示或工具调用文本修复，检查这些修改是否错误地流入训练序列。先仅验证序列化，不将合成 logprob 当成模型概率。",
+        "这是尚未运行的 CPU 合约测试。通过也不能证明权重版本一致、采样分布一致、MoE route replay 正确或训练质量改善；这些须另设实验。"
+      ],
+      "related": [
+        "state-recovery"
+      ],
+      "sources": [
+        {
+          "title": "Rufus-Air v2：token-in/token-out 的轨迹契约",
+          "url": "https://arxiv.org/html/2609.29421v2#S4.SS2"
+        }
+      ]
     }
   ]
 }
