@@ -606,7 +606,7 @@
           "why": "原条目中的 cuMem 与 8.38× 对应已被改写的 Draft，不能继续作为合并版结论。作者在单 GB200 节点、DeepSeek-V4.1-Flash DEP4、FP8 KV、16K token budget、关闭 prefix cache 的单输出 token Prefill 测试中报告：c64 下 4K–32K prompts 的 TTFT p50 约快 1.22–1.23×；每点三轮取中位数，c1 收益较小且波动最高 11%。当前 DEP2/4 lookup microbenchmark 的 32K 点为 36,963.3→9,905.1 μs（3.73×），不能替代 Serving 结果。117 tests 与 GSM8K 92.49% 均为作者报告，GSM8K 无配对基线；对排序与 stream 改动的时间贡献是作者估算、未 profile。本次只核验固定源码和公开材料，未独立 GPU 复现。",
           "source": "https://github.com/vllm-project/vllm/pull/59327",
           "sourceLabel": "vLLM PR #59327 · merged 4c2d277",
-          "reading": "9 min",
+          "reading": "10 min",
           "signal": "high",
           "columns": [
             "vllm",
