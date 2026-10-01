@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-10-01T12:10:00Z",
+  "updatedAt": "2026-10-01T16:11:00Z",
   "posts": [
     {
       "slug": "state-recovery",
@@ -52,6 +52,7 @@
           "heading": "4. 用有效恢复量检验缓存策略",
           "paragraphs": [
             "更有解释力的指标是“组件齐备且实际被采用的恢复 token 数”。如果 KV 页命中增加了，合法 checkpoint 却没有覆盖更长前缀，对请求而言可能没有新增收益。SGLang direct linker 的具体实现，正好提供了观察这个边界的源码切口；其 LOAD、COMMIT 与 COW 机制放在关联文章中单独分析。",
+            "容量侧还可先建立可检验的基线。9 月 23 日的 KVSET v1 用 LRU stack distance 估计页驻留工作集，避免为每个容量独立回放。固定实现默认要求每个请求保住其理论可复用连续前缀的 99%（向上取整到页），若再取所需容量的 p99，则表示让约 99% 的请求达到这个目标；这两个 99% 不是全局 token 命中率。论文明确只估 Full-Attention KV，Mamba／SWA 需另留预算。因此，页容量曲线可以作为恢复实验的输入，但还要对照同一边界的 checkpoint 与必需组件，测量实际 adopted tokens，不能用页驻留替代状态齐备或性能证据。",
             "一个待验证的实验是固定总容量，对比分组件 LRU、固定间隔 checkpoint 与共享分支边界优先保留。恢复位置覆盖 checkpoint 前后和分叉位置，同时记录 adopted tokens、齐备组件、重算量、写入放大，并检查 logits 或 logprob。若策略只提高对象 hit，却不提高可恢复长度，假设就不成立。",
             "性能还要回到时间线。HiCache 已在 waiting queue 阶段提前 prefetch，不能假设它等 admission 后才搬运。应比较准入时尚未完成的传输、L2→L1 与同步等待，再测 TTFT 和 HBM 占用时间。恢复正确、命中更多、端到端更快，是需要分别建立的证据。"
           ]
@@ -99,9 +100,136 @@
         {
           "title": "SGLang 固定版本：waiting queue 前的 prefetch",
           "url": "https://github.com/sgl-project/sglang/blob/eb9c9ee99d47bf4c526a06cd84da59cd9cf4e2a5/python/sglang/srt/managers/scheduler.py#L3266-L3293"
+        },
+        {
+          "title": "KVSET：The KV Cache Working Set，v1（§2 方法与 §5 范围限制）",
+          "url": "https://arxiv.org/pdf/2609.27746v1"
+        },
+        {
+          "title": "KVSET 固定实现：请求容量分位数与连续前缀目标",
+          "url": "https://github.com/llc-kc/kv_cache_capacity_estimator/blob/a90dc298151a8e117aa37e3c30fc0686de5225fa/src/kv_capacity_estimator/analysis.py#L428-L481"
+        },
+        {
+          "title": "KVSET 固定文档：默认目标比例与指标定义",
+          "url": "https://github.com/llc-kc/kv_cache_capacity_estimator/blob/a90dc298151a8e117aa37e3c30fc0686de5225fa/README.md"
         }
       ],
-      "disclosure": "本文由学习与讨论记录经 AI 辅助整理，公开来源核验截至 2026-09-30。实验部分是待验证设想，尚未实施；文中论文与实现成果属于原作者，不代表本站完成了 GPU 复现或证明了研究新颖性。"
+      "disclosure": "本文由学习与讨论记录经 AI 辅助整理。原有公开来源核验截至 2026-09-30；2026-10-01 补读 KVSET v1 并检查固定公开源码 a90dc298。实验部分仍是待验证设想，尚未实施；文中论文与实现成果属于原作者，不代表本站完成了工具、服务或 GPU 复现，也不证明研究新颖性。",
+      "lastRevisedAt": "2026-10-01T16:11:00Z",
+      "revisions": [
+        {
+          "supersededAt": "2026-10-01T16:11:00Z",
+          "reason": "补充 KVSET 的页工作集容量基线，将请求目标比例与请求覆盖分位数分开，并保留 hybrid 有效恢复与端到端验证边界。",
+          "sourceVersion": {
+            "arxiv": "2609.27746v1",
+            "firstSubmittedAt": "2026-09-23T11:59:45Z",
+            "implementationHead": "a90dc298151a8e117aa37e3c30fc0686de5225fa",
+            "implementationHeadCommittedAt": "2026-09-24T13:34:45Z",
+            "verifiedAt": "2026-10-01T16:06:30Z"
+          },
+          "record": {
+            "slug": "state-recovery",
+            "title": "KV cache 的下一层问题：什么状态才算真正可恢复？",
+            "subtitle": "把状态规模、合法恢复边界和存储层级拆开，重新理解 hybrid cache 的有效命中",
+            "date": "2026-09-30",
+            "category": "缓存与状态",
+            "tags": [
+              "KV cache",
+              "Hybrid LLM",
+              "Marconi",
+              "状态恢复"
+            ],
+            "kind": "技术综述",
+            "summary": "外存里有 KV，不等于请求能从那里继续执行。本文从模型状态的语义出发，梳理 checkpoint、缓存留存与恢复关键路径之间的关系，并提出尚待验证的测量方法。",
+            "outline": [
+              "1. 先拆开三条分析轴",
+              "2. 模型状态决定合法恢复边界",
+              "3. 能匹配，不代表能留到下次",
+              "4. 用有效恢复量检验缓存策略"
+            ],
+            "sections": [
+              {
+                "heading": "1. 先拆开三条分析轴",
+                "paragraphs": [
+                  "讨论 KV cache 时，很容易把“缓存在哪里”“状态有多大”和“命中后能否续算”混成一个问题。存储后端解决了容量与搬运，但 hybrid 模型还提出另一层约束：下一次请求要恢复哪些组件，这些组件是否对应同一个前缀边界？",
+                  "第一条轴是状态规模。Full KV、MLA、DSA 所需历史表示随上下文增长；SWA 窗口与 KDA、Mamba 的单个续算状态有界。不过，有界的是一个状态快照，大量历史 checkpoint 仍会累积容量，不能据此推出整个缓存固定大小。",
+                  "第二条轴是恢复语义：历史页可命中、窗口完整、recurrent checkpoint 存在，是不同条件。第三条轴是驻留与路径：L1 HBM、L2 host、L3 外存描述位置，direct linker 描述访问路径。共享池、跨请求留存与提前 prefetch，也应分别讨论。"
+                ],
+                "diagram": "state-boundary"
+              },
+              {
+                "heading": "2. 模型状态决定合法恢复边界",
+                "paragraphs": [
+                  "DeepSeek-V4.1-Flash 报告将 global KV 长期保留在 persistent cache，把 SWA KV 放入短 TTL 的分布式 host 内存池；SWA 缺失时，以最近一个窗口 replay 做近似重建。这展示了特定模型的存储与重算取舍，不能直接推广成 KDA、Mamba 的精确恢复方法。报告也保留了 cache-resumption 鲁棒性风险。",
+                  "这里的 persistent 是部署中的留存语义，不能仅凭名称推断通用断电持久性。类似地，“全量历史可表示”也不意味着所有 KV 页永不淘汰。模型表示能力与缓存管理策略之间，需要保留这条分界。",
+                  "Marconi 处理的困难是 recurrent state 会原地更新，无法像历史 KV 那样任意截短复用，因此要选择值得保存的边界。vLLM #37898 用普通 attention 命中长于 SSM 命中的差异发现未留存的共享前缀，再在 block 对齐边界补算并保留 checkpoint；这不要求显式 session 计数器。轮末边界和共享前缀边界是互补线索。"
+                ]
+              },
+              {
+                "heading": "3. 能匹配，不代表能留到下次",
+                "paragraphs": [
+                  "缓存树能找到共享前缀，只说明存在匹配关系。请求回来时，相关页与 checkpoint 是否仍驻留、是否被锁定、恢复是否赶得上准入，才决定命中的实际价值。Cache in the Wild 在其生产 traces 中观察到 cross-user 命中较少，同时指出单轮 API 的共享 system prompt 很重要；不能据此否定同一用户跨 session 的复用。",
+                  "Preble 将分布式前缀复用与负载均衡联合考虑，也提醒我们：共享池建立后，路由、局部驻留与排队仍会改变收益。对新 code-agent 工作负载，既有论文是比较基线，目标部署的 traces 才能回答复用间隔与容量是否匹配。",
+                  "容量测量同样需要拆分。L1、L2 至少应区分 active／locked、可淘汰 cache、free 与 in-flight。token_usage 的口径必须按部署 commit 核验；一个利用率数值无法说明所有已分配状态，也无法区分天然缺少共享与缓存留存不足。"
+                ]
+              },
+              {
+                "heading": "4. 用有效恢复量检验缓存策略",
+                "paragraphs": [
+                  "更有解释力的指标是“组件齐备且实际被采用的恢复 token 数”。如果 KV 页命中增加了，合法 checkpoint 却没有覆盖更长前缀，对请求而言可能没有新增收益。SGLang direct linker 的具体实现，正好提供了观察这个边界的源码切口；其 LOAD、COMMIT 与 COW 机制放在关联文章中单独分析。",
+                  "一个待验证的实验是固定总容量，对比分组件 LRU、固定间隔 checkpoint 与共享分支边界优先保留。恢复位置覆盖 checkpoint 前后和分叉位置，同时记录 adopted tokens、齐备组件、重算量、写入放大，并检查 logits 或 logprob。若策略只提高对象 hit，却不提高可恢复长度，假设就不成立。",
+                  "性能还要回到时间线。HiCache 已在 waiting queue 阶段提前 prefetch，不能假设它等 admission 后才搬运。应比较准入时尚未完成的传输、L2→L1 与同步等待，再测 TTFT 和 HBM 占用时间。恢复正确、命中更多、端到端更快，是需要分别建立的证据。"
+                ]
+              }
+            ],
+            "takeaways": [
+              "先确认同一边界的必需状态齐备，再讨论缓存命中率",
+              "有界续算状态不等于有界历史 checkpoint 总容量",
+              "缓存策略应以实际恢复量和端到端收益共同评价"
+            ],
+            "openQuestions": [
+              "分支工作负载中，checkpoint 覆盖率是否比 KV 驻留容量更先成为瓶颈？",
+              "前缀深度、复用间隔与重算成本，能否在不依赖业务标签时改善保留决策？",
+              "当提前 prefetch 已隐藏外存读取，剩余恢复路径还有多少可优化空间？"
+            ],
+            "relatedSlugs": [
+              "direct-linker",
+              "pd-c2c-coordination"
+            ],
+            "sources": [
+              {
+                "title": "DeepSeek-V4.1-Flash 报告 v1：§3.2 与 §6",
+                "url": "https://arxiv.org/html/2609.19969v1"
+              },
+              {
+                "title": "Marconi：Prefix Caching for the Era of Hybrid LLMs",
+                "url": "https://arxiv.org/abs/2411.19379"
+              },
+              {
+                "title": "vLLM #37898：Hybrid Marconi-style admission policy",
+                "url": "https://github.com/vllm-project/vllm/pull/37898"
+              },
+              {
+                "title": "vLLM 固定版本：shared_prefix_boundary 相关代码",
+                "url": "https://github.com/vllm-project/vllm/blob/e5f3d08d722870a5301560fad0cfa65b7e333900/vllm/v1/core/kv_cache_manager.py#L264-L321"
+              },
+              {
+                "title": "KVCache Cache in the Wild：arXiv v4",
+                "url": "https://arxiv.org/html/2506.02634v4"
+              },
+              {
+                "title": "Preble：Efficient Distributed Prompt Scheduling for LLM Serving",
+                "url": "https://arxiv.org/abs/2407.00023"
+              },
+              {
+                "title": "SGLang 固定版本：waiting queue 前的 prefetch",
+                "url": "https://github.com/sgl-project/sglang/blob/eb9c9ee99d47bf4c526a06cd84da59cd9cf4e2a5/python/sglang/srt/managers/scheduler.py#L3266-L3293"
+              }
+            ],
+            "disclosure": "本文由学习与讨论记录经 AI 辅助整理，公开来源核验截至 2026-09-30。实验部分是待验证设想，尚未实施；文中论文与实现成果属于原作者，不代表本站完成了 GPU 复现或证明了研究新颖性。"
+          }
+        }
+      ]
     },
     {
       "slug": "pd-c2c-coordination",
@@ -351,7 +479,8 @@
             "这里的 prefix sum 不是对原始 token counts 做一次普通累加。设对齐量 A、expert e 的有效行数 n[e]：先对之前各 expert 的数量向上对齐，得到 start[e]；end[e] 再等于 start[e]+n[e]。因此 endpoint 包含之前 expert 留出的对齐间隙，却不把本 expert 的尾部 padding 算成 live row。",
             "以 A=128、counts=[96,0,129,1] 为例，start=[0,128,128,384]，end=[96,128,257,385]。第二个 expert 为空，但其 endpoint 是 128；第三个 expert 从 128 开始，而不是从原始 counts 的累积值 96 开始。理解这点，才能正确地从上一 endpoint 重建当前起点。",
             "源码中 scatter 在现有步骤内写出 int32 endpoint，不需要为了 activation 把 counts 读回 CPU。DeepGemmFP4Experts.apply 把同一个 grouped_layout 交给 FC1、_act_mul_quant 与 FC2。激活 kernel 用 program_id(2) 选 expert，只循环 [start,end)；输出 padding 保持未写，消费者必须继续遵守相同有效区间。",
-            "这是一份生产者与消费者共同遵守的范围契约：跳过写入之所以可行，是因为后面的 GEMM 不把间隙当成真实 token；不能把未写 buffer 当作已经清零。原有 mk_alignment_scope 与相关 zero-padding 保护也没有因这份元数据而被整体移除。"
+            "这是一份生产者与消费者共同遵守的范围契约：跳过写入之所以可行，是因为后面的 GEMM 不把间隙当成真实 token；不能把未写 buffer 当作已经清零。原有 mk_alignment_scope 与相关 zero-padding 保护也没有因这份元数据而被整体移除。",
+            "同样出现 prefix sum，也不一定意味着跳过 padding。SGLang 的 DeepEP v2 expanded-prefill 提案 #37261 在固定 head 802c326 中，把每个 expert 的结束位置再次向上对齐，再为整个区间填写 m_indices；区间内的 padding 仍参与 GEMM，其输出由 combine 忽略，只有所有区间之外的 capacity tail 才保留 −1 sentinel。这条路径主要消除 dispatch 后的额外 scatter 拷贝，与本文把真实 end 贯穿两个 GEMM 和激活算子的 live-row 契约不同。比较实现时应检查消费者究竟读取真实 end 还是 aligned end，不能仅凭元数据叫 prefix sum 就归为同一种优化。该 SGLang 提案仍未合并，此处只作源码语义对照。"
           ],
           "code": "概念伪代码（根据源码独立整理）\nstart[0] = 0\nstart[e] = align_up(end[e-1], A)\nend[e] = start[e] + count[e]\nlive_rows[e] = [start[e], end[e])\n\nscatter → endpoint[E]\nFC1(endpoint) → SiLU+mul+quant(endpoint) → FC2(endpoint)\n\n注意：workspace capacity 保持原值；endpoint 不是新的 allocation size。",
           "diagramUrl": "https://ai-infra-daily.ttaohe.chatgpt.site/diagrams/fp4-live-rows.svg",
@@ -434,9 +563,166 @@
         {
           "title": "评审讨论：CUDA 与 ROCm 测试范围仍需区分",
           "url": "https://github.com/vllm-project/vllm/pull/59044#discussion_r4135024175"
+        },
+        {
+          "title": "SGLang 固定 head：对齐区间包含 padding，capacity tail 才保留 sentinel",
+          "url": "https://github.com/sgl-project/sglang/blob/802c3262330b105426bf52593aa029bf12382304/python/sglang/kernels/ops/moe/ep_moe_kernels.py#L2541-L2601"
+        },
+        {
+          "title": "SGLang 固定 head：对应区间与 sentinel 测试定义",
+          "url": "https://github.com/sgl-project/sglang/blob/802c3262330b105426bf52593aa029bf12382304/test/registered/kernels/ops/moe/test_deepep_v2_expand_kernels.py#L24-L93"
         }
       ],
-      "disclosure": "来源状态核验于 2026-09-30 08:00 UTC；本篇由 AI 辅助检索、阅读固定版本源码并整理，属于已有日报的源码深化。GPU 性能与模型准确性均来自 PR 作者报告，本次没有运行 GPU 或独立复现；仅执行了 CPU 整数范围模型检查，其结果不代表实际 kernel 正确性。原 PR 同样披露使用 Codex 辅助实现与验证。"
+      "disclosure": "来源状态核验于 2026-09-30 08:00 UTC；本篇由 AI 辅助检索、阅读固定版本源码并整理，属于已有日报的源码深化。GPU 性能与模型准确性均来自 PR 作者报告，本次没有运行 GPU 或独立复现；仅执行了 CPU 整数范围模型检查，其结果不代表实际 kernel 正确性。原 PR 同样披露使用 Codex 辅助实现与验证。 2026-10-01 补充 SGLang DeepEP v2 的 aligned-segment 源码对照，固定 head 802c326；vLLM 原 PR 的 head 和未合并状态经复核未变。本次新增部分仅阅读源码与测试定义，没有运行相关 CPU／GPU 测试。",
+      "lastRevisedAt": "2026-10-01T16:11:00Z",
+      "revisions": [
+        {
+          "supersededAt": "2026-10-01T16:11:00Z",
+          "reason": "补充跨项目 prefix-sum 对比，区分 aligned segment 与 live-row 有效区间；保留原日期及完整旧文。",
+          "sourceVersion": {
+            "created_at": "2026-08-31T14:28:00Z",
+            "updated_at": "2026-10-01T15:42:50Z",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "head": "802c3262330b105426bf52593aa029bf12382304",
+            "base": "1a0250c5b6f25d2b59d39855e3636ce701d06248",
+            "merge_commit_sha": null,
+            "verifiedAt": "2026-10-01T16:04:02Z",
+            "head_committed_at": "2026-10-01T15:38:20Z"
+          },
+          "record": {
+            "slug": "vllm-fp4-moe-live-rows",
+            "title": "Blackwell FP4 MoE：把 live-row 边界贯穿整个 FFN",
+            "subtitle": "从 vLLM #59044 看 padding 跳过、CUDA graph 动态计数与性能证据的边界",
+            "date": "2026-09-30",
+            "category": "引擎与算子",
+            "tags": [
+              "vLLM",
+              "MoE",
+              "DeepGEMM",
+              "FP4",
+              "Blackwell",
+              "CUDA Graph"
+            ],
+            "kind": "源码分析",
+            "summary": "9 月 29 日日报已经记录 #59044 的性能摘要。本篇进一步固定 PR head，分析 expert endpoint 如何连接 scatter、两次 grouped GEMM 与 fused SiLU 量化，以及为什么少做 padding 工作不等于释放 workspace。该 PR 仍未合并，所有 GPU 性能均为作者报告。",
+            "outline": [
+              "1. 为什么 GEMM 跳过 padding 还不够？",
+              "2. endpoint 到底编码了什么？",
+              "3. CUDA graph 重放时，哪些东西可以改变？",
+              "4. 9.36% 和 6.09× 分别证明了什么？",
+              "5. 如何验证这条路径值得部署？"
+            ],
+            "sections": [
+              {
+                "heading": "1. 为什么 GEMM 跳过 padding 还不够？",
+                "paragraphs": [
+                  "MoE 先把 token 按 expert 聚集，再执行 gate/up 投影、激活与量化、down 投影，最后反排列与加权归并。实际路由数量随 batch 改变，但 grouped GEMM 的对齐和 CUDA graph 的容量预留会让物理 buffer 大于有效 token 集合。只让 GEMM 少算无效行，中间 SiLU+mul+FP8 quant 仍可能遍历完整 buffer。",
+                  "#59044 的源码变化跨过了这个算子边界：scatter 生成每个 expert 的真实结束位置，两次 GEMM 使用 prefix-sum layout，中间 packed-UE8M0 激活量化也接收相同 endpoint。改变的是执行范围与布局元数据，而 activation workspace 仍按原来的 M_sum 容量分配。",
+                  "截至 2026-09-30 08:00 UTC 核验，PR 为 open、draft=false、未合并；固定 head 是 85285b44a87257ece81f9df7560a3f79c35acb68。PR 正文还留有“draft”描述，本文按 GitHub API 的结构化状态记录，不能把实现存在写成正式版本已经发布。"
+                ],
+                "bullets": [
+                  "本篇是对已有日报条目的源码深化，不把 9 月 28 日提交伪装为过去 24 小时的新功能",
+                  "新 prefix-sum 分支由 SM10.x family guard 启用；作者硬件测试为 GB200，不能据此宣称 SM103 已验证",
+                  "激活 masking 的具体入口是 SILU + UE8M0 packed scale；其他 gated activation 或 scale-format 分支不能直接套用同样的收益"
+                ]
+              },
+              {
+                "heading": "2. endpoint 到底编码了什么？",
+                "paragraphs": [
+                  "这里的 prefix sum 不是对原始 token counts 做一次普通累加。设对齐量 A、expert e 的有效行数 n[e]：先对之前各 expert 的数量向上对齐，得到 start[e]；end[e] 再等于 start[e]+n[e]。因此 endpoint 包含之前 expert 留出的对齐间隙，却不把本 expert 的尾部 padding 算成 live row。",
+                  "以 A=128、counts=[96,0,129,1] 为例，start=[0,128,128,384]，end=[96,128,257,385]。第二个 expert 为空，但其 endpoint 是 128；第三个 expert 从 128 开始，而不是从原始 counts 的累积值 96 开始。理解这点，才能正确地从上一 endpoint 重建当前起点。",
+                  "源码中 scatter 在现有步骤内写出 int32 endpoint，不需要为了 activation 把 counts 读回 CPU。DeepGemmFP4Experts.apply 把同一个 grouped_layout 交给 FC1、_act_mul_quant 与 FC2。激活 kernel 用 program_id(2) 选 expert，只循环 [start,end)；输出 padding 保持未写，消费者必须继续遵守相同有效区间。",
+                  "这是一份生产者与消费者共同遵守的范围契约：跳过写入之所以可行，是因为后面的 GEMM 不把间隙当成真实 token；不能把未写 buffer 当作已经清零。原有 mk_alignment_scope 与相关 zero-padding 保护也没有因这份元数据而被整体移除。"
+                ],
+                "code": "概念伪代码（根据源码独立整理）\nstart[0] = 0\nstart[e] = align_up(end[e-1], A)\nend[e] = start[e] + count[e]\nlive_rows[e] = [start[e], end[e])\n\nscatter → endpoint[E]\nFC1(endpoint) → SiLU+mul+quant(endpoint) → FC2(endpoint)\n\n注意：workspace capacity 保持原值；endpoint 不是新的 allocation size。",
+                "diagramUrl": "https://ai-infra-daily.ttaohe.chatgpt.site/diagrams/fp4-live-rows.svg",
+                "diagramDownloadUrl": "https://drive.google.com/uc?export=download&id=1KrOphHCy9l-NhTreK7S23rUtPDyTg5UU",
+                "diagramCaption": "概念示意：同一 endpoint 向量贯穿 FC1、packed SiLU 量化与 FC2；图中宽度和箭头不表示容量、时延或带宽比例。可下载 draw.io 文件继续编辑。"
+              },
+              {
+                "heading": "3. CUDA graph 重放时，哪些东西可以改变？",
+                "paragraphs": [
+                  "图捕获需要稳定的工作区与 launch 结构，并不要求每次重放的 expert counts 相同。此实现保留容量与 endpoint tensor 的地址，让设备侧内容随当前路由更新。激活 launch 从原来的二维 grid 变为带 expert 维度的三维 grid，kernel 运行时读取 endpoint，再在 grid-stride loop 中遍历各自有效区间。",
+                  "当调用方没有 expert_ends 时，wrapper 保留原 dense launch；EXPERT_ALIGNMENT 是编译期参数，缺少元数据时相关 load 会被编译掉。带 metadata 的路径会多做边界读取与调度，因此“全满 buffer”必须单独测，不能只展示高 padding 比例下的优势。",
+                  "新增 GPU 测试先捕获 graph，再把 counts 反转后重放；把无效输入填成 NaN、无效输出填成字节哨兵，检查 live FP8 与 packed scale 逐位一致，并检查 padding 输出没被触碰。空 expert、全空 counts、clamp 和 group-size 变化也被纳入用例。它检验的是动态有效范围，而不仅是一次随机输入的近似数值一致。",
+                  "本次另做了一个 CPU 范围模型检查，覆盖 2,004 组 counts，完成 24,048 项索引检查：验证 endpoint 递推与源码中“前序对齐 counts 求和”一致，以及模拟 grid-stride 访问恰好覆盖 live rows。它只检查整数索引语义，不运行 Triton、DeepGEMM、FP8 算术或 GPU graph，也不构成性能复现。"
+                ]
+              },
+              {
+                "heading": "4. 9.36% 和 6.09× 分别证明了什么？",
+                "paragraphs": [
+                  "作者的主要 FFN 配对实验使用 8×GB200、DeepSeek-V4-Flash revision 60d8d70770c6776ff598c94bb586a859a38244f1、EP8/DP8/TP1、DeepEP V2 + DeepGEMM，取第 10 层同一份真实输入、每 GPU 512 tokens。基线与候选两边已经都启用 prefix-sum GEMM，差异只在 activation 是否拿到 expert bounds。完整 FFN 从 425.5 降至 385.7 μs，即延迟下降 9.36%，约 1.103×。",
+                  "单独 profile 的 activation 是 76.0→20.7 μs；另一个独立量化 microbenchmark 在 3,072 live / 28,672 allocated rows、hidden=2,048 时为 63.984→10.510 μs，约 6.09×。不同 rank 的 expert 负载和 combine 汇合会影响完整 FFN，因此不能把局部 kernel 倍数直接写成模型吞吐提升。更早的 stock→prefix-sum 717.4→428.7 μs 来自另一轮配对，也不应和本轮结果拼成同一次端到端加速。",
+                  "布局 metadata 从 28,672 个 int32 变为 32 个 int32，算术上是 112 KiB→128 bytes；这不是主 activation workspace 的缩小。满 buffer 对照还显示某些 shape 有成本：28,672×2,048 的 metadata-aware kernel 为 64.822 μs，对原 dense 的 64.082 μs，约慢 1.15%。",
+                  "GSM8K 的 1,253/1,319→1,259/1,319 是作者准确性检查结果，不能称为质量提高。作者重复未改动的 control 也观察到答案正确性翻转。测试运行时是固定镜像加局部 Python/kernel 函数覆盖，不是完整重建当时 main；独立读者也未取得并重跑外部完整 FFN/评测编排。"
+                ]
+              },
+              {
+                "heading": "5. 如何验证这条路径值得部署？",
+                "paragraphs": [
+                  "合理的判断是：当静态容量明显大于当前 live rows，且 packed activation 路径真实命中时，把布局边界贯穿 FFN 能减少无效工作。它没有自动解决 expert 负载倾斜、all-to-all 通信、工作区容量或整个 serving 栈的问题。",
+                  "复现实验应分别保留 stock、prefix-sum only、prefix-sum+activation masking 三组，固定模型 revision、镜像、GPU 拓扑、路由输入与 graph 模式。先检查实际 dispatch 与 installed source hashes，再做正确性、kernel timing、完整 FFN 和端到端服务四层对照。下面是待验证计划，尚未在本次运行执行。",
+                  "关联的 PD／C2C 专题讨论通信与计算的共同关键路径。本篇消除部分 expert 计算空耗后，dispatch、combine 或跨 rank 汇合在总时间中的占比可能上升；这只是后续 profiling 应检查的方向，并非已经观察到的新瓶颈。"
+                ],
+                "bullets": [
+                  "覆盖 live/capacity 比、空 expert、倾斜路由、小 batch 与满 buffer；记录分 rank 分布，避免只看所有 rank 的中位数",
+                  "对 GPU graph 连续改变 counts，验证 live 值、packed scales 与 invalid-row 哨兵；模型级检查用重复对照估计原有数值噪声",
+                  "记录 FC1、activation、FC2、dispatch/combine 与同步等待的独立时间；服务层测吞吐、TPOT/P99 和延迟约束下的 goodput",
+                  "峰值 HBM 与 workspace 大小单独测量，不能用 metadata 省下的约 112 KiB 代替显存容量结论",
+                  "如果满 buffer 或小 batch 的调度成本抵消收益，应考虑适用范围或策略阈值；任何自动切换仍是待评估设计"
+                ]
+              }
+            ],
+            "takeaways": [
+              "endpoint 编码的是带对齐间隙的 live-row 结束位置，不是原始 counts 的普通前缀和",
+              "同一范围契约必须跨越两次 GEMM 与中间 activation；padding 未写要求消费者不读作有效数据",
+              "少执行、少 metadata、少 workspace 是三个不同结论；本实现没有缩小主 activation workspace",
+              "作者报告的 9.36% 是局部 FFN 配对收益，不能推广成全模型或全部 Blackwell 配置的承诺"
+            ],
+            "openQuestions": [
+              "真实 serving 流量中的 live/capacity 分布与最慢 expert rank 是否足以保留 FFN 收益？",
+              "在 SM103、其他激活函数或不同 scale format 下，dispatch 与性能边界如何变化？",
+              "动态启停 expert-aware activation 能否覆盖满 buffer 的额外成本，又不破坏 graph 稳定性？"
+            ],
+            "relatedSlugs": [
+              "pd-c2c-coordination"
+            ],
+            "sources": [
+              {
+                "title": "vLLM PR #59044：当前状态、作者测试与适用边界",
+                "url": "https://github.com/vllm-project/vllm/pull/59044"
+              },
+              {
+                "title": "固定 head：scatter 生成带对齐间隙的 endpoint",
+                "url": "https://github.com/vllm-project/vllm/blob/85285b44a87257ece81f9df7560a3f79c35acb68/vllm/model_executor/layers/fused_moe/deep_gemm_utils.py#L113-L159"
+              },
+              {
+                "title": "固定 head：布局元数据分配与原 scatter 路径",
+                "url": "https://github.com/vllm-project/vllm/blob/85285b44a87257ece81f9df7560a3f79c35acb68/vllm/model_executor/layers/fused_moe/deep_gemm_utils.py#L467-L559"
+              },
+              {
+                "title": "固定 head：设备/激活 guard 与三阶段数据流",
+                "url": "https://github.com/vllm-project/vllm/blob/85285b44a87257ece81f9df7560a3f79c35acb68/vllm/model_executor/layers/fused_moe/experts/deep_gemm_moe.py#L425-L678"
+              },
+              {
+                "title": "固定 head：packed SiLU kernel 的边界与 launch",
+                "url": "https://github.com/vllm-project/vllm/blob/85285b44a87257ece81f9df7560a3f79c35acb68/vllm/model_executor/layers/quantization/utils/fp8_utils.py#L140-L361"
+              },
+              {
+                "title": "固定 head：graph replay、poisoned padding 与 bitwise 测试",
+                "url": "https://github.com/vllm-project/vllm/blob/85285b44a87257ece81f9df7560a3f79c35acb68/tests/kernels/moe/test_silu_mul_per_token_group_quant_fp8_colmajor.py#L112-L179"
+              },
+              {
+                "title": "评审讨论：CUDA 与 ROCm 测试范围仍需区分",
+                "url": "https://github.com/vllm-project/vllm/pull/59044#discussion_r4135024175"
+              }
+            ],
+            "disclosure": "来源状态核验于 2026-09-30 08:00 UTC；本篇由 AI 辅助检索、阅读固定版本源码并整理，属于已有日报的源码深化。GPU 性能与模型准确性均来自 PR 作者报告，本次没有运行 GPU 或独立复现；仅执行了 CPU 整数范围模型检查，其结果不代表实际 kernel 正确性。原 PR 同样披露使用 Codex 辅助实现与验证。"
+          }
+        }
+      ]
     },
     {
       "slug": "vllm-aiter-a4w4-opt-in",
@@ -2663,11 +2949,11 @@
           "id": "sglang-mamba-prefill-tail-margin",
           "rank": "15",
           "category": "SGLANG · AGENT CHECKPOINT",
-          "title": "Mamba Checkpoint 向前留出 Tail Margin，避免 Agent 重写提示尾部后整段重算",
-          "summary": "10 月 1 日 06:25 UTC 新开的 Draft #42015 增加默认 0 的 --mamba-prefill-checkpoint-margin。非 DCP 的 final-prefill forward 若有足够空间，会把唯一 donated checkpoint 选到离 extension 尾部至少 N tokens 的 grid 点；较早的 chunk 保持原边界。固定 head 4ec18ab，open draft、未合并。",
-          "why": "它针对移动预算提醒等少量尾部改写：前缀虽大部分相同，旧 checkpoint 若在分歧之后就不能恢复。代价是该 forward 用 margin checkpoint 替代 branching-point checkpoint，而非额外保存两份。作者在 v0.5.20 overlay、4×B200 TP4、GLM-5.3-Flash FP8 fine-tune、EAGLE MTP3 的 100 秒 agent traffic 测试中，margin192 使 32 sessions 的 computed prompt tok/s 13,269→8,339，calls/s 1.04→1.15；这不是 main 分支或当前 PR head 的端到端验收。恢复与冷算 logprob 差异被作者报告为冷跑间噪声水平，不能写成 bit-exact。新增单测覆盖 margin、短 extension、chunk 和 branching 取舍，DCP 逻辑不变；本次仅核源码与报告，未独立复现。",
+          "title": "Mamba Tail Margin 提案关闭：客户端改为 Append-only，复用既有 Checkpoint",
+          "summary": "10 月 1 日 12:34 UTC，Draft #42015 已关闭、未合并，head 仍为 4ec18ab。作者说明触发问题的客户端将把 reminder 留在 conversation history，使后续 prompt 变成 append-only，并命中既有 checkpoint；因此撤回本提案。其默认 0 的 margin 参数、final-prefill 向前选择 checkpoint 的实现仍只作未合入方案线索，不能写成上游新增能力。",
+          "why": "这次关闭给出一个具体的应用侧替代：先消除动态提醒移动造成的前缀分歧，再判断是否仍需要改变 recurrent checkpoint 的保存策略；它不证明所有 agent 提示都能改成 append-only。此前作者的 v0.5.20 overlay、4×B200 TP4、GLM-5.3-Flash FP8 fine-tune、EAGLE MTP3、100 秒 agent traffic 报告仍属于原实验：margin192 下 32 sessions 的 computed prompt tok/s 13,269→8,339、calls/s 1.04→1.15，并非 main 或此 head 的端到端验收。方案用 margin checkpoint 替代同次 forward 的 branching-point checkpoint，不会同时多留一份；该取舍与 DCP 不变等历史源码分析保留。本次核关闭状态和作者原因，未运行 GPU，也未验证客户端改动的实际命中率。",
           "source": "https://github.com/sgl-project/sglang/pull/42015",
-          "sourceLabel": "SGLang Draft #42015 · head 4ec18ab",
+          "sourceLabel": "SGLang Draft #42015 · closed，未合并 4ec18ab",
           "reading": "8 min",
           "signal": "high",
           "columns": [
@@ -2677,15 +2963,21 @@
           ],
           "sourceVersion": {
             "created_at": "2026-10-01T06:25:19Z",
-            "updated_at": "2026-10-01T06:26:10Z",
+            "updated_at": "2026-10-01T12:34:54Z",
             "head": "4ec18ab01438c92fbf5a1a281418f5fa03ec332c",
             "merged_at": null,
             "merge_commit_sha": null,
-            "state": "open",
+            "state": "closed",
             "draft": true,
-            "verifiedAt": "2026-10-01T08:09:15Z"
+            "verifiedAt": "2026-10-01T16:06:50Z",
+            "closed_at": "2026-10-01T12:34:54Z",
+            "base": "947fee9384d3fd0ee780ed56cd8dcbe8138a19fd"
           },
           "supportingSources": [
+            {
+              "title": "作者关闭说明：保留 reminder，让 prompt append-only",
+              "url": "https://github.com/sgl-project/sglang/pull/42015#issuecomment-5931580563"
+            },
             {
               "title": "固定 head：checkpoint 深度与 branching 取舍",
               "url": "https://github.com/sgl-project/sglang/blob/4ec18ab01438c92fbf5a1a281418f5fa03ec332c/python/sglang/srt/managers/schedule_batch.py"
@@ -2697,6 +2989,53 @@
             {
               "title": "固定 head：checkpoint 深度回归",
               "url": "https://github.com/sgl-project/sglang/blob/4ec18ab01438c92fbf5a1a281418f5fa03ec332c/test/registered/unit/managers/test_mamba_checkpoint_depth.py"
+            }
+          ],
+          "revisions": [
+            {
+              "supersededAt": "2026-10-01T16:11:00Z",
+              "reason": "更新 PR 关闭原因与未合并状态；保留原日期、稳定 ID 和完整旧记录。",
+              "record": {
+                "id": "sglang-mamba-prefill-tail-margin",
+                "rank": "15",
+                "category": "SGLANG · AGENT CHECKPOINT",
+                "title": "Mamba Checkpoint 向前留出 Tail Margin，避免 Agent 重写提示尾部后整段重算",
+                "summary": "10 月 1 日 06:25 UTC 新开的 Draft #42015 增加默认 0 的 --mamba-prefill-checkpoint-margin。非 DCP 的 final-prefill forward 若有足够空间，会把唯一 donated checkpoint 选到离 extension 尾部至少 N tokens 的 grid 点；较早的 chunk 保持原边界。固定 head 4ec18ab，open draft、未合并。",
+                "why": "它针对移动预算提醒等少量尾部改写：前缀虽大部分相同，旧 checkpoint 若在分歧之后就不能恢复。代价是该 forward 用 margin checkpoint 替代 branching-point checkpoint，而非额外保存两份。作者在 v0.5.20 overlay、4×B200 TP4、GLM-5.3-Flash FP8 fine-tune、EAGLE MTP3 的 100 秒 agent traffic 测试中，margin192 使 32 sessions 的 computed prompt tok/s 13,269→8,339，calls/s 1.04→1.15；这不是 main 分支或当前 PR head 的端到端验收。恢复与冷算 logprob 差异被作者报告为冷跑间噪声水平，不能写成 bit-exact。新增单测覆盖 margin、短 extension、chunk 和 branching 取舍，DCP 逻辑不变；本次仅核源码与报告，未独立复现。",
+                "source": "https://github.com/sgl-project/sglang/pull/42015",
+                "sourceLabel": "SGLang Draft #42015 · head 4ec18ab",
+                "reading": "8 min",
+                "signal": "high",
+                "columns": [
+                  "sglang",
+                  "kv-cache",
+                  "models"
+                ],
+                "sourceVersion": {
+                  "created_at": "2026-10-01T06:25:19Z",
+                  "updated_at": "2026-10-01T06:26:10Z",
+                  "head": "4ec18ab01438c92fbf5a1a281418f5fa03ec332c",
+                  "merged_at": null,
+                  "merge_commit_sha": null,
+                  "state": "open",
+                  "draft": true,
+                  "verifiedAt": "2026-10-01T08:09:15Z"
+                },
+                "supportingSources": [
+                  {
+                    "title": "固定 head：checkpoint 深度与 branching 取舍",
+                    "url": "https://github.com/sgl-project/sglang/blob/4ec18ab01438c92fbf5a1a281418f5fa03ec332c/python/sglang/srt/managers/schedule_batch.py"
+                  },
+                  {
+                    "title": "固定 head：默认关闭的 margin 参数",
+                    "url": "https://github.com/sgl-project/sglang/blob/4ec18ab01438c92fbf5a1a281418f5fa03ec332c/python/sglang/srt/arg_groups/fields/exec_.py"
+                  },
+                  {
+                    "title": "固定 head：checkpoint 深度回归",
+                    "url": "https://github.com/sgl-project/sglang/blob/4ec18ab01438c92fbf5a1a281418f5fa03ec332c/test/registered/unit/managers/test_mamba_checkpoint_depth.py"
+                  }
+                ]
+              }
             }
           ]
         },
@@ -2860,11 +3199,11 @@
           "id": "vllm-gdn-checkpoint-group-regather",
           "rank": "19",
           "category": "VLLM · HYBRID STATE CORRECTNESS",
-          "title": "GDN 跨 Cache Group 复用元数据时，重新查找各组自己的 Checkpoint 页",
-          "summary": "10 月 1 日 04:14 UTC 提出的 #59536 在 06:10 UTC 改写方案：当前 head b797691 保留跨组 batch 元数据共享，把 checkpoint 的 request rows 与 block columns 一并保存，再用目标组原始 block table 重算 state_indices；此操作先于 aligned active-state table 替换。它避免 active state 已更新到新组、checkpoint 却仍指向旧组页号的静默写错；当前 open、未合并。",
-          "why": "恢复边界相同不意味着物理页身份相同。固定源码和新增回归分别检查普通／推测路径的目标组页号，不能继续采用 PR 正文仍保留的“两行关闭复用”描述。原方案作者报告 GLM-5.3-Flash 46 项诊断由 36/46 到 46/46，其中 9 项乱码消失；该 serving 结果不属于当前 regather 版本。07:05 UTC 最新评论仅宣布新 head 重跑已经启动，截至本次核验未见结果，性能代价也未测。本次只核验源码、提交历史与公开报告，未独立运行测试或模型。",
+          "title": "GDN 逐组重查 Checkpoint 页已合入，作者补齐 Regather 版 46 请求功能验证",
+          "summary": "#59536 于 10 月 1 日 14:59 UTC 合并为 b538d80。最终代码保留跨组 batch 元数据共享，保存 checkpoint 的 request rows 与 block columns，并在切换 aligned active-state table 之前，用目标组原始 block table 重算 state_indices。PR 正文仍描述早期“两行关闭共享”方案，应以固定合并代码为准。",
+          "why": "恢复边界相同，不代表物理页身份相同。新增回归让目标组 block table 整体偏移 100，覆盖普通／推测路径，检查 checkpoint 页号来自新组且 offsets 不变。15:40 UTC 作者确认 b797691 的 regather 版在 prefix caching 开启下，40/40 tool calls 与 6/6 32K 检索功能通过，替代旧条目“重跑未出结果”。其使用 ac68c308 nightly overlay 两个 runtime 文件，并非完整当前 main 重建；原始报告仍将 6 项长上下文的 reasoning_present 标为失败，作者解释为旧客户端读取 reasoning_content、服务返回 reasoning 的字段差异，不能写成原始报告零失败或完整模型资格认证。本次核合并源码及该评论，未独立运行 GPU；性能代价仍未测。",
           "source": "https://github.com/vllm-project/vllm/pull/59536",
-          "sourceLabel": "vLLM PR #59536 · revised head b797691",
+          "sourceLabel": "vLLM PR #59536 · merged b538d80",
           "reading": "7 min",
           "signal": "high",
           "columns": [
@@ -2874,32 +3213,88 @@
           ],
           "sourceVersion": {
             "created_at": "2026-10-01T04:14:10Z",
-            "updated_at": "2026-10-01T07:05:39Z",
+            "updated_at": "2026-10-01T15:42:25Z",
             "head": "b797691bc8376aa55cffaf28c7dcf67f624b7a30",
             "base": "70be6aae19587a251987c405b5bdf2d540da5991",
-            "state": "open",
+            "state": "closed",
             "draft": false,
-            "merged_at": null,
-            "merge_commit_sha": null,
-            "verifiedAt": "2026-10-01T08:11:20Z",
-            "references": [
-              "https://github.com/vllm-project/vllm/blob/b797691bc8376aa55cffaf28c7dcf67f624b7a30/vllm/model_executor/layers/mamba/checkpoint.py#L61-L89",
-              "https://github.com/vllm-project/vllm/blob/b797691bc8376aa55cffaf28c7dcf67f624b7a30/vllm/v1/attention/backends/gdn_attn.py#L611-L665",
-              "https://github.com/vllm-project/vllm/pull/59536#issuecomment-5926440861"
-            ]
+            "merged_at": "2026-10-01T14:59:16Z",
+            "merge_commit_sha": "b538d807ffe0976af7e5d107ccfe77e676b83b70",
+            "revisionCommittedAt": "2026-10-01T06:21:07Z",
+            "verifiedAt": "2026-10-01T16:04:43Z",
+            "observationWindowEnd": "2026-10-01T16:00:00Z",
+            "mergeCommittedAt": "2026-10-01T14:59:15Z",
+            "validationReportAt": "2026-10-01T15:40:29Z"
           },
           "supportingSources": [
             {
-              "title": "固定版本源码与补充证据",
-              "url": "https://github.com/vllm-project/vllm/blob/b797691bc8376aa55cffaf28c7dcf67f624b7a30/vllm/model_executor/layers/mamba/checkpoint.py#L61-L89"
+              "title": "固定合并：保留 request rows／block columns 后重查页号",
+              "url": "https://github.com/vllm-project/vllm/blob/b538d807ffe0976af7e5d107ccfe77e676b83b70/vllm/model_executor/layers/mamba/checkpoint.py#L61-L87"
             },
             {
-              "title": "固定版本源码与补充证据",
-              "url": "https://github.com/vllm-project/vllm/blob/b797691bc8376aa55cffaf28c7dcf67f624b7a30/vllm/v1/attention/backends/gdn_attn.py#L611-L665"
+              "title": "固定合并：先于 aligned table 替换执行 regather",
+              "url": "https://github.com/vllm-project/vllm/blob/b538d807ffe0976af7e5d107ccfe77e676b83b70/vllm/v1/attention/backends/gdn_attn.py#L615-L670"
             },
             {
-              "title": "固定版本源码与补充证据",
-              "url": "https://github.com/vllm-project/vllm/pull/59536#issuecomment-5926440861"
+              "title": "固定合并：两种路径的目标组页号回归",
+              "url": "https://github.com/vllm-project/vllm/blob/b538d807ffe0976af7e5d107ccfe77e676b83b70/tests/v1/attention/test_gdn_metadata_builder.py#L458-L487"
+            },
+            {
+              "title": "15:40 UTC 作者确认新方案的 46 请求功能结果与报告字段限制",
+              "url": "https://github.com/vllm-project/vllm/pull/59536#issuecomment-5934884659"
+            }
+          ],
+          "revisions": [
+            {
+              "supersededAt": "2026-10-01T16:04:43Z",
+              "reason": "14:59 合并及 15:40 针对 regather head 的补充验证推翻旧版“仍 open／重跑未出结果”；保留原 ID、日期桶与完整旧 record。",
+              "record": {
+                "id": "vllm-gdn-checkpoint-group-regather",
+                "rank": "19",
+                "category": "VLLM · HYBRID STATE CORRECTNESS",
+                "title": "GDN 跨 Cache Group 复用元数据时，重新查找各组自己的 Checkpoint 页",
+                "summary": "10 月 1 日 04:14 UTC 提出的 #59536 在 06:10 UTC 改写方案：当前 head b797691 保留跨组 batch 元数据共享，把 checkpoint 的 request rows 与 block columns 一并保存，再用目标组原始 block table 重算 state_indices；此操作先于 aligned active-state table 替换。它避免 active state 已更新到新组、checkpoint 却仍指向旧组页号的静默写错；当前 open、未合并。",
+                "why": "恢复边界相同不意味着物理页身份相同。固定源码和新增回归分别检查普通／推测路径的目标组页号，不能继续采用 PR 正文仍保留的“两行关闭复用”描述。原方案作者报告 GLM-5.3-Flash 46 项诊断由 36/46 到 46/46，其中 9 项乱码消失；该 serving 结果不属于当前 regather 版本。07:05 UTC 最新评论仅宣布新 head 重跑已经启动，截至本次核验未见结果，性能代价也未测。本次只核验源码、提交历史与公开报告，未独立运行测试或模型。",
+                "source": "https://github.com/vllm-project/vllm/pull/59536",
+                "sourceLabel": "vLLM PR #59536 · revised head b797691",
+                "reading": "7 min",
+                "signal": "high",
+                "columns": [
+                  "vllm",
+                  "models",
+                  "kv-cache"
+                ],
+                "sourceVersion": {
+                  "created_at": "2026-10-01T04:14:10Z",
+                  "updated_at": "2026-10-01T07:05:39Z",
+                  "head": "b797691bc8376aa55cffaf28c7dcf67f624b7a30",
+                  "base": "70be6aae19587a251987c405b5bdf2d540da5991",
+                  "state": "open",
+                  "draft": false,
+                  "merged_at": null,
+                  "merge_commit_sha": null,
+                  "verifiedAt": "2026-10-01T08:11:20Z",
+                  "references": [
+                    "https://github.com/vllm-project/vllm/blob/b797691bc8376aa55cffaf28c7dcf67f624b7a30/vllm/model_executor/layers/mamba/checkpoint.py#L61-L89",
+                    "https://github.com/vllm-project/vllm/blob/b797691bc8376aa55cffaf28c7dcf67f624b7a30/vllm/v1/attention/backends/gdn_attn.py#L611-L665",
+                    "https://github.com/vllm-project/vllm/pull/59536#issuecomment-5926440861"
+                  ]
+                },
+                "supportingSources": [
+                  {
+                    "title": "固定版本源码与补充证据",
+                    "url": "https://github.com/vllm-project/vllm/blob/b797691bc8376aa55cffaf28c7dcf67f624b7a30/vllm/model_executor/layers/mamba/checkpoint.py#L61-L89"
+                  },
+                  {
+                    "title": "固定版本源码与补充证据",
+                    "url": "https://github.com/vllm-project/vllm/blob/b797691bc8376aa55cffaf28c7dcf67f624b7a30/vllm/v1/attention/backends/gdn_attn.py#L611-L665"
+                  },
+                  {
+                    "title": "固定版本源码与补充证据",
+                    "url": "https://github.com/vllm-project/vllm/pull/59536#issuecomment-5926440861"
+                  }
+                ]
+              }
             }
           ]
         },
@@ -3637,6 +4032,279 @@
               "url": "https://github.com/facebookresearch/context-language-models/blob/18dc11115f50f261233c5bba7937834491e307e8/suffix_cache_reuse/analysis/scr_report.py#L18-L46"
             }
           ]
+        },
+        {
+          "id": "sglang-gfx950-producer-fused-mxfp8",
+          "category": "SGLANG · GFX950 / FUSED QUANT",
+          "title": "DeepSeek-V4.1 的 gfx950 路径把 MXFP8 量化并入 Producer，仍保留 BF16 舍入边界",
+          "summary": "10 月 1 日 12:04 UTC 新开的 #42055 将三条中间激活量化前移：shared-expert SwiGLU→down_proj、wo_a→wo_b、FFN norm→shared gate_up 直接交接 FP8 E4M3 codes＋每 32 元素的 UE8M0 scale。固定 head 6a2d60c，open、未合并；作者报告 MI355X TP2＋DSpark、c1 decode 的每步 kernel 从 1,376 降至 1,256，GPU 时间从 9.458 降至 8.879 ms，约降 6.1%。",
+          "why": "源码中的 GEMM 与 SwiGLU epilogue 仍先舍入到 BF16，再生成 FP8 codes/scales，目的是保留原 consumer 量化的数值边界，不能解释为跳过舍入。消费者须是已就绪的 gfx950 AITER MXFP8 或 tiled-weight native 路径；wo_a 接入限 decode／target-verify fast path，FFN norm 还依赖未 materialize 的 mHC coefficients，故三个 ROCm 默认开启的开关不代表任意模型／形态都生效。作者称 codes/scales 与未融合路径 bit-exact，并给出 1,319 题、5-shot、TP2、真实接受的 GSM8K 0.904，但正文没有配对 ON/OFF GSM8K 基线，当前 diff 也未新增回归测试。本次核生产者、包装对象与消费入口，未运行 GPU；6.1% 是该配置的 GPU-step 时间变化，不是 TTFT 或服务吞吐结论。",
+          "source": "https://github.com/sgl-project/sglang/pull/42055",
+          "sourceLabel": "SGLang PR #42055 · open 6a2d60c",
+          "reading": "9 min",
+          "signal": "high",
+          "columns": [
+            "sglang",
+            "models"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-10-01T12:04:22Z",
+            "updated_at": "2026-10-01T14:45:15Z",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "head": "6a2d60c358d27b73606985b0c7b22cf820c71b76",
+            "base": "3b2ad1c6ae54ff752fba1ece3dffc7214df5c813",
+            "merge_commit_sha": null,
+            "verifiedAt": "2026-10-01T16:04:02Z",
+            "head_committed_at": "2026-10-01T11:59:15Z"
+          },
+          "supportingSources": [
+            {
+              "title": "固定 head：wo_a GEMM 保留 BF16 舍入再输出 FP8",
+              "url": "https://github.com/sgl-project/sglang/blob/6a2d60c358d27b73606985b0c7b22cf820c71b76/python/sglang/kernels/ops/gemm/gfx95_batched_gemm_bf16_fp8_grid.py#L127-L140"
+            },
+            {
+              "title": "固定 head：SwiGLU 的 BF16→FP8 边界及 32 元素分组",
+              "url": "https://github.com/sgl-project/sglang/blob/6a2d60c358d27b73606985b0c7b22cf820c71b76/python/sglang/kernels/ops/activation/silu_and_mul_clamp_hip.py#L37-L55"
+            },
+            {
+              "title": "固定 head：消费者资格与 FFN norm 的 mHC 路径",
+              "url": "https://github.com/sgl-project/sglang/blob/6a2d60c358d27b73606985b0c7b22cf820c71b76/python/sglang/srt/models/deepseek_common/amd/deepseek_v4_gfx95_dense.py#L76-L93"
+            },
+            {
+              "title": "固定 head：FFN norm 输出并附带预量化 operand",
+              "url": "https://github.com/sgl-project/sglang/blob/6a2d60c358d27b73606985b0c7b22cf820c71b76/python/sglang/srt/models/deepseek_common/amd/deepseek_v4_gfx95_dense.py#L155-L195"
+            },
+            {
+              "title": "固定 head：shared expert 消费预量化 operand",
+              "url": "https://github.com/sgl-project/sglang/blob/6a2d60c358d27b73606985b0c7b22cf820c71b76/python/sglang/srt/models/deepseek_v2.py#L1739-L1761"
+            },
+            {
+              "title": "固定 head：wo_a 仅在 decode／target-verify fast path 接入",
+              "url": "https://github.com/sgl-project/sglang/blob/6a2d60c358d27b73606985b0c7b22cf820c71b76/python/sglang/srt/models/deepseek_v4.py#L530-L534"
+            },
+            {
+              "title": "固定 head：Mxfp8Activation 类型和 per-32 UE8M0 量化规则",
+              "url": "https://github.com/sgl-project/sglang/blob/6a2d60c358d27b73606985b0c7b22cf820c71b76/python/sglang/kernels/ops/quantization/mxfp8_amd_gfx95.py#L354-L378"
+            },
+            {
+              "title": "PR changed files：当前无新增测试文件",
+              "url": "https://github.com/sgl-project/sglang/pull/42055/files"
+            }
+          ],
+          "rank": "34"
+        },
+        {
+          "id": "sglang-deepep-v2-expanded-prefill-numerics",
+          "category": "源码补读 · DEEPEP / MOE",
+          "title": "DeepEP v2 Expanded Prefill 消除 Scatter 拷贝，但重复 GSM8K 降幅仍是验收边界",
+          "summary": "补读仍 open 的 #37261：expanded dispatch 直接给出按 expert 排列的行，去掉 ep_scatter 的 hidden-state 拷贝及 count H2D；非 UE8M0 路径把 router weight 融入 down-proj 的 FP32 输入 scale，UE8M0 则在输出端以 FP32 weight 原地相乘，no_combine 保留未加权行。固定 head 802c326；10 月 1 日最新提交仅重触发 CI，不能当作本时段新功能。",
+          "why": "源码保留 prefill 的 CPU 同步，并给每个 expert 的整个对齐区间标号，padding 仍参与 GEMM；省拷贝不等于 live-row 跳算。作者在双节点 Hopper、MiMoV2、TP8/EP16/DP2、每 DP 32K chunk 下报告输入吞吐；按表内相同 v2 基线计算，expanded 提升约 0.84%–7.69%，768K 行只有 0.84%，不能笼统写成 2%–8%。精度需单列：8×H200 机器、Qwen3-30B-A3B FP8、TP4/EP4、DeepEP 2.1.0，few_shot_gsm8k 的 1,319 题、5-shot、greedy，非 expanded 四轮为 90.8%–91.4%，expanded 五轮为 89.5%–90.4%，均值低约 1.19 个百分点；HellaSwag 10,042 题、20-shot 则相近。舍入顺序放大是作者解释，现有证据不能把任务分数下降改写成无精度代价；强制关闭 scale fold 的 expanded 对照也未恢复 GSM8K。Blackwell 端到端尚未验证。本次只核固定代码、测试定义及表格算术，未运行 GPU 或评测。",
+          "source": "https://github.com/sgl-project/sglang/pull/37261",
+          "sourceLabel": "SGLang PR #37261 · 源码补读 · open 802c326",
+          "reading": "12 min",
+          "signal": "high",
+          "columns": [
+            "sglang",
+            "models",
+            "network"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-08-31T14:28:00Z",
+            "updated_at": "2026-10-01T15:42:50Z",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "head": "802c3262330b105426bf52593aa029bf12382304",
+            "base": "1a0250c5b6f25d2b59d39855e3636ce701d06248",
+            "merge_commit_sha": null,
+            "verifiedAt": "2026-10-01T16:04:02Z",
+            "head_committed_at": "2026-10-01T15:38:20Z"
+          },
+          "supportingSources": [
+            {
+              "title": "固定 head：dispatch 的 expanded／masked 分离及 prefill CPU 同步",
+              "url": "https://github.com/sgl-project/sglang/blob/802c3262330b105426bf52593aa029bf12382304/python/sglang/srt/layers/moe/token_dispatcher/deepep_v2.py#L298-L363"
+            },
+            {
+              "title": "固定 head：非 UE8M0 scale fold 及 no_combine 门槛",
+              "url": "https://github.com/sgl-project/sglang/blob/802c3262330b105426bf52593aa029bf12382304/python/sglang/srt/layers/moe/moe_runner/deep_gemm.py#L593-L607"
+            },
+            {
+              "title": "固定 head：未加权 route 返回与 FP32 输出 weighting",
+              "url": "https://github.com/sgl-project/sglang/blob/802c3262330b105426bf52593aa029bf12382304/python/sglang/srt/layers/moe/moe_runner/deep_gemm.py#L1903-L1915"
+            },
+            {
+              "title": "固定 head：包含 padding 的 expert 区间标号",
+              "url": "https://github.com/sgl-project/sglang/blob/802c3262330b105426bf52593aa029bf12382304/python/sglang/kernels/ops/moe/ep_moe_kernels.py#L2541-L2601"
+            },
+            {
+              "title": "固定 head：非 128 对齐、空 expert 和 capacity-tail 测试定义",
+              "url": "https://github.com/sgl-project/sglang/blob/802c3262330b105426bf52593aa029bf12382304/test/registered/kernels/ops/moe/test_deepep_v2_expand_kernels.py#L24-L93"
+            },
+            {
+              "title": "9 月 29 日实质修正：expanded 输出以 FP32 weights 相乘",
+              "url": "https://github.com/sgl-project/sglang/commit/be3ab1aa6e905575ec3bf5ce9ab992e31761bbd9"
+            },
+            {
+              "title": "最新 head 提交仅 retrigger CI",
+              "url": "https://github.com/sgl-project/sglang/commit/802c3262330b105426bf52593aa029bf12382304"
+            }
+          ],
+          "rank": "35"
+        },
+        {
+          "id": "vllm-kimi-k3-latent-up-proj-weight-shards",
+          "rank": "36",
+          "category": "VLLM · ROCM MOE CAPACITY",
+          "title": "Kimi-K3 ROCm 提案按 Rank 保存 Up-proj，作者报告 TP8 每卡约省 3.9GB",
+          "summary": "10 月 1 日新开的 #59591 将满足分片条件的 latent-MoE up-projection 从 ReplicatedLinear 改为 ColumnParallelLinear：加载时只保留本 rank 的输出行；融合尾部直接读取本地权重，再沿原有归约链合成结果。此前已分片计算，却仍让每个 rank 驻留全量权重。15:52 UTC 的新 head 40597c4 补入 TP4 回归；当前 open、未合并。",
+          "why": "固定代码保留未融合路径的 gather_output=True，不能概括为所有路径都减少通信；融合尾部还排除 sequence parallel，构造条件要求 TP>1、hidden size 可整除、有 shared experts 且 routed scaling=1。作者在 8×MI355X、TP8/DCP8、FP8 KV、AgentX 配置 393 条数据项、每组 1,800 秒下报告约省 3.9GB/rank：c32 请求吞吐仅 +0.90%、TTFT p50 反增 2.10%；c70 命中率 74.8%→80.1%、请求吞吐 +31.03%。这更像容量约束附近的收益线索，尚未用等 KV 容量消融证明因果，不能写成 GEMM 快 31%。GSM8K strict 0.9697→0.9704 不证明质量提高。新增两项测试覆盖预分片 TP4 的数值对照与未融合 all-gather，正文未报告这两项新测试的运行结果；原有 TP8/EP8 测试仍用 replicated 权重。本次核代码，未独立运行 GPU。",
+          "source": "https://github.com/vllm-project/vllm/pull/59591",
+          "sourceLabel": "vLLM PR #59591 · head 40597c4",
+          "reading": "8 min",
+          "signal": "high",
+          "columns": [
+            "vllm",
+            "models",
+            "kv-cache"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-10-01T10:51:08Z",
+            "updated_at": "2026-10-01T15:52:45Z",
+            "head": "40597c41d5cdf8eaea8070cfde07f0300cf81540",
+            "base": "ab5266769e702434a0968d47319d0731d8ccac35",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "merge_commit_sha": null,
+            "revisionCommittedAt": "2026-10-01T15:52:25Z",
+            "verifiedAt": "2026-10-01T16:04:43Z",
+            "observationWindowEnd": "2026-10-01T16:00:00Z"
+          },
+          "supportingSources": [
+            {
+              "title": "固定 head：分片条件、加载层与未融合 gather fallback",
+              "url": "https://github.com/vllm-project/vllm/blob/40597c41d5cdf8eaea8070cfde07f0300cf81540/vllm/models/kimi_k3/amd/linear.py#L242-L291"
+            },
+            {
+              "title": "固定 head：融合尾部读取预分片权重，保留既有归约",
+              "url": "https://github.com/vllm-project/vllm/blob/40597c41d5cdf8eaea8070cfde07f0300cf81540/vllm/models/kimi_k3/amd/latent_moe_runner.py#L39-L102"
+            },
+            {
+              "title": "15:52 UTC 新增测试：TP4 预分片与未融合路径",
+              "url": "https://github.com/vllm-project/vllm/blob/40597c41d5cdf8eaea8070cfde07f0300cf81540/tests/models/kimi_k3/test_amd_latent_moe_runner.py#L165-L188"
+            },
+            {
+              "title": "固定 head：新 TP4 与已有 TP8/EP8 测试入口区别",
+              "url": "https://github.com/vllm-project/vllm/blob/40597c41d5cdf8eaea8070cfde07f0300cf81540/tests/models/kimi_k3/test_amd_latent_moe_runner.py#L261-L284"
+            }
+          ]
+        },
+        {
+          "id": "mooncake-tent-control-peer-fail-fast",
+          "rank": "37",
+          "category": "MOONCAKE · CONTROL PLANE LIVENESS",
+          "title": "TENT 提议对失联控制面快速失败：缩短等待仍需补齐通知留存",
+          "summary": "10 月 1 日 14:58 UTC 新开的 #4442 为控制 RPC 增加超时与进程级 PeerHealth：首次未获响应后标记 peer，后续受保护调用直接失败，由后台探测恢复。RDMA notification 的满槽等待另限为 1 秒，再走失败／RPC fallback；这不是把整次调用压到 1 秒，默认 RPC 请求超时仍为 30 秒。固定 head 70b2ce6，open、未合并；代码提交于 9 月 29 日，不能写成今日新提交。",
+          "why": "需把及时返回与通知必达分开：固定代码中，submit hook 保留未发送目标，但 freeBatch 仍可按传输终态释放 batch，未要求所有 hook 已送达。作者披露冻结 peer 38 秒、20,000 条绑定通知时，main 全部送达但单次阻塞 38 秒；该 PR 约送达 9,500 条、各次调用低于 31 秒，尚待后续补丁保留释放后通知。作者报告 TENT ctest 67/67；两进程、同机双 RDMA NIC 的 180→30 秒传输结果使用本 PR 加三项后续改动，未测本 PR 单独效果，不能归为独立加速。配置由同进程最后构造的 engine 覆盖；探测串行，K 个无响应 peer 可把恢复识别拖到约 K×2 秒。本文核固定 RPC、队列、hook 与 freeBatch 代码，未独立运行 RDMA／故障注入。",
+          "source": "https://github.com/kvcache-ai/Mooncake/pull/4442",
+          "sourceLabel": "Mooncake PR #4442 · head 70b2ce6",
+          "reading": "9 min",
+          "signal": "high",
+          "columns": [
+            "mooncake",
+            "network"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-10-01T14:58:17Z",
+            "updated_at": "2026-10-01T14:58:31Z",
+            "head": "70b2ce6fdd2c5c90be6bbe02c319ba845cf80666",
+            "base": "0d1a8040faebb7c127c8901840a38c2ff57e80c5",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "merge_commit_sha": null,
+            "revisionCommittedAt": "2026-09-29T23:08:28Z",
+            "verifiedAt": "2026-10-01T16:04:43Z",
+            "observationWindowEnd": "2026-10-01T16:00:00Z"
+          },
+          "supportingSources": [
+            {
+              "title": "固定 head：标记、快速失败与收到拒绝响应的区别",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/70b2ce6fdd2c5c90be6bbe02c319ba845cf80666/mooncake-transfer-engine/tent/src/runtime/control_plane.cpp#L58-L196"
+            },
+            {
+              "title": "固定 head：后台逐个探测 Peer",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/70b2ce6fdd2c5c90be6bbe02c319ba845cf80666/mooncake-transfer-engine/tent/src/runtime/control_plane.cpp#L496-L517"
+            },
+            {
+              "title": "固定 head：Notification 满槽等待与失败",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/70b2ce6fdd2c5c90be6bbe02c319ba845cf80666/mooncake-transfer-engine/tent/src/transport/rdma/endpoint.cpp#L1248-L1264"
+            },
+            {
+              "title": "固定 head：未发送目标留在 Submit Hook",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/70b2ce6fdd2c5c90be6bbe02c319ba845cf80666/mooncake-transfer-engine/tent/src/runtime/transfer_engine_impl.cpp#L2688-L2731"
+            },
+            {
+              "title": "固定 head：FreeBatch 按传输终态释放",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/70b2ce6fdd2c5c90be6bbe02c319ba845cf80666/mooncake-transfer-engine/tent/src/runtime/transfer_engine_impl.cpp#L1126-L1167"
+            },
+            {
+              "title": "固定 head：进程级超时与 PeerHealth 配置",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/70b2ce6fdd2c5c90be6bbe02c319ba845cf80666/mooncake-transfer-engine/tent/src/runtime/transfer_engine_impl.cpp#L392-L405"
+            }
+          ]
+        },
+        {
+          "id": "packserve-cache-budget-decode-packing",
+          "rank": "38",
+          "category": "论文补读 · AGENT 调度",
+          "title": "PackServe 用额外重算预算约束请求 Packing，资源收益须连同 SLO 口径读",
+          "summary": "9 月 27 日 v1，作为补读。PackServe 面向 PD 同机服务：先限制相对最佳缓存位置的额外 Prefill 成本，再在预测满足 TPOT 的实例中优先选择 Decode 并发更高者。作者在 64 张 H20、MiniMax-M2.5 的回放中，相对 LMetric／改造后的 llm-d+ 报告 active GPU-hours 减少 13.0–24.6%。",
+          "why": "active GPU-hours 只累计实例有请求的时段，不等于已配置 GPU 数下降；主要 SLO 指标是每分钟请求 TPOT 中位数及其跨窗口 P90，不能写成逐请求尾延迟保证。无候选通过 TPOT 过滤时还会退回缓存感知负载均衡。生产两组六天对比虽少用 34.7% 实例，mean TTFT 同时增加 66.4%；全局 KV 池与 PD 分离仍属扩展方向。本次只读论文，未复现。",
+          "source": "https://arxiv.org/html/2609.33224v1",
+          "sourceLabel": "PackServe · arXiv v1（9 月 27 日版本）",
+          "reading": "12 min",
+          "signal": "high",
+          "columns": [
+            "sglang",
+            "kv-cache",
+            "models"
+          ],
+          "sourceVersion": {
+            "kind": "paper",
+            "version": "v1",
+            "firstSubmittedAt": "2026-09-27T05:06:17Z",
+            "versionSubmittedAt": "2026-09-27T05:06:17Z",
+            "verifiedAt": "2026-10-01T16:04:30Z",
+            "references": [
+              "https://arxiv.org/abs/2609.33224v1",
+              "https://arxiv.org/html/2609.33224v1#S6",
+              "https://arxiv.org/html/2609.33224v1#S8.SS1",
+              "https://arxiv.org/html/2609.33224v1#S8.SS4",
+              "https://arxiv.org/html/2609.33224v1#S9"
+            ]
+          },
+          "supportingSources": [
+            {
+              "title": "固定论文：重算预算、Decode 并发选择与 TPOT fallback",
+              "url": "https://arxiv.org/html/2609.33224v1#S6"
+            },
+            {
+              "title": "固定论文：64 H20 设置、adapted baselines 与指标口径",
+              "url": "https://arxiv.org/html/2609.33224v1#S8.SS1"
+            },
+            {
+              "title": "固定论文：生产实例数与 TTFT 取舍",
+              "url": "https://arxiv.org/html/2609.33224v1#S8.SS4"
+            },
+            {
+              "title": "固定论文：global KV 与 PD 分离仍待扩展",
+              "url": "https://arxiv.org/html/2609.33224v1#S9"
+            }
+          ]
         }
       ]
     },
@@ -3935,9 +4603,21 @@
       },
       "10.01": {
         "headline": "今日值得关注的 AI Infra 信号",
-        "subtitle": "本期 33 条 · 约 287 分钟",
-        "threadTitle": "从传输就绪到上下文编辑：状态边界、调度活性与有效收益",
-        "threadSummary": "保留此前全部记录；12:00 批次增补 PD Prefill 输入轮询、CP／EP／KDA 栈、HiCache cgroup 预算、Mooncake state-stride 校验、逐步 MTP 输出头、MoRI MXFP4 dispatch，以及 TENT 元数据生命周期和取消队列活性。Purlin 与 CLM/SCR 按 9 月 29 日原始 v1 补读；SCR 的旧状态语义与额外显存单列，E-10 仅为未运行的质量／同 HBM 对照。另在 9 月 30 日原条目修订 NIXL 双向恢复边界，保留旧记录。"
+        "subtitle": "本期 38 条 · 约 337 分钟",
+        "threadTitle": "从状态身份到数值边界：用真实工作量、容量与 SLO 解释收益",
+        "threadSummary": "保留此前全部记录；12:00 批次增补 PD Prefill 输入轮询、CP／EP／KDA 栈、HiCache cgroup 预算、Mooncake state-stride 校验、逐步 MTP 输出头、MoRI MXFP4 dispatch，以及 TENT 元数据生命周期和取消队列活性。Purlin 与 CLM/SCR 按 9 月 29 日原始 v1 补读；SCR 的旧状态语义与额外显存单列，E-10 仅为未运行的质量／同 HBM 对照。另在 9 月 30 日原条目修订 NIXL 双向恢复边界，保留旧记录。 16:00 批次新增 producer-fused MXFP8、DeepEP v2 精度边界补读、Kimi-K3 权重分片、TENT fail-fast 通知寿命与 PackServe 调度口径；原位更正已撤回的 Tail Margin 和已合并且补充功能报告的 GDN regather。两篇既有全文深化 aligned／live endpoint 与 KVSET 容量目标，保留原日期和旧版本；十项实验均未执行。",
+        "revisions": [
+          {
+            "supersededAt": "2026-10-01T16:11:00Z",
+            "reason": "保留本日旧版栏目摘要与计数；新增五条、修订两条及深化两篇既有文章。",
+            "record": {
+              "headline": "今日值得关注的 AI Infra 信号",
+              "subtitle": "本期 33 条 · 约 287 分钟",
+              "threadTitle": "从传输就绪到上下文编辑：状态边界、调度活性与有效收益",
+              "threadSummary": "保留此前全部记录；12:00 批次增补 PD Prefill 输入轮询、CP／EP／KDA 栈、HiCache cgroup 预算、Mooncake state-stride 校验、逐步 MTP 输出头、MoRI MXFP4 dispatch，以及 TENT 元数据生命周期和取消队列活性。Purlin 与 CLM/SCR 按 9 月 29 日原始 v1 补读；SCR 的旧状态语义与额外显存单列，E-10 仅为未运行的质量／同 HBM 对照。另在 9 月 30 日原条目修订 NIXL 双向恢复边界，保留旧记录。"
+            }
+          }
+        ]
       }
     }
   },
