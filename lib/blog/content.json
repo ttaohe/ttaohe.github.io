@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-10-01T00:44:20Z",
+  "updatedAt": "2026-10-01T04:06:35Z",
   "posts": [
     {
       "slug": "state-recovery",
@@ -601,18 +601,56 @@
           "id": "vllm-engram-cumem-sorted-host-lookup",
           "rank": "03",
           "category": "VLLM · ENGRAM HOST LOOKUP",
-          "title": "vLLM 用 2 MiB cuMem 页与排序访问加速 Engram Host Lookup，最高 8.38×",
-          "summary": "9 月 30 日的 Draft #59327 将同节点 DP replicas 的 DeepSeek-V4.1 Engram table 改为共享 cuMem NUMA host allocation，以 2 MiB pages 取代 /dev/shm 的 64 KiB pages；大 lookup 还会按 table offset 排序，并在 4,096 tokens 以上转到 main stream。GB200、94.4 GiB table 下，4,096 tokens 从 4,632.3 降至 1,503.2 μs，32,768 tokens 从 36,990.2 降至 4,411.9 μs（8.38×）。",
-          "why": "这里的瓶颈是 GPU 访问 Host table 时的地址翻译和 TLB miss，而不是链路带宽。该设计同时减少副本容量、改善页命中并避免后台 lookup 与持久 kernel 争抢 SM；不过端到端 Prefill 与精度评估仍待补充。",
+          "title": "Engram 排序 Host Lookup＋大批量内联已合并；作者 DEP4 Prefill 实测约 1.22×",
+          "summary": "9 月 30 日提出的 #59327 于 10 月 1 日 03:54 UTC 合并，当前实现不再包含早期 cuMem 2 MiB 分配方案。合并版在 SM10x 上对小页 Host table 的大 lookup 按 table offset 排序，并从 4,096 tokens（取 DP ranks 最大值）起改在 main stream 全宽执行；排序阈值为 36,864 rows，THP table 跳过排序。固定合并提交 4c2d277。",
+          "why": "原条目中的 cuMem 与 8.38× 对应已被改写的 Draft，不能继续作为合并版结论。作者在单 GB200 节点、DeepSeek-V4.1-Flash DEP4、FP8 KV、16K token budget、关闭 prefix cache 的单输出 token Prefill 测试中报告：c64 下 4K–32K prompts 的 TTFT p50 约快 1.22–1.23×；每点三轮取中位数，c1 收益较小且波动最高 11%。当前 DEP2/4 lookup microbenchmark 的 32K 点为 36,963.3→9,905.1 μs（3.73×），不能替代 Serving 结果。117 tests 与 GSM8K 92.49% 均为作者报告，GSM8K 无配对基线；对排序与 stream 改动的时间贡献是作者估算、未 profile。本次只核验固定源码和公开材料，未独立 GPU 复现。",
           "source": "https://github.com/vllm-project/vllm/pull/59327",
-          "sourceLabel": "vLLM PR #59327",
-          "reading": "10 min",
+          "sourceLabel": "vLLM PR #59327 · merged 4c2d277",
+          "reading": "9 min",
           "signal": "high",
           "columns": [
             "vllm",
-            "kv-cache",
             "models",
             "network"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-09-30T00:24:18Z",
+            "head": "24a50efaaee9ba5d9aacff6df79b7afb52935983",
+            "merge_commit_sha": "4c2d277643e217344056e1d2c42115d5f005912f",
+            "updated_at": "2026-10-01T03:54:45Z",
+            "merged_at": "2026-10-01T03:54:45Z",
+            "verifiedAt": "2026-10-01T04:02:45Z",
+            "state": "closed",
+            "draft": false,
+            "references": [
+              "https://github.com/vllm-project/vllm/blob/4c2d277643e217344056e1d2c42115d5f005912f/vllm/models/deepseek_v41/common/engram.py#L79-L88",
+              "https://github.com/vllm-project/vllm/blob/4c2d277643e217344056e1d2c42115d5f005912f/vllm/models/deepseek_v41/common/engram.py#L1073-L1125",
+              "https://github.com/vllm-project/vllm/blob/4c2d277643e217344056e1d2c42115d5f005912f/vllm/models/deepseek_v41/common/engram.py#L1407-L1428"
+            ]
+          },
+          "revisions": [
+            {
+              "revisedAt": "2026-10-01T04:06:35Z",
+              "reason": "固定上游新版本核验；保留原日期、ID 与旧版完整记录",
+              "record": {
+                "id": "vllm-engram-cumem-sorted-host-lookup",
+                "rank": "03",
+                "category": "VLLM · ENGRAM HOST LOOKUP",
+                "title": "vLLM 用 2 MiB cuMem 页与排序访问加速 Engram Host Lookup，最高 8.38×",
+                "summary": "9 月 30 日的 Draft #59327 将同节点 DP replicas 的 DeepSeek-V4.1 Engram table 改为共享 cuMem NUMA host allocation，以 2 MiB pages 取代 /dev/shm 的 64 KiB pages；大 lookup 还会按 table offset 排序，并在 4,096 tokens 以上转到 main stream。GB200、94.4 GiB table 下，4,096 tokens 从 4,632.3 降至 1,503.2 μs，32,768 tokens 从 36,990.2 降至 4,411.9 μs（8.38×）。",
+                "why": "这里的瓶颈是 GPU 访问 Host table 时的地址翻译和 TLB miss，而不是链路带宽。该设计同时减少副本容量、改善页命中并避免后台 lookup 与持久 kernel 争抢 SM；不过端到端 Prefill 与精度评估仍待补充。",
+                "source": "https://github.com/vllm-project/vllm/pull/59327",
+                "sourceLabel": "vLLM PR #59327",
+                "reading": "10 min",
+                "signal": "high",
+                "columns": [
+                  "vllm",
+                  "kv-cache",
+                  "models",
+                  "network"
+                ]
+              }
+            }
           ]
         },
         {
@@ -1144,17 +1182,72 @@
           "id": "mooncake-replica-host-spread",
           "rank": "05",
           "category": "MOONCAKE · STORE",
-          "title": "Mooncake 副本分配从“不同 Segment”升级为“不同 Host”",
-          "summary": "9 月 26 日发布的 Mooncake #4335 修复 RandomAllocationStrategy：一台机器拥有多个 segment 时，两个 replica 过去可能都落在同一主机，单机故障会同时丢失两份。新策略第一轮按 host 去重，资源不足时第二轮才回退到同 host，以保持 best-effort replica count。",
-          "why": "对多 NIC、多 MR segment 的 KV Store，segment diversity 不等于 failure-domain diversity。副本元数据必须理解 host 边界，replica_num 大于等于 2 时才真正提供容灾。",
+          "title": "Mooncake Host 反亲和新增请求级开关，避免每次 Put 重建主机索引",
+          "summary": "#4335 原始提出于 9 月 26 日；10 月 1 日 03:29 UTC 的实质修订加入 avoid_replicas_on_same_host，请求默认启用、调用方可关闭，并暴露 Python 配置。host_id 改由 SegmentAllocatorRegistration 携带，挂载和恢复时写入；snapshot 复用 registration 的 shared_ptr，不再每次 Put 反向重建 segment→host map。固定 head ed40b34，04:05 UTC 核验仍 open、未合并。",
+          "why": "它区分 segment 隔离和主机故障域，但属于 best-effort：RandomAllocationStrategy 第一轮按已知 host 去重，未满足副本数时第二轮允许同 host，未知 host 也不强制去重。因此 replica_num≥2 不能单独保证主机级容灾；NoF live-manager 路径与 RankedAllocationStrategy 仍未覆盖。移除的是额外 host-map 构造，既有锁内 allocator snapshot 拷贝仍在，不能据此声称 Put 加速。固定 diff 含跨 host、关闭开关和单 host fallback 三类回归；截至核验时新 head 的格式检查失败，CTest 仍在运行。本次未执行测试，也无独立性能结论。",
           "source": "https://github.com/kvcache-ai/Mooncake/pull/4335",
-          "sourceLabel": "Mooncake PR #4335",
+          "sourceLabel": "Mooncake PR #4335 · revision ed40b34",
           "reading": "6 min",
           "signal": "high",
           "columns": [
             "mooncake",
             "kv-cache",
             "network"
+          ],
+          "sourceCreatedAt": "2026-09-26T11:42:15Z",
+          "sourceHead": "ed40b34b45bbd98cb7436bf5ae9f0ef751536948",
+          "sourceVerifiedAt": "2026-10-01T04:05:43Z",
+          "supportingSources": [
+            {
+              "title": "本次修订固定 commit",
+              "url": "https://github.com/kvcache-ai/Mooncake/commit/ed40b34b45bbd98cb7436bf5ae9f0ef751536948"
+            },
+            {
+              "title": "默认开启的请求级配置",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/ed40b34b45bbd98cb7436bf5ae9f0ef751536948/mooncake-store/include/replica.h#L104-L132"
+            },
+            {
+              "title": "两阶段分配与 Ranked 路径边界",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/ed40b34b45bbd98cb7436bf5ae9f0ef751536948/mooncake-store/include/allocation_strategy.h#L326-L596"
+            },
+            {
+              "title": "固定 head CI",
+              "url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36810785781"
+            }
+          ],
+          "sourceVersion": {
+            "created_at": "2026-09-26T11:42:15Z",
+            "updated_at": "2026-10-01T03:30:05Z",
+            "head": "ed40b34b45bbd98cb7436bf5ae9f0ef751536948",
+            "base": "16b7ba3c7364eb8d36d04378bc7d28013bea1a1e",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "revisionCommittedAt": "2026-10-01T03:29:32Z",
+            "verifiedAt": "2026-10-01T04:05:43Z"
+          },
+          "revisions": [
+            {
+              "revisedAt": "2026-10-01T04:06:35Z",
+              "reason": "固定上游新版本核验；保留原日期、ID 与旧版完整记录",
+              "record": {
+                "id": "mooncake-replica-host-spread",
+                "rank": "05",
+                "category": "MOONCAKE · STORE",
+                "title": "Mooncake 副本分配从“不同 Segment”升级为“不同 Host”",
+                "summary": "9 月 26 日发布的 Mooncake #4335 修复 RandomAllocationStrategy：一台机器拥有多个 segment 时，两个 replica 过去可能都落在同一主机，单机故障会同时丢失两份。新策略第一轮按 host 去重，资源不足时第二轮才回退到同 host，以保持 best-effort replica count。",
+                "why": "对多 NIC、多 MR segment 的 KV Store，segment diversity 不等于 failure-domain diversity。副本元数据必须理解 host 边界，replica_num 大于等于 2 时才真正提供容灾。",
+                "source": "https://github.com/kvcache-ai/Mooncake/pull/4335",
+                "sourceLabel": "Mooncake PR #4335",
+                "reading": "6 min",
+                "signal": "high",
+                "columns": [
+                  "mooncake",
+                  "kv-cache",
+                  "network"
+                ]
+              }
+            }
           ]
         }
       ],
@@ -2138,6 +2231,250 @@
           "sourceCreatedAt": "2026-09-29T07:50:41Z",
           "sourceVersion": "2609.36938v1",
           "sourceVerifiedAt": "2026-10-01T00:08:30Z"
+        },
+        {
+          "id": "sglang-pd-hicache-rank-safe-loadback",
+          "rank": "08",
+          "category": "SGLANG · PD HICACHE CORRECTNESS",
+          "title": "HiCache PD 回载修复合入：本地 CUDA 事件不再决定哪些 Rank 进入 Collective",
+          "summary": "#41393 于 10 月 1 日 02:22 UTC 合并为 b62b21e。PD Decode＋HiCache＋TP>1 的回载完成检查现在只轮询本地事件；新回载准入改看全 Rank 同步回收的 ack 队列是否有空槽。旧路径可能让两个 Rank 从不同阶段进入同形状 all-reduce，先静默错配，再在下一次不同大小的 collective 中崩溃。",
+          "why": "这把设备事件的本地完成时序与分布式控制流分开。固定 merge 仅改两个生产文件，没有新增 collective，也没有保留新回归测试。作者在 4×H200、Qwen3-8B、P TP1／D TP2 上跑 8 轮，覆盖自然时序与 Rank 1 人为延迟 H2D 30 ms；main 崩溃，补丁健康，后 7 轮每 Rank 每轮从 L2 回载 72,000 tokens。临时 Gloo 负对照只撤销任一阶段修复都会失败，但未收入最终 diff。这是作者的故障验证，不是吞吐或全面精度结论；本次核验 merge 源码，未独立 GPU 复现。",
+          "source": "https://github.com/sgl-project/sglang/pull/41393",
+          "sourceLabel": "SGLang PR #41393 · merged b62b21e",
+          "reading": "7 min",
+          "signal": "high",
+          "columns": [
+            "sglang",
+            "kv-cache",
+            "network"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-09-27T04:54:13Z",
+            "updated_at": "2026-10-01T02:22:31Z",
+            "head": "4d4f5522735b59c3fb5088b2b04763e5aff31330",
+            "merged_at": "2026-10-01T02:22:31Z",
+            "merge_commit_sha": "b62b21e7f4e2d81e6b14babe6ca3b036f9890326",
+            "verifiedAt": "2026-10-01T04:03:19Z"
+          },
+          "supportingSources": [
+            {
+              "title": "固定合并：两阶段回载与槽位准入修复",
+              "url": "https://github.com/sgl-project/sglang/commit/b62b21e7f4e2d81e6b14babe6ca3b036f9890326"
+            },
+            {
+              "title": "固定版本：本地完成检查及同步 ack 队列",
+              "url": "https://github.com/sgl-project/sglang/blob/b62b21e7f4e2d81e6b14babe6ca3b036f9890326/python/sglang/srt/mem_cache/unified_radix_cache.py"
+            }
+          ]
+        },
+        {
+          "id": "sglang-mimo-sm100-fa4-default",
+          "rank": "09",
+          "category": "SGLANG · MIMO ATTENTION",
+          "title": "MiMo 在 SM100 系列默认选 FA4；同页大小普通 Decode 作者报告提升 9%",
+          "summary": "#41886 于 10 月 1 日 01:05 UTC 合并为 a702970：MiMoV2／MiMoV2Flash 在 SM100 系列、未显式指定 attention／prefill／decode backend 时默认 FA4。作者在 8×B300、MiMo-V2.6-Pro-RL、TP8、c1、8K 输入／1K 输出、两端同为 page128 的普通 Decode 对照中报告 159.47→173.86 tok/s（+9.0%），平均 TTFT 222.52→145.17 ms。",
+          "why": "这是模型默认派发选择的落地，显式后端设置仍保留。作者另报 DFlash8 为 504.56→931.40 tok/s（1.85×），但该组同时将 Triton/page1 换成 FA4/page128，且 target、draft 都换后端，不能归因为单个内核的纯加速。测试固定 32,768 KV slots、关闭 prefix cache 与通信融合；作者报告输出 token IDs 一致及 16 个 BF16 attention 对 FP32 reference 用例通过。普通 Decode 测于较早 benchmark revision 7faae89732，本次核查合并代码及公开材料，未做独立性能／GPU 复现。",
+          "source": "https://github.com/sgl-project/sglang/pull/41886",
+          "sourceLabel": "SGLang PR #41886 · merged a702970",
+          "reading": "7 min",
+          "signal": "high",
+          "columns": [
+            "sglang",
+            "models"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-09-30T12:30:54Z",
+            "updated_at": "2026-10-01T01:05:13Z",
+            "head": "e9f5c1d8ab3810256d4b37ef01f4490a71ec0b4e",
+            "merged_at": "2026-10-01T01:05:13Z",
+            "merge_commit_sha": "a702970ecbb762ae8edd7e3d5bf50e9ea82cecf8",
+            "verifiedAt": "2026-10-01T04:03:19Z"
+          },
+          "supportingSources": [
+            {
+              "title": "固定合并：MiMo 后端默认与显式选择测试",
+              "url": "https://github.com/sgl-project/sglang/commit/a702970ecbb762ae8edd7e3d5bf50e9ea82cecf8"
+            },
+            {
+              "title": "固定版本：MiMo model override",
+              "url": "https://github.com/sgl-project/sglang/blob/a702970ecbb762ae8edd7e3d5bf50e9ea82cecf8/python/sglang/srt/arg_groups/model_overrides/mimo_v2.py#L17-L28"
+            }
+          ]
+        },
+        {
+          "id": "sglang-hicache-tp-rank-sharded-host",
+          "rank": "10",
+          "category": "SGLANG · HICACHE HOST SHARD",
+          "title": "HiCache 提出按 TP Rank 分片 Host 层：减少重复 KV，回载增加广播与前向屏障",
+          "summary": "10 月 1 日 03:41 UTC 新开的 Draft #41984 让 DSA 的 MLA KV／index-K Host 层轮流归属 TP Rank；D2H 只备份自有层，H2D 后由 owner 经专用 NCCL group 逐层广播，树和槽位分配仍复制。相同 Host 预算下，理想均衡时独有 token 容量接近 TP 倍；也可保留容量而减少 Host 占用。固定 head fd73224，默认关闭、未合并，GitHub 确认与 main 冲突。",
+          "why": "容量去重不等于恢复必然更快：代码增加 staging gather／scatter、广播及全交换完成后的 forward gate，防止独立 communicator 的阻塞通信与前向 collective 交错死锁。入口限 CUDA、单节点、PP1、TP>1、无 DP attention／CP／DCP、direct＋page_first_direct、非 FP4 DSA，排除 L3、HiSparse 和 PD Decode。作者报告 4／8-rank Gloo 模拟与叠加开发栈 GSM8K，但此独立分支的 E2E 精度仍待跑，也无公开量化速度对照；9 月 13 日旧基线尚待 rebase，最终 diff 无新增测试文件。本次核关键固定源码，未复现，不把容量比例当作吞吐收益。",
+          "source": "https://github.com/sgl-project/sglang/pull/41984",
+          "sourceLabel": "SGLang PR #41984 · draft fd73224",
+          "reading": "10 min",
+          "signal": "high",
+          "columns": [
+            "sglang",
+            "kv-cache",
+            "network"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-10-01T03:41:18Z",
+            "updated_at": "2026-10-01T03:41:29Z",
+            "head": "fd73224d47b24171418d64174e5df647a6e9b8da",
+            "merged_at": null,
+            "merge_commit_sha": null,
+            "verifiedAt": "2026-10-01T04:03:19Z"
+          },
+          "supportingSources": [
+            {
+              "title": "固定 head：所有权、适用条件及回载广播",
+              "url": "https://github.com/sgl-project/sglang/blob/fd73224d47b24171418d64174e5df647a6e9b8da/python/sglang/srt/mem_cache/hicache_rank_shard.py"
+            },
+            {
+              "title": "固定 head：load fence 与 forward gate",
+              "url": "https://github.com/sgl-project/sglang/blob/fd73224d47b24171418d64174e5df647a6e9b8da/python/sglang/srt/mem_cache/l2_transfer.py"
+            },
+            {
+              "title": "固定 head：仅 DSA indexer sidecar 入口接线",
+              "url": "https://github.com/sgl-project/sglang/blob/fd73224d47b24171418d64174e5df647a6e9b8da/python/sglang/srt/mem_cache/hybrid_cache/hybrid_pool_assembler.py#L999-L1018"
+            }
+          ]
+        },
+        {
+          "id": "vllm-kimi-k3-packed-flashinfer-kda",
+          "category": "VLLM · KIMI K3 SPECULATIVE KDA",
+          "title": "Kimi-K3 合入 Packed FlashInfer KDA：把卷积、递归状态更新与门控归一化合成一条路径",
+          "summary": "#54255 于 10 月 1 日 02:28 UTC 合并，在纯 speculative-decode batch 中调用 packed_fused_kda_decode，替代分开的 short-conv、recurrent KDA 与 gated-norm launches。默认 auto，但需 SM10x、BF16 输入和卷积状态、D=128／W=4、1–7 draft tokens、指定 head 数、bounded gate、SD 卷积布局且关闭 RecoverSSM；混合 batch 保留原路径。固定合并提交 766b4ae。",
+          "why": "融合必须同时兑现 accepted-token 回写、null rows 与 graph 动态 metadata 的状态契约。作者在 8×B300、Kimi-K3＋DSpark K=6、8K/1K synthetic serving 中报告：FP32 recurrent state 吞吐提高 1.75%–3.29%，BF16 对照提高 0.98%–5.55%；BF16 需匹配 FlashInfer #5503。真实 GSM8K 5-shot 的耗时为 153.1→142.2 秒，但仅 1,283/1,319 提取答案一致，不能称为逐 token 等价或质量提升。111 passed／7 skipped 与模型评测来自作者指定的前序提交，不是本次在合并提交重跑。本次核读 eligibility 与 production _forward，未独立 GPU 复现。",
+          "source": "https://github.com/vllm-project/vllm/pull/54255",
+          "sourceLabel": "vLLM PR #54255 · merged 766b4ae",
+          "reading": "8 min",
+          "signal": "high",
+          "columns": [
+            "vllm",
+            "models"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-08-28T19:17:50Z",
+            "head": "3ddbbee3d724ec220bec2bc0d02ec310e4ada8d3",
+            "merge_commit_sha": "766b4ae54c491497306224ee4b316d9c2d57cd30",
+            "updated_at": "2026-10-01T02:28:51Z",
+            "merged_at": "2026-10-01T02:28:51Z",
+            "verifiedAt": "2026-10-01T04:02:45Z",
+            "state": "closed",
+            "draft": false,
+            "references": [
+              "https://github.com/vllm-project/vllm/blob/766b4ae54c491497306224ee4b316d9c2d57cd30/vllm/models/kimi_k3/nvidia/kda.py#L219-L285",
+              "https://github.com/vllm-project/vllm/blob/766b4ae54c491497306224ee4b316d9c2d57cd30/vllm/models/kimi_k3/nvidia/kda.py#L951-L981"
+            ]
+          },
+          "rank": "11",
+          "supportingSources": [
+            {
+              "title": "固定版本源码与依赖",
+              "url": "https://github.com/vllm-project/vllm/blob/766b4ae54c491497306224ee4b316d9c2d57cd30/vllm/models/kimi_k3/nvidia/kda.py#L219-L285"
+            },
+            {
+              "title": "固定版本源码与依赖",
+              "url": "https://github.com/vllm-project/vllm/blob/766b4ae54c491497306224ee4b316d9c2d57cd30/vllm/models/kimi_k3/nvidia/kda.py#L951-L981"
+            }
+          ]
+        },
+        {
+          "id": "vllm-lora-path-cache-identity",
+          "category": "VLLM · LORA CACHE IDENTITY",
+          "title": "LoRA 路径进入 Prefix Hash：同名换权重不再误用旧 KV，但跨实例目录必须一致",
+          "summary": "#59335 于 10 月 1 日 00:37 UTC 合并，将 LoRA 的 block-hash extra key 从名称扩展为（名称，路径）。卸载后同名加载其他路径，或 load_inplace 指向新路径时，旧适配器 KV 不再被当作命中；按 block hash 索引的 Connector 与 offload 层自动继承这次身份变化。固定合并提交 c055c1e。",
+          "why": "这修正的是适配器身份，尚非内容版本管理：同一路径覆盖文件后 reload 仍可能命中旧 KV，代码只给出换路径的 warning。升级后旧版本 LoRA 缓存会失配；相同适配器若在不同实例使用不同绝对路径，也将失去互相复用，部署前应统一路径。KV events 仍仅发布名称，格式未改变。作者报告新回归测试在旧代码失败、改后通过，并在 4×GB200 上完成 1,013 passed／8 skipped；本次核查 hash、reload warning 与测试补丁，未独立运行。",
+          "source": "https://github.com/vllm-project/vllm/pull/59335",
+          "sourceLabel": "vLLM PR #59335 · merged c055c1e",
+          "reading": "6 min",
+          "signal": "high",
+          "columns": [
+            "vllm",
+            "kv-cache"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-09-30T00:52:08Z",
+            "head": "b30b1b148ac361d02f151a5799da6f3171a4a9dd",
+            "merge_commit_sha": "c055c1e075ed461cff922aa710d387281f651940",
+            "updated_at": "2026-10-01T00:37:42Z",
+            "merged_at": "2026-10-01T00:37:09Z",
+            "verifiedAt": "2026-10-01T04:02:45Z",
+            "state": "closed",
+            "draft": false,
+            "references": [
+              "https://github.com/vllm-project/vllm/blob/c055c1e075ed461cff922aa710d387281f651940/vllm/v1/core/kv_cache_utils.py#L568-L585",
+              "https://github.com/vllm-project/vllm/blob/c055c1e075ed461cff922aa710d387281f651940/vllm/entrypoints/openai/models/serving.py#L215-L227"
+            ]
+          },
+          "rank": "12",
+          "supportingSources": [
+            {
+              "title": "固定版本源码与依赖",
+              "url": "https://github.com/vllm-project/vllm/blob/c055c1e075ed461cff922aa710d387281f651940/vllm/v1/core/kv_cache_utils.py#L568-L585"
+            },
+            {
+              "title": "固定版本源码与依赖",
+              "url": "https://github.com/vllm-project/vllm/blob/c055c1e075ed461cff922aa710d387281f651940/vllm/entrypoints/openai/models/serving.py#L215-L227"
+            }
+          ]
+        },
+        {
+          "id": "vllm-mooncake-selected-recurrent-leases",
+          "category": "VLLM · MOONCAKE RECURRENT CHECKPOINT",
+          "title": "Mooncake Connector 提议只给最终可恢复的递归 Checkpoint 续租，避免探测把全部状态保活",
+          "summary": "10 月 1 日 00:47 UTC 新开的 Draft #59522 增加默认关闭的 mooncake_kda_last_hit_only：先由 KV 证据限定合法恢复边界，再按 checkpoint-major 顺序跨 group／rank 查找完整 recurrent state，仅给最终选中的 checkpoint 续租。适用 FullAttention＋align-mode Mamba；Eagle、末 token 重算与 partial-hash 尾页分别保留边界语义。固定 head 3824c3f，未合并。",
+          "why": "探测全部候选并续租，会把无法实际恢复的旧状态继续保活。作者在 128 checkpoints、4 recurrent namespaces 的 CPU/TCP 实验中把续租 keys 从 512 降为 4；KV 只覆盖 16 checkpoints 时，lookup p50 为 1,694.88→678.66 μs（2.50×），但 RPC 从 1 次变为 2 次，TCP 跨进程波动明显。367 项 tests 含 4 个 TCP→receiver buffer 字节验证，均为作者结果，非 GPU Serving。依赖尚未合并的 Mooncake #4314；Master、daemon 与 clients 必须一起升级。选中对象仅获得默认 read-lease TTL，不改变 soft-pin，不防租约到期、强制删除或副本丢失；无效响应／RPC 错误按 miss 处理，不回退到全量续租。必须使用 independent leases，迁移共享分组数据需 fresh cache_prefix。本次只核验固定源码与公开材料，未独立复现。",
+          "source": "https://github.com/vllm-project/vllm/pull/59522",
+          "sourceLabel": "vLLM Draft #59522 · head 3824c3f",
+          "reading": "9 min",
+          "signal": "high",
+          "columns": [
+            "vllm",
+            "mooncake",
+            "kv-cache"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-10-01T00:47:10Z",
+            "head": "3824c3f0915855cfc8ca0e0f253fee25c45e70e0",
+            "merge_commit_sha": null,
+            "updated_at": "2026-10-01T00:47:49Z",
+            "merged_at": null,
+            "verifiedAt": "2026-10-01T04:02:45Z",
+            "state": "open",
+            "draft": true,
+            "references": [
+              "https://github.com/vllm-project/vllm/blob/3824c3f0915855cfc8ca0e0f253fee25c45e70e0/vllm/distributed/kv_transfer/kv_connector/v1/mooncake/store/coordinator.py#L129-L178",
+              "https://github.com/vllm-project/vllm/blob/3824c3f0915855cfc8ca0e0f253fee25c45e70e0/vllm/distributed/kv_transfer/kv_connector/v1/mooncake/store/worker.py#L2360-L2430",
+              "https://github.com/vllm-project/vllm/blob/3824c3f0915855cfc8ca0e0f253fee25c45e70e0/benchmarks/mooncake_last_hit_only_results.md",
+              "https://github.com/kvcache-ai/Mooncake/pull/4314",
+              "https://github.com/kvcache-ai/Mooncake/blob/7943c052be6aab81c71b60fea9483952dec21141/docs/source/api-reference/python/mooncake-store.md#L1549-L1613"
+            ]
+          },
+          "rank": "13",
+          "supportingSources": [
+            {
+              "title": "固定版本源码与依赖",
+              "url": "https://github.com/vllm-project/vllm/blob/3824c3f0915855cfc8ca0e0f253fee25c45e70e0/vllm/distributed/kv_transfer/kv_connector/v1/mooncake/store/coordinator.py#L129-L178"
+            },
+            {
+              "title": "固定版本源码与依赖",
+              "url": "https://github.com/vllm-project/vllm/blob/3824c3f0915855cfc8ca0e0f253fee25c45e70e0/vllm/distributed/kv_transfer/kv_connector/v1/mooncake/store/worker.py#L2360-L2430"
+            },
+            {
+              "title": "固定版本源码与依赖",
+              "url": "https://github.com/vllm-project/vllm/blob/3824c3f0915855cfc8ca0e0f253fee25c45e70e0/benchmarks/mooncake_last_hit_only_results.md"
+            },
+            {
+              "title": "固定版本源码与依赖",
+              "url": "https://github.com/kvcache-ai/Mooncake/pull/4314"
+            },
+            {
+              "title": "固定版本源码与依赖",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/7943c052be6aab81c71b60fea9483952dec21141/docs/source/api-reference/python/mooncake-store.md#L1549-L1613"
+            }
+          ]
         }
       ]
     },
@@ -2436,9 +2773,9 @@
       },
       "10.01": {
         "headline": "今日值得关注的 AI Infra 信号",
-        "subtitle": "本期 7 条 · 约 63 分钟",
-        "threadTitle": "状态提交、存储准入与内核边界：从正确运行到有条件的加速",
-        "threadSummary": "00:00 UTC 批次记录 PP 推测状态修复、Unified PD matching-DCP、AMD 4-bit KV 提案、HiSparse 活锁、静态 FP8 内核和 ReplaySSM MTP；补充核读此前提交的 Janus v1，保留论文原始日期。另原位修订上一期 #59330 的双端升级约束与作者实测，追加未执行的 E-07 实验。代码合入、开放提案、作者结果和独立复现边界分别说明。"
+        "subtitle": "本期 13 条 · 约 110 分钟",
+        "threadTitle": "正确性边界与模型落地：集体通信、缓存身份与状态租约",
+        "threadSummary": "保留 00:00 批次七项记录；04:00 增补 HiCache PD collective 修复、MiMo FA4 默认、TP 分层 Host 去重草案、Kimi-K3 packed KDA、LoRA 路径身份和递归 checkpoint 选择性续租。原位修订此前 Engram 合并方案及 Mooncake 主机反亲和，保留原始日期与旧版证据。作者结果、合并状态和本次源码核验分别标明。"
       }
     }
   },
@@ -2585,6 +2922,39 @@
         {
           "title": "Janus · arXiv:2609.36938v1",
           "url": "https://arxiv.org/abs/2609.36938v1"
+        }
+      ],
+      "status": "unvalidated"
+    },
+    {
+      "id": "E-08",
+      "title": "TP 分片 Host KV：容量去重何时覆盖回载广播与前向屏障成本？",
+      "hypothesis": "在复制 MLA／index-K 的 DSA 部署中，按层分片可减少 Host 复制字节并扩大独有缓存；只有这些收益超过 staging、TP 广播与整次回载屏障的代价，才会改善端到端服务。固定独有容量与固定 Host 总预算需分开检验。",
+      "method": [
+        "未执行。先将 #41984 rebase 到可运行的固定 SGLang 提交并记录 diff，锁定一个公开 DSA checkpoint、CUDA 单节点 TP 拓扑、PP1、direct/page_first_direct；不开 DP attention、CP/DCP、L3、HiSparse 或 PD Decode。若独立分支无法完成正确性验收则停止，不把叠加开发栈结果当作复现。",
+        "两组配对对照：A 固定独有 token 容量，比较 replicated baseline 与 KEEP_CAPACITY=1 的 rank-sharded host；B 固定全节点 Host KV 字节预算，允许分片增加容量。固定请求轨迹、HBM 预算与并发，报告实际 Host 分配、index-K、额外 HBM staging 和层数不整除 TP 带来的不均衡，不用配置值代替实占。",
+        "使用可公开的合成多轮／分支请求，扫描复用间隔、回载批量、并发和 TP size；先固定命中请求测 D2H、H2D、广播、gather/scatter 与 forward gate，再让容量影响命中率，测整条请求关键路径。",
+        "正确性覆盖：人为延迟单 Rank 的 H2D、非均匀层归属、强制淘汰与连续回载、排队或回载期间取消请求。核对各 Rank 的恢复页及确定性 logits/logprob、slot/ack 回收与容量恢复；在隔离的限时负对照中制造 host-page 索引分歧，要求校验发现而非静默继续。记录超时／死锁；不在生产运行故障注入。"
+      ],
+      "metrics": [
+        "独有缓存容量、实际 adopted tokens／命中率、重算 token 数",
+        "各 Rank D2H/H2D 字节与时长、广播字节／时间、gather/scatter、CPU issue 与 forward gate 等待",
+        "TTFT／TPOT p50、p95、p99 和同 SLO goodput；固定命中条件与容量放开条件分别报告",
+        "Host 与 staging HBM 峰值、跨 Rank 页一致性、logits/logprob 误差、取消后的槽位／ack 回收和故障检测"
+      ],
+      "falsifier": "若固定独有容量下少搬 Host 字节却因广播或屏障增加服务尾延迟，且固定 Host 预算下更高命中也不能补回同 SLO goodput，则不支持在该工作负载启用。任何静默跨 Rank 状态分歧、取消后泄漏或正常时序死锁，均使正确性前提不成立。",
+      "related": [
+        "state-recovery",
+        "pd-c2c-coordination"
+      ],
+      "sources": [
+        {
+          "title": "SGLang #41984 · rank-sharded HiCache draft fd73224",
+          "url": "https://github.com/sgl-project/sglang/pull/41984"
+        },
+        {
+          "title": "固定 head：分片所有权、广播与 gate",
+          "url": "https://github.com/sgl-project/sglang/blob/fd73224d47b24171418d64174e5df647a6e9b8da/python/sglang/srt/mem_cache/hicache_rank_shard.py"
         }
       ],
       "status": "unvalidated"
