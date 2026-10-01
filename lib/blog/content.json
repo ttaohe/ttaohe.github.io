@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-10-01T16:11:00Z",
+  "updatedAt": "2026-10-01T20:13:00Z",
   "posts": [
     {
       "slug": "state-recovery",
@@ -37,7 +37,8 @@
           "paragraphs": [
             "DeepSeek-V4.1-Flash 报告将 global KV 长期保留在 persistent cache，把 SWA KV 放入短 TTL 的分布式 host 内存池；SWA 缺失时，以最近一个窗口 replay 做近似重建。这展示了特定模型的存储与重算取舍，不能直接推广成 KDA、Mamba 的精确恢复方法。报告也保留了 cache-resumption 鲁棒性风险。",
             "这里的 persistent 是部署中的留存语义，不能仅凭名称推断通用断电持久性。类似地，“全量历史可表示”也不意味着所有 KV 页永不淘汰。模型表示能力与缓存管理策略之间，需要保留这条分界。",
-            "Marconi 处理的困难是 recurrent state 会原地更新，无法像历史 KV 那样任意截短复用，因此要选择值得保存的边界。vLLM #37898 用普通 attention 命中长于 SSM 命中的差异发现未留存的共享前缀，再在 block 对齐边界补算并保留 checkpoint；这不要求显式 session 计数器。轮末边界和共享前缀边界是互补线索。"
+            "Marconi 处理的困难是 recurrent state 会原地更新，无法像历史 KV 那样任意截短复用，因此要选择值得保存的边界。vLLM #37898 用普通 attention 命中长于 SSM 命中的差异发现未留存的共享前缀，再在 block 对齐边界补算并保留 checkpoint；这不要求显式 session 计数器。轮末边界和共享前缀边界是互补线索。",
+            "状态在同一边界齐备，还不等于这次请求可以复用。9 月 30 日的 Shared KV Provenance v1 将计算来源一致与共享许可分成独立条件：相同 token 的 KV 可能来自另一 adapter／权重配置，即使状态值相同，租户策略也可能禁止共享。其旧版 vLLM 与指定 SGLang 版本实验不能当作当前主干漏洞结论；对 Mooncake 的证据仅限作者源码审计。对这里的恢复实验，除组件与 checkpoint 外，还应记录实际解析后的配置身份和授权 namespace，以隔离环境中的 no-cache、自播种 warm 与跨身份读取对照核验。"
           ]
         },
         {
@@ -54,7 +55,9 @@
             "更有解释力的指标是“组件齐备且实际被采用的恢复 token 数”。如果 KV 页命中增加了，合法 checkpoint 却没有覆盖更长前缀，对请求而言可能没有新增收益。SGLang direct linker 的具体实现，正好提供了观察这个边界的源码切口；其 LOAD、COMMIT 与 COW 机制放在关联文章中单独分析。",
             "容量侧还可先建立可检验的基线。9 月 23 日的 KVSET v1 用 LRU stack distance 估计页驻留工作集，避免为每个容量独立回放。固定实现默认要求每个请求保住其理论可复用连续前缀的 99%（向上取整到页），若再取所需容量的 p99，则表示让约 99% 的请求达到这个目标；这两个 99% 不是全局 token 命中率。论文明确只估 Full-Attention KV，Mamba／SWA 需另留预算。因此，页容量曲线可以作为恢复实验的输入，但还要对照同一边界的 checkpoint 与必需组件，测量实际 adopted tokens，不能用页驻留替代状态齐备或性能证据。",
             "一个待验证的实验是固定总容量，对比分组件 LRU、固定间隔 checkpoint 与共享分支边界优先保留。恢复位置覆盖 checkpoint 前后和分叉位置，同时记录 adopted tokens、齐备组件、重算量、写入放大，并检查 logits 或 logprob。若策略只提高对象 hit，却不提高可恢复长度，假设就不成立。",
-            "性能还要回到时间线。HiCache 已在 waiting queue 阶段提前 prefetch，不能假设它等 admission 后才搬运。应比较准入时尚未完成的传输、L2→L1 与同步等待，再测 TTFT 和 HBM 占用时间。恢复正确、命中更多、端到端更快，是需要分别建立的证据。"
+            "性能还要回到时间线。HiCache 已在 waiting queue 阶段提前 prefetch，不能假设它等 admission 后才搬运。应比较准入时尚未完成的传输、L2→L1 与同步等待，再测 TTFT 和 HBM 占用时间。恢复正确、命中更多、端到端更快，是需要分别建立的证据。",
+            "恢复预算也不等于只数一份 checkpoint。仍在评审的 SGLang #36345 把 Mamba 接入 buffer-only：一个 host checkpoint 要分别装入树节点和请求私有两个 device 槽，admission 因此同时计费；请求侧独立 H2D 受 layer gate 保护，重复节点目的槽则要留到 transfer ack。缺少 Mamba state 时，已取回的 Full KV 不能独自构成有效恢复，代码会放弃该 staged hit 并重算。作者的 H200／Inkling 小范围测试通过 flush 排除 L1 命中，8 次均恢复 512 tokens、KL 为 0；它支持这条 handoff 路径的正确性观察，尚不能回答容量压力、其他模型和端到端时延收益。",
+            "输出一致性也要固定数值执行条件。Vosti 的固定实现把 hash 当索引，继续核对页内 tokens、前缀深度与物理 parent，并将同一部署内的输出轨迹定义为 prefix-comparable；源码明确这不保证调度最终完成。它提供了对照恢复路径的测试思路，却尚未证明节省窗口外状态的 SWA 淘汰，也不覆盖 KDA／Mamba、MoE 或跨 GPU 布局。因此，恢复前后 logits 的差异应先与相同部署、相同 token 轨迹及已知 kernel 切换基线比较，不能直接把所有差异归为缓存错读。"
           ]
         }
       ],
@@ -112,10 +115,46 @@
         {
           "title": "KVSET 固定文档：默认目标比例与指标定义",
           "url": "https://github.com/llc-kc/kv_cache_capacity_estimator/blob/a90dc298151a8e117aa37e3c30fc0686de5225fa/README.md"
+        },
+        {
+          "title": "固定 head：一份 host checkpoint 到节点/请求两个目的槽",
+          "url": "https://github.com/sgl-project/sglang/blob/5a0dad640fa7ca01217bb3a03c2de1e40fad5b27/python/sglang/srt/mem_cache/buffer_mode/pipeline.py#L1117-L1170"
+        },
+        {
+          "title": "固定 head：admission 的请求槽与节点槽计费",
+          "url": "https://github.com/sgl-project/sglang/blob/5a0dad640fa7ca01217bb3a03c2de1e40fad5b27/python/sglang/srt/managers/schedule_policy.py#L832-L848"
+        },
+        {
+          "title": "固定 head：失败回滚、ReplaySSM cursor 与 CoW 状态清理",
+          "url": "https://github.com/sgl-project/sglang/blob/5a0dad640fa7ca01217bb3a03c2de1e40fad5b27/python/sglang/srt/mem_cache/unified_cache/components/mamba.py#L701-L735"
+        },
+        {
+          "title": "固定 head：缺失状态/容量与H2D目的槽生命周期",
+          "url": "https://github.com/sgl-project/sglang/blob/5a0dad640fa7ca01217bb3a03c2de1e40fad5b27/python/sglang/srt/mem_cache/buffer_mode/pipeline.py#L1274-L1390"
+        },
+        {
+          "title": "固定 head：L3强制恢复与KL测试定义",
+          "url": "https://github.com/sgl-project/sglang/blob/5a0dad640fa7ca01217bb3a03c2de1e40fad5b27/test/registered/radix_cache/unified_radix_tree/test_unified_radix_cache_kl_hybrid_bitexact.py#L466-L579"
+        },
+        {
+          "title": "Shared KV Provenance v1：来源与共享许可、实验范围",
+          "url": "https://arxiv.org/html/2609.38706v1#S5.SS1"
+        },
+        {
+          "title": "Vosti 固定源码：page provenance 实际条件",
+          "url": "https://github.com/QDelta/Vosti/blob/347975fb658a7d073ee9788dc860a582949121a3/src/exec/cache_scheduler/prefix_cache.rs#L3269-L3342"
+        },
+        {
+          "title": "Vosti 固定规范与证明范围",
+          "url": "https://github.com/QDelta/Vosti/blob/347975fb658a7d073ee9788dc860a582949121a3/src/spec.rs#L98-L119"
+        },
+        {
+          "title": "Vosti 固定 artifact：SWA 与模型范围",
+          "url": "https://github.com/QDelta/Vosti/blob/347975fb658a7d073ee9788dc860a582949121a3/README.md#L34-L39"
         }
       ],
-      "disclosure": "本文由学习与讨论记录经 AI 辅助整理。原有公开来源核验截至 2026-09-30；2026-10-01 补读 KVSET v1 并检查固定公开源码 a90dc298。实验部分仍是待验证设想，尚未实施；文中论文与实现成果属于原作者，不代表本站完成了工具、服务或 GPU 复现，也不证明研究新颖性。",
-      "lastRevisedAt": "2026-10-01T16:11:00Z",
+      "disclosure": "本文由学习与讨论记录经 AI 辅助整理。原有公开来源核验截至 2026-09-30；2026-10-01 补读 KVSET v1 并检查固定公开源码 a90dc298。实验部分仍是待验证设想，尚未实施；文中论文与实现成果属于原作者，不代表本站完成了工具、服务或 GPU 复现，也不证明研究新颖性。 2026-10-01 20:00 UTC 批次补充 SGLang buffer-only Mamba 的固定源码，以及共享 KV provenance 和 Vosti 的论文／固定源码边界；均为阅读与源码分析，没有独立 GPU、恢复或安全实验。",
+      "lastRevisedAt": "2026-10-01T20:13:00Z",
       "revisions": [
         {
           "supersededAt": "2026-10-01T16:11:00Z",
@@ -228,6 +267,239 @@
             ],
             "disclosure": "本文由学习与讨论记录经 AI 辅助整理，公开来源核验截至 2026-09-30。实验部分是待验证设想，尚未实施；文中论文与实现成果属于原作者，不代表本站完成了 GPU 复现或证明了研究新颖性。"
           }
+        },
+        {
+          "supersededAt": "2026-10-01T20:13:00Z",
+          "reason": "补充固定来源的机制边界；补充固定来源的机制边界；补充固定来源的机制边界；保留原发布日期、稳定 slug 与完整旧文。",
+          "record": {
+            "slug": "state-recovery",
+            "title": "KV cache 的下一层问题：什么状态才算真正可恢复？",
+            "subtitle": "把状态规模、合法恢复边界和存储层级拆开，重新理解 hybrid cache 的有效命中",
+            "date": "2026-09-30",
+            "category": "缓存与状态",
+            "tags": [
+              "KV cache",
+              "Hybrid LLM",
+              "Marconi",
+              "状态恢复"
+            ],
+            "kind": "技术综述",
+            "summary": "外存里有 KV，不等于请求能从那里继续执行。本文从模型状态的语义出发，梳理 checkpoint、缓存留存与恢复关键路径之间的关系，并提出尚待验证的测量方法。",
+            "outline": [
+              "1. 先拆开三条分析轴",
+              "2. 模型状态决定合法恢复边界",
+              "3. 能匹配，不代表能留到下次",
+              "4. 用有效恢复量检验缓存策略"
+            ],
+            "sections": [
+              {
+                "heading": "1. 先拆开三条分析轴",
+                "paragraphs": [
+                  "讨论 KV cache 时，很容易把“缓存在哪里”“状态有多大”和“命中后能否续算”混成一个问题。存储后端解决了容量与搬运，但 hybrid 模型还提出另一层约束：下一次请求要恢复哪些组件，这些组件是否对应同一个前缀边界？",
+                  "第一条轴是状态规模。Full KV、MLA、DSA 所需历史表示随上下文增长；SWA 窗口与 KDA、Mamba 的单个续算状态有界。不过，有界的是一个状态快照，大量历史 checkpoint 仍会累积容量，不能据此推出整个缓存固定大小。",
+                  "第二条轴是恢复语义：历史页可命中、窗口完整、recurrent checkpoint 存在，是不同条件。第三条轴是驻留与路径：L1 HBM、L2 host、L3 外存描述位置，direct linker 描述访问路径。共享池、跨请求留存与提前 prefetch，也应分别讨论。"
+                ],
+                "diagram": "state-boundary"
+              },
+              {
+                "heading": "2. 模型状态决定合法恢复边界",
+                "paragraphs": [
+                  "DeepSeek-V4.1-Flash 报告将 global KV 长期保留在 persistent cache，把 SWA KV 放入短 TTL 的分布式 host 内存池；SWA 缺失时，以最近一个窗口 replay 做近似重建。这展示了特定模型的存储与重算取舍，不能直接推广成 KDA、Mamba 的精确恢复方法。报告也保留了 cache-resumption 鲁棒性风险。",
+                  "这里的 persistent 是部署中的留存语义，不能仅凭名称推断通用断电持久性。类似地，“全量历史可表示”也不意味着所有 KV 页永不淘汰。模型表示能力与缓存管理策略之间，需要保留这条分界。",
+                  "Marconi 处理的困难是 recurrent state 会原地更新，无法像历史 KV 那样任意截短复用，因此要选择值得保存的边界。vLLM #37898 用普通 attention 命中长于 SSM 命中的差异发现未留存的共享前缀，再在 block 对齐边界补算并保留 checkpoint；这不要求显式 session 计数器。轮末边界和共享前缀边界是互补线索。"
+                ]
+              },
+              {
+                "heading": "3. 能匹配，不代表能留到下次",
+                "paragraphs": [
+                  "缓存树能找到共享前缀，只说明存在匹配关系。请求回来时，相关页与 checkpoint 是否仍驻留、是否被锁定、恢复是否赶得上准入，才决定命中的实际价值。Cache in the Wild 在其生产 traces 中观察到 cross-user 命中较少，同时指出单轮 API 的共享 system prompt 很重要；不能据此否定同一用户跨 session 的复用。",
+                  "Preble 将分布式前缀复用与负载均衡联合考虑，也提醒我们：共享池建立后，路由、局部驻留与排队仍会改变收益。对新 code-agent 工作负载，既有论文是比较基线，目标部署的 traces 才能回答复用间隔与容量是否匹配。",
+                  "容量测量同样需要拆分。L1、L2 至少应区分 active／locked、可淘汰 cache、free 与 in-flight。token_usage 的口径必须按部署 commit 核验；一个利用率数值无法说明所有已分配状态，也无法区分天然缺少共享与缓存留存不足。"
+                ]
+              },
+              {
+                "heading": "4. 用有效恢复量检验缓存策略",
+                "paragraphs": [
+                  "更有解释力的指标是“组件齐备且实际被采用的恢复 token 数”。如果 KV 页命中增加了，合法 checkpoint 却没有覆盖更长前缀，对请求而言可能没有新增收益。SGLang direct linker 的具体实现，正好提供了观察这个边界的源码切口；其 LOAD、COMMIT 与 COW 机制放在关联文章中单独分析。",
+                  "容量侧还可先建立可检验的基线。9 月 23 日的 KVSET v1 用 LRU stack distance 估计页驻留工作集，避免为每个容量独立回放。固定实现默认要求每个请求保住其理论可复用连续前缀的 99%（向上取整到页），若再取所需容量的 p99，则表示让约 99% 的请求达到这个目标；这两个 99% 不是全局 token 命中率。论文明确只估 Full-Attention KV，Mamba／SWA 需另留预算。因此，页容量曲线可以作为恢复实验的输入，但还要对照同一边界的 checkpoint 与必需组件，测量实际 adopted tokens，不能用页驻留替代状态齐备或性能证据。",
+                  "一个待验证的实验是固定总容量，对比分组件 LRU、固定间隔 checkpoint 与共享分支边界优先保留。恢复位置覆盖 checkpoint 前后和分叉位置，同时记录 adopted tokens、齐备组件、重算量、写入放大，并检查 logits 或 logprob。若策略只提高对象 hit，却不提高可恢复长度，假设就不成立。",
+                  "性能还要回到时间线。HiCache 已在 waiting queue 阶段提前 prefetch，不能假设它等 admission 后才搬运。应比较准入时尚未完成的传输、L2→L1 与同步等待，再测 TTFT 和 HBM 占用时间。恢复正确、命中更多、端到端更快，是需要分别建立的证据。"
+                ]
+              }
+            ],
+            "takeaways": [
+              "先确认同一边界的必需状态齐备，再讨论缓存命中率",
+              "有界续算状态不等于有界历史 checkpoint 总容量",
+              "缓存策略应以实际恢复量和端到端收益共同评价"
+            ],
+            "openQuestions": [
+              "分支工作负载中，checkpoint 覆盖率是否比 KV 驻留容量更先成为瓶颈？",
+              "前缀深度、复用间隔与重算成本，能否在不依赖业务标签时改善保留决策？",
+              "当提前 prefetch 已隐藏外存读取，剩余恢复路径还有多少可优化空间？"
+            ],
+            "relatedSlugs": [
+              "direct-linker",
+              "pd-c2c-coordination"
+            ],
+            "sources": [
+              {
+                "title": "DeepSeek-V4.1-Flash 报告 v1：§3.2 与 §6",
+                "url": "https://arxiv.org/html/2609.19969v1"
+              },
+              {
+                "title": "Marconi：Prefix Caching for the Era of Hybrid LLMs",
+                "url": "https://arxiv.org/abs/2411.19379"
+              },
+              {
+                "title": "vLLM #37898：Hybrid Marconi-style admission policy",
+                "url": "https://github.com/vllm-project/vllm/pull/37898"
+              },
+              {
+                "title": "vLLM 固定版本：shared_prefix_boundary 相关代码",
+                "url": "https://github.com/vllm-project/vllm/blob/e5f3d08d722870a5301560fad0cfa65b7e333900/vllm/v1/core/kv_cache_manager.py#L264-L321"
+              },
+              {
+                "title": "KVCache Cache in the Wild：arXiv v4",
+                "url": "https://arxiv.org/html/2506.02634v4"
+              },
+              {
+                "title": "Preble：Efficient Distributed Prompt Scheduling for LLM Serving",
+                "url": "https://arxiv.org/abs/2407.00023"
+              },
+              {
+                "title": "SGLang 固定版本：waiting queue 前的 prefetch",
+                "url": "https://github.com/sgl-project/sglang/blob/eb9c9ee99d47bf4c526a06cd84da59cd9cf4e2a5/python/sglang/srt/managers/scheduler.py#L3266-L3293"
+              },
+              {
+                "title": "KVSET：The KV Cache Working Set，v1（§2 方法与 §5 范围限制）",
+                "url": "https://arxiv.org/pdf/2609.27746v1"
+              },
+              {
+                "title": "KVSET 固定实现：请求容量分位数与连续前缀目标",
+                "url": "https://github.com/llc-kc/kv_cache_capacity_estimator/blob/a90dc298151a8e117aa37e3c30fc0686de5225fa/src/kv_capacity_estimator/analysis.py#L428-L481"
+              },
+              {
+                "title": "KVSET 固定文档：默认目标比例与指标定义",
+                "url": "https://github.com/llc-kc/kv_cache_capacity_estimator/blob/a90dc298151a8e117aa37e3c30fc0686de5225fa/README.md"
+              }
+            ],
+            "disclosure": "本文由学习与讨论记录经 AI 辅助整理。原有公开来源核验截至 2026-09-30；2026-10-01 补读 KVSET v1 并检查固定公开源码 a90dc298。实验部分仍是待验证设想，尚未实施；文中论文与实现成果属于原作者，不代表本站完成了工具、服务或 GPU 复现，也不证明研究新颖性。",
+            "lastRevisedAt": "2026-10-01T16:11:00Z",
+            "revisions": [
+              {
+                "supersededAt": "2026-10-01T16:11:00Z",
+                "reason": "补充 KVSET 的页工作集容量基线，将请求目标比例与请求覆盖分位数分开，并保留 hybrid 有效恢复与端到端验证边界。",
+                "sourceVersion": {
+                  "arxiv": "2609.27746v1",
+                  "firstSubmittedAt": "2026-09-23T11:59:45Z",
+                  "implementationHead": "a90dc298151a8e117aa37e3c30fc0686de5225fa",
+                  "implementationHeadCommittedAt": "2026-09-24T13:34:45Z",
+                  "verifiedAt": "2026-10-01T16:06:30Z"
+                },
+                "record": {
+                  "slug": "state-recovery",
+                  "title": "KV cache 的下一层问题：什么状态才算真正可恢复？",
+                  "subtitle": "把状态规模、合法恢复边界和存储层级拆开，重新理解 hybrid cache 的有效命中",
+                  "date": "2026-09-30",
+                  "category": "缓存与状态",
+                  "tags": [
+                    "KV cache",
+                    "Hybrid LLM",
+                    "Marconi",
+                    "状态恢复"
+                  ],
+                  "kind": "技术综述",
+                  "summary": "外存里有 KV，不等于请求能从那里继续执行。本文从模型状态的语义出发，梳理 checkpoint、缓存留存与恢复关键路径之间的关系，并提出尚待验证的测量方法。",
+                  "outline": [
+                    "1. 先拆开三条分析轴",
+                    "2. 模型状态决定合法恢复边界",
+                    "3. 能匹配，不代表能留到下次",
+                    "4. 用有效恢复量检验缓存策略"
+                  ],
+                  "sections": [
+                    {
+                      "heading": "1. 先拆开三条分析轴",
+                      "paragraphs": [
+                        "讨论 KV cache 时，很容易把“缓存在哪里”“状态有多大”和“命中后能否续算”混成一个问题。存储后端解决了容量与搬运，但 hybrid 模型还提出另一层约束：下一次请求要恢复哪些组件，这些组件是否对应同一个前缀边界？",
+                        "第一条轴是状态规模。Full KV、MLA、DSA 所需历史表示随上下文增长；SWA 窗口与 KDA、Mamba 的单个续算状态有界。不过，有界的是一个状态快照，大量历史 checkpoint 仍会累积容量，不能据此推出整个缓存固定大小。",
+                        "第二条轴是恢复语义：历史页可命中、窗口完整、recurrent checkpoint 存在，是不同条件。第三条轴是驻留与路径：L1 HBM、L2 host、L3 外存描述位置，direct linker 描述访问路径。共享池、跨请求留存与提前 prefetch，也应分别讨论。"
+                      ],
+                      "diagram": "state-boundary"
+                    },
+                    {
+                      "heading": "2. 模型状态决定合法恢复边界",
+                      "paragraphs": [
+                        "DeepSeek-V4.1-Flash 报告将 global KV 长期保留在 persistent cache，把 SWA KV 放入短 TTL 的分布式 host 内存池；SWA 缺失时，以最近一个窗口 replay 做近似重建。这展示了特定模型的存储与重算取舍，不能直接推广成 KDA、Mamba 的精确恢复方法。报告也保留了 cache-resumption 鲁棒性风险。",
+                        "这里的 persistent 是部署中的留存语义，不能仅凭名称推断通用断电持久性。类似地，“全量历史可表示”也不意味着所有 KV 页永不淘汰。模型表示能力与缓存管理策略之间，需要保留这条分界。",
+                        "Marconi 处理的困难是 recurrent state 会原地更新，无法像历史 KV 那样任意截短复用，因此要选择值得保存的边界。vLLM #37898 用普通 attention 命中长于 SSM 命中的差异发现未留存的共享前缀，再在 block 对齐边界补算并保留 checkpoint；这不要求显式 session 计数器。轮末边界和共享前缀边界是互补线索。"
+                      ]
+                    },
+                    {
+                      "heading": "3. 能匹配，不代表能留到下次",
+                      "paragraphs": [
+                        "缓存树能找到共享前缀，只说明存在匹配关系。请求回来时，相关页与 checkpoint 是否仍驻留、是否被锁定、恢复是否赶得上准入，才决定命中的实际价值。Cache in the Wild 在其生产 traces 中观察到 cross-user 命中较少，同时指出单轮 API 的共享 system prompt 很重要；不能据此否定同一用户跨 session 的复用。",
+                        "Preble 将分布式前缀复用与负载均衡联合考虑，也提醒我们：共享池建立后，路由、局部驻留与排队仍会改变收益。对新 code-agent 工作负载，既有论文是比较基线，目标部署的 traces 才能回答复用间隔与容量是否匹配。",
+                        "容量测量同样需要拆分。L1、L2 至少应区分 active／locked、可淘汰 cache、free 与 in-flight。token_usage 的口径必须按部署 commit 核验；一个利用率数值无法说明所有已分配状态，也无法区分天然缺少共享与缓存留存不足。"
+                      ]
+                    },
+                    {
+                      "heading": "4. 用有效恢复量检验缓存策略",
+                      "paragraphs": [
+                        "更有解释力的指标是“组件齐备且实际被采用的恢复 token 数”。如果 KV 页命中增加了，合法 checkpoint 却没有覆盖更长前缀，对请求而言可能没有新增收益。SGLang direct linker 的具体实现，正好提供了观察这个边界的源码切口；其 LOAD、COMMIT 与 COW 机制放在关联文章中单独分析。",
+                        "一个待验证的实验是固定总容量，对比分组件 LRU、固定间隔 checkpoint 与共享分支边界优先保留。恢复位置覆盖 checkpoint 前后和分叉位置，同时记录 adopted tokens、齐备组件、重算量、写入放大，并检查 logits 或 logprob。若策略只提高对象 hit，却不提高可恢复长度，假设就不成立。",
+                        "性能还要回到时间线。HiCache 已在 waiting queue 阶段提前 prefetch，不能假设它等 admission 后才搬运。应比较准入时尚未完成的传输、L2→L1 与同步等待，再测 TTFT 和 HBM 占用时间。恢复正确、命中更多、端到端更快，是需要分别建立的证据。"
+                      ]
+                    }
+                  ],
+                  "takeaways": [
+                    "先确认同一边界的必需状态齐备，再讨论缓存命中率",
+                    "有界续算状态不等于有界历史 checkpoint 总容量",
+                    "缓存策略应以实际恢复量和端到端收益共同评价"
+                  ],
+                  "openQuestions": [
+                    "分支工作负载中，checkpoint 覆盖率是否比 KV 驻留容量更先成为瓶颈？",
+                    "前缀深度、复用间隔与重算成本，能否在不依赖业务标签时改善保留决策？",
+                    "当提前 prefetch 已隐藏外存读取，剩余恢复路径还有多少可优化空间？"
+                  ],
+                  "relatedSlugs": [
+                    "direct-linker",
+                    "pd-c2c-coordination"
+                  ],
+                  "sources": [
+                    {
+                      "title": "DeepSeek-V4.1-Flash 报告 v1：§3.2 与 §6",
+                      "url": "https://arxiv.org/html/2609.19969v1"
+                    },
+                    {
+                      "title": "Marconi：Prefix Caching for the Era of Hybrid LLMs",
+                      "url": "https://arxiv.org/abs/2411.19379"
+                    },
+                    {
+                      "title": "vLLM #37898：Hybrid Marconi-style admission policy",
+                      "url": "https://github.com/vllm-project/vllm/pull/37898"
+                    },
+                    {
+                      "title": "vLLM 固定版本：shared_prefix_boundary 相关代码",
+                      "url": "https://github.com/vllm-project/vllm/blob/e5f3d08d722870a5301560fad0cfa65b7e333900/vllm/v1/core/kv_cache_manager.py#L264-L321"
+                    },
+                    {
+                      "title": "KVCache Cache in the Wild：arXiv v4",
+                      "url": "https://arxiv.org/html/2506.02634v4"
+                    },
+                    {
+                      "title": "Preble：Efficient Distributed Prompt Scheduling for LLM Serving",
+                      "url": "https://arxiv.org/abs/2407.00023"
+                    },
+                    {
+                      "title": "SGLang 固定版本：waiting queue 前的 prefetch",
+                      "url": "https://github.com/sgl-project/sglang/blob/eb9c9ee99d47bf4c526a06cd84da59cd9cf4e2a5/python/sglang/srt/managers/scheduler.py#L3266-L3293"
+                    }
+                  ],
+                  "disclosure": "本文由学习与讨论记录经 AI 辅助整理，公开来源核验截至 2026-09-30。实验部分是待验证设想，尚未实施；文中论文与实现成果属于原作者，不代表本站完成了 GPU 复现或证明了研究新颖性。"
+                }
+              }
+            ]
+          }
         }
       ]
     },
@@ -276,7 +548,9 @@
           "paragraphs": [
             "TENT 将传输意图与具体路径分离，在 slice 粒度依据遥测和成本估计晚绑定链路，处理拥塞、坏链路与带宽闲置。拥有这种能力，并不能直接证明某个部署中的 TENT 能理解 DeepEP collective 的业务优先级，或能抢占外部库已经发出的工作。",
             "阶段调度关注另一层信息。MFS 在 9 月 19 日的 v2 改题为 Stage-Aware Communication Scheduling for Disaggregated LLM Serving，系统名 Nuska，将 KV retrieval、collective、P2D 的依赖及 TTFT 余量纳入调度。来源中的两个标题是同一论文的版本演进。",
-            "验证实现时还要拆开 CPU 与设备路径。GIL 或同步等待是否让提交串行，和已发出的 GPU／NIC 工作是否互相争用，是两组问题。异步 API 不证明实际重叠，时间线重叠也不证明互不干扰。可先对比 prefill-only、KV-only、prefill+KV，记录 CPU 提交、kernel、DeepEP dispatch／combine、NIC 吞吐与 inflight 数。"
+            "验证实现时还要拆开 CPU 与设备路径。GIL 或同步等待是否让提交串行，和已发出的 GPU／NIC 工作是否互相争用，是两组问题。异步 API 不证明实际重叠，时间线重叠也不证明互不干扰。可先对比 prefill-only、KV-only、prefill+KV，记录 CPU 提交、kernel、DeepEP dispatch／combine、NIC 吞吐与 inflight 数。",
+            "ThunderEP v1 提供了一个拓扑边界鲜明的对照：在没有 P2P 的六卡 consumer GPU 上，Prefill 的 DMA 搬运与 expert 计算可按 sender 到达顺序衔接；Decode 为维持 CUDA Graph 的双 buffer 轮换反而仍用 SM。它的 All-Gather 少传字节，GPU-reduce Combine 则主要省同步链。由此能提出的检查项是分别量化 payload、等待和资源争用，不能把该论文的 PCIe 结果直接写成 Grace C2C 或 RDMA 的收益。",
+            "完成语义还要跨过故障边界。Mooncake 的 TENT 后续提案 #4447–#4449 在控制面快速失败之后，为 RDMA／RPC 通知加入 session／seq 去重，并把失败或退役 QP 中已 post 的带戳 typed SEND 交给后台换 NIC 配对重发。这解释了为什么先有去重，才敢在结果不确定时重发；不过 4,096 条滑动窗口、旧 peer／raw payload 兼容、进程重启和接收端消费之前崩溃都仍有限制。作者两主机故障注入结果属于完整 stacked 分支，不能拆成单 PR 收益，也不能把 NIC 确认与应用消费等同为端到端 exactly-once。比较正常与故障路径时，吞吐、通知唯一交付和请求最终完成需要分别测量。"
           ]
         },
         {
@@ -330,9 +604,143 @@
         {
           "title": "DirectKV：实现与 artifact-evaluation 说明",
           "url": "https://github.com/shutianluo/DirectKV"
+        },
+        {
+          "title": "ThunderEP v1：分阶段搬运与同步范围",
+          "url": "https://arxiv.org/html/2609.40093v1#S4.SS5"
+        },
+        {
+          "title": "#4448：兼容性、去重窗口及已知限制",
+          "url": "https://github.com/kvcache-ai/Mooncake/pull/4448"
+        },
+        {
+          "title": "固定 #4448 head：目标 session、序号及 4096 窗口",
+          "url": "https://github.com/kvcache-ai/Mooncake/blob/0fad9b6928d9780a3c9ce444f28785b6506ace83/mooncake-transfer-engine/tent/src/common/notify_frame.cpp#L145-L218"
+        },
+        {
+          "title": "固定末端 head：只有实际 post 的 tracked typed SEND 留存与交还",
+          "url": "https://github.com/kvcache-ai/Mooncake/blob/9c3c0b7b612516f50bfb652645acaf14212d9d6c/mooncake-transfer-engine/tent/src/transport/rdma/endpoint.cpp#L1240-L1418"
+        },
+        {
+          "title": "固定末端 head：换 NIC 配对、重发预算、RPC fallback 与单线程队列",
+          "url": "https://github.com/kvcache-ai/Mooncake/blob/9c3c0b7b612516f50bfb652645acaf14212d9d6c/mooncake-transfer-engine/tent/src/transport/rdma/rdma_transport.cpp#L1018-L1119"
+        },
+        {
+          "title": "TENT 通知容错栈末端提案与作者故障实验",
+          "url": "https://github.com/kvcache-ai/Mooncake/pull/4449"
         }
       ],
-      "disclosure": "本文由学习与讨论记录经 AI 辅助整理，公开来源及 PR 状态核验截至 2026-09-30。论文结果与下游性能报告属于原作者；本站未运行 GPU 性能复现。文中比较方案均是待验证实验，不构成部署收益承诺。"
+      "disclosure": "本文由学习与讨论记录经 AI 辅助整理，公开来源及 PR 状态核验截至 2026-09-30。论文结果与下游性能报告属于原作者；本站未运行 GPU 性能复现。文中比较方案均是待验证实验，不构成部署收益承诺。 2026-10-01 20:00 UTC 批次补充公开通信研究与 Mooncake TENT 通知容错栈；作者硬件结果与本次源码／论文阅读分开，未独立运行 GPU、RDMA 或故障注入。",
+      "lastRevisedAt": "2026-10-01T20:13:00Z",
+      "revisions": [
+        {
+          "supersededAt": "2026-10-01T20:13:00Z",
+          "reason": "补充固定来源的机制边界；补充传输完成、通知留存、重发去重与应用消费之间的边界；保留原发布日期、稳定 slug 与完整旧文。",
+          "record": {
+            "slug": "pd-c2c-coordination",
+            "title": "PD 与 C2C：局部更快，怎样变成端到端收益？",
+            "subtitle": "沿着 KV 恢复、prefill、P→D 传输与 Decode 准入，拆解网络、容量和计算的协同",
+            "date": "2026-09-30",
+            "category": "传输与调度",
+            "tags": [
+              "PD 分离",
+              "C2C",
+              "DeepEP",
+              "TENT",
+              "DirectKV"
+            ],
+            "kind": "技术综述",
+            "summary": "提前发送 KV 会占用显存，直接访问 host memory 也需要合理的访问排布。把传输速度、容量收益与内核收益分开测量，才能判断局部优化是否真正改善 TTFT 与 goodput。",
+            "outline": [
+              "1. 把优化放回同一条关键路径",
+              "2. 传输粒度与接收位置分别控制",
+              "3. 区分链路调度与阶段调度",
+              "4. 分离 C2C 的容量与带宽收益"
+            ],
+            "sections": [
+              {
+                "heading": "1. 把优化放回同一条关键路径",
+                "paragraphs": [
+                  "Prefill／Decode 分离后，缓存、网络和计算共享请求的延迟预算。命中的 KV 若在 suffix prefill 时提前送往 Decode，可能缩短等待，也可能更早占住 Decode HBM。前一阶段省下的时间，可能变成下一阶段的排队。",
+                  "主线可以画成：请求准入、KV 恢复、prefill 与集合通信、P→D 传输、Decode 准入和首 token。部署未必严格串行，需要把依赖、重叠与等待放进同一张时间线。",
+                  "KV Transfer 与 DeepEP 共用网卡时能否让位？容量紧张时能否先接收到 host？C2C 能否让部分状态留在 CPU DRAM 参与计算？这些优化分别改变时间、空间和访问方式，需要接受同一组端到端指标的检验。"
+                ],
+                "diagram": "pd-critical-path"
+              },
+              {
+                "heading": "2. 传输粒度与接收位置分别控制",
+                "paragraphs": [
+                  "SGLang #39992 针对超过 pack buffer 的大请求，将目标 rank 的 token 分片切成有界 slices，每片 gather／pack 后批量传输，等待完成再复用 buffer，以避免大量逐 token RDMA。它讨论的是 slice-pack，并非修改 DCP ownership。",
+                  "截至 2026-09-30，#39992 已关闭、未合并，标题标有 DO NOT MERGE。性能数字来自作者下游分支，未在最新 main 验证。这是方案线索，不能写成上游已上线的收益。",
+                  "另一条路径是 #40238：它于 9 月 24 日合并 Decode host receive 通用接口。在设备 token usage 达阈值时，具备能力的后端可将新传输接收到 host pool，设备准入后再恢复到 GPU。接口默认关闭；PR 当时明确内置后端尚未实现 host destination。实际能否使用，要检查目标后端，不能只看开关或合并状态。",
+                  "传输粒度、接收位置、显存预留时点是不同变量。较大 slices 不会自动解决容量问题，host 接收也有搬运成本。"
+                ]
+              },
+              {
+                "heading": "3. 区分链路调度与阶段调度",
+                "paragraphs": [
+                  "TENT 将传输意图与具体路径分离，在 slice 粒度依据遥测和成本估计晚绑定链路，处理拥塞、坏链路与带宽闲置。拥有这种能力，并不能直接证明某个部署中的 TENT 能理解 DeepEP collective 的业务优先级，或能抢占外部库已经发出的工作。",
+                  "阶段调度关注另一层信息。MFS 在 9 月 19 日的 v2 改题为 Stage-Aware Communication Scheduling for Disaggregated LLM Serving，系统名 Nuska，将 KV retrieval、collective、P2D 的依赖及 TTFT 余量纳入调度。来源中的两个标题是同一论文的版本演进。",
+                  "验证实现时还要拆开 CPU 与设备路径。GIL 或同步等待是否让提交串行，和已发出的 GPU／NIC 工作是否互相争用，是两组问题。异步 API 不证明实际重叠，时间线重叠也不证明互不干扰。可先对比 prefill-only、KV-only、prefill+KV，记录 CPU 提交、kernel、DeepEP dispatch／combine、NIC 吞吐与 inflight 数。"
+                ]
+              },
+              {
+                "heading": "4. 分离 C2C 的容量与带宽收益",
+                "paragraphs": [
+                  "BOOST 希望同一 wave 内的 CTA 按带宽比例并行访问 HBM 与 host memory，以 PAM 处理页放置、DSR 维护动态 KV 映射。其评估重点是 GH200 上 bandwidth-bound decode，不能直接推广到所有 prefill 或 PCIe 系统，更不能简化为固定几个 head 放在 CPU 就能得到相同效果。",
+                  "DirectKV 提供独立实现与 SGLang 集成，区分 GH200 ARM 与 Hopper x86／PCIe 镜像，并提示 PCIe 可做功能验证但性能不同。能运行、正确性通过、性能复现，是三项检查。",
+                  "一个尚未运行的实验是先固定 batch，对比 HBM-only、prefetch+staging 与 host 直接访问，再放开 batch 测容量收益。固定 context、精度、命中条件与内核版本，记录 TPOT、HBM／C2C 读写和 CTA 尾部。对提前 P→D 传输，则比较完成后发送、命中即发送和预算限制发送，联合记录 TTFT、goodput 与 Decode 预留 HBM 的字节×时间，避免把等待转移误判成加速。"
+                ]
+              }
+            ],
+            "takeaways": [
+              "局部时间下降需要沿请求依赖链验证，尤其要检查下游排队",
+              "传输粒度、接收位置与显存预留时点是不同控制变量",
+              "固定 batch 测带宽，再放开 batch 测容量，避免混合解释收益"
+            ],
+            "openQuestions": [
+              "目标 connector 在什么事件后允许发送 cache-hit KV，#40238 的 host destination 是否真正实现？",
+              "TENT 与 DeepEP 在目标部署中是否共享优先级或让位机制？",
+              "C2C 直读在高命中 small-q prefill 与混合状态模型中，边界在哪里？"
+            ],
+            "relatedSlugs": [
+              "state-recovery",
+              "direct-linker"
+            ],
+            "sources": [
+              {
+                "title": "SGLang #39992：oversized PD DCP transfer 的 slice-pack 提案",
+                "url": "https://github.com/sgl-project/sglang/pull/39992"
+              },
+              {
+                "title": "SGLang #40238：Decode host receive 接口",
+                "url": "https://github.com/sgl-project/sglang/pull/40238"
+              },
+              {
+                "title": "TENT：A Declarative Slice Spraying Engine，v2",
+                "url": "https://arxiv.org/abs/2604.00368v2"
+              },
+              {
+                "title": "Multi-stage Flow Scheduling for LLM Serving，v1",
+                "url": "https://arxiv.org/abs/2603.17456v1"
+              },
+              {
+                "title": "Stage-Aware Communication Scheduling for Disaggregated LLM Serving，v2",
+                "url": "https://arxiv.org/abs/2603.17456v2"
+              },
+              {
+                "title": "BOOST：Concurrent Access to Host Memory and HBM，v1",
+                "url": "https://arxiv.org/html/2609.13592v1"
+              },
+              {
+                "title": "DirectKV：实现与 artifact-evaluation 说明",
+                "url": "https://github.com/shutianluo/DirectKV"
+              }
+            ],
+            "disclosure": "本文由学习与讨论记录经 AI 辅助整理，公开来源及 PR 状态核验截至 2026-09-30。论文结果与下游性能报告属于原作者；本站未运行 GPU 性能复现。文中比较方案均是待验证实验，不构成部署收益承诺。"
+          }
+        }
+      ]
     },
     {
       "slug": "direct-linker",
@@ -869,11 +1277,11 @@
           "id": "sglang-hisparse-large-rdma-registration",
           "rank": "02",
           "category": "SGLANG · HISPARSE RDMA",
-          "title": "HiSparse 为数百 GiB Host KV Pool 增加分块注册与 THP 强校验",
-          "summary": "9 月 30 日的 Draft #41782 同时处理两个 RDMA 注册上限：按页数切分连续 KV region，避免单个 MR 过大；再用 2 MiB THP 将 NIC 页表条目缩减 512×。一次 259 GiB pool 中仅 4 GiB 落在 4 KiB pages，就让 ionic NIC 从第 27 个 region 起大量 EINVAL；MADV_COLLAPSE 将 25 GiB small pages 恢复为 huge pages 后，1,845 个 regions 全部注册成功。",
-          "why": "大 Host KV pool 能否用于 PD，不只取决于 DRAM 容量，还受单 MR 大小和 RNIC translation budget 约束。新逻辑在 Mooncake 注册前验证 huge-page 覆盖率，能把启动后的海量注册错误提前变成可诊断的容量条件。",
+          "title": "HiSparse RDMA 分块还需要 P/D 边界契约，统一 KV/State 别名池暂被拒绝",
+          "summary": "9 月 29 日 23:58 UTC 提出的 Draft #41782 保留在原 09.30 条目；10 月 1 日 19:34 提交、19:40 更新后固定 head f6f9e87，仍 open 未合并。补读本 PR 自身提交确认：Decode 按每个 buffer 的 page item 长度分块注册，Prefill 也必须在目标页的相同边界拆分传输。Decode 在注册消息附带 chunk_pages；新 Prefill 仅当自身正 chunk_pages 能整除 Decode 值时接受，目标未分块则不限制。它不是只改注册、传输便自动安全。",
+          "why": "固定代码拒绝与 KV 缓冲地址重叠的 aux/state buffer，因为那些 state transfers 不按 KV 分块边界拆开；运维应同值配置两侧，不能把尾部字段的解析兼容理解为旧 Prefill 也已有边界检查。THP 路径仍要求 Linux5.14+预触页，读取 smaps 后用 MADV_COLLAPSE 尽力恢复 2MiB 页，残余 small pages 默认超过 256MiB 就失败；2MiB 相比 4KiB 减少 512 倍页表条目，但不等于任意 NIC 保证注册成功。作者当前 head 报告 wire＋mmap 测试 78 项、26subtests 通过，hugepage 覆盖率部分用 mock；原 259GiB/1,845regions 案例仍是作者硬件诊断，不是本次独立 RDMA 复现。当前 PR 叠加前 3 项 HiSparse 栈，不能把完整 19-file diff 全部算成本项新功能。",
           "source": "https://github.com/sgl-project/sglang/pull/41782",
-          "sourceLabel": "SGLang PR #41782",
+          "sourceLabel": "SGLang Draft #41782 · revised head f6f9e87",
           "reading": "11 min",
           "signal": "high",
           "columns": [
@@ -881,6 +1289,69 @@
             "mooncake",
             "kv-cache",
             "network"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-09-29T23:58:00Z",
+            "updated_at": "2026-10-01T19:40:41Z",
+            "head": "f6f9e870cbe29ccf076340468f9cbc3ef34e3de6",
+            "base": "dcf4e182839c2df77f6eaf2c3303b80bcf982bff",
+            "state": "open",
+            "draft": true,
+            "merged_at": null,
+            "merge_commit_sha": null,
+            "head_committed_at": "2026-10-01T19:34:47Z",
+            "verifiedAt": "2026-10-01T20:08:02Z",
+            "observationWindowEnd": "2026-10-01T20:00:00Z"
+          },
+          "supportingSources": [
+            {
+              "title": "固定本PR自身提交：隔离3项前置HiSparse栈",
+              "url": "https://github.com/sgl-project/sglang/commit/f6f9e870cbe29ccf076340468f9cbc3ef34e3de6"
+            },
+            {
+              "title": "固定head：chunk兼容性与目标页边界切分",
+              "url": "https://github.com/sgl-project/sglang/blob/f6f9e870cbe29ccf076340468f9cbc3ef34e3de6/python/sglang/srt/disaggregation/common/utils.py#L112-L190"
+            },
+            {
+              "title": "固定head：Decode分块注册与KV/state地址别名拒绝",
+              "url": "https://github.com/sgl-project/sglang/blob/f6f9e870cbe29ccf076340468f9cbc3ef34e3de6/python/sglang/srt/disaggregation/mooncake/conn.py#L349-L389"
+            },
+            {
+              "title": "固定head：Prefill校验Decode声明的分块边界",
+              "url": "https://github.com/sgl-project/sglang/blob/f6f9e870cbe29ccf076340468f9cbc3ef34e3de6/python/sglang/srt/disaggregation/mooncake/conn.py#L2209-L2230"
+            },
+            {
+              "title": "固定head：wire/分块边界与别名池回归",
+              "url": "https://github.com/sgl-project/sglang/blob/f6f9e870cbe29ccf076340468f9cbc3ef34e3de6/test/registered/unit/disaggregation/test_disaggregation_wire.py"
+            },
+            {
+              "title": "固定head：THP预触页、collapse与残余阈值",
+              "url": "https://github.com/sgl-project/sglang/blob/f6f9e870cbe29ccf076340468f9cbc3ef34e3de6/python/sglang/srt/mem_cache/storage/mmap/mmap_allocator.py#L113-L234"
+            }
+          ],
+          "revisions": [
+            {
+              "supersededAt": "2026-10-01T20:08:02Z",
+              "reason": "补读当前固定head中RDMA注册/传输边界协商及统一KV/state地址别名拒绝；保留原09.30日期、稳定ID和完整旧记录，纠正首次PR创建UTC日期为9月29日23:58。",
+              "record": {
+                "id": "sglang-hisparse-large-rdma-registration",
+                "rank": "02",
+                "category": "SGLANG · HISPARSE RDMA",
+                "title": "HiSparse 为数百 GiB Host KV Pool 增加分块注册与 THP 强校验",
+                "summary": "9 月 30 日的 Draft #41782 同时处理两个 RDMA 注册上限：按页数切分连续 KV region，避免单个 MR 过大；再用 2 MiB THP 将 NIC 页表条目缩减 512×。一次 259 GiB pool 中仅 4 GiB 落在 4 KiB pages，就让 ionic NIC 从第 27 个 region 起大量 EINVAL；MADV_COLLAPSE 将 25 GiB small pages 恢复为 huge pages 后，1,845 个 regions 全部注册成功。",
+                "why": "大 Host KV pool 能否用于 PD，不只取决于 DRAM 容量，还受单 MR 大小和 RNIC translation budget 约束。新逻辑在 Mooncake 注册前验证 huge-page 覆盖率，能把启动后的海量注册错误提前变成可诊断的容量条件。",
+                "source": "https://github.com/sgl-project/sglang/pull/41782",
+                "sourceLabel": "SGLang PR #41782",
+                "reading": "11 min",
+                "signal": "high",
+                "columns": [
+                  "sglang",
+                  "mooncake",
+                  "kv-cache",
+                  "network"
+                ]
+              }
+            }
           ]
         },
         {
@@ -4305,6 +4776,1053 @@
               "url": "https://arxiv.org/html/2609.33224v1#S9"
             }
           ]
+        },
+        {
+          "id": "sglang-fp4-allgather-ep-reduction-contract",
+          "category": "源码补读 · MOE / EP 正确性",
+          "title": "FP4 All-gather 已完成的 EP 归约不能再做一次：等长 Token 静默错加，空 Rank 会挂死",
+          "summary": "补读 9 月 24 日提出的 #41072，10 月 1 日 18:20 UTC 更新后仍 open；本时段没有新功能提交。固定 head 7ed1785 下，FlashInfer CUTLASS＋ModelOpt FP4、DP attention、无 A2A 后端且 EP size=attention DP size 时，dispatcher 已在覆盖 EP 的 TP 组上 reduce-scatter，输出是每个 DP rank 自己的完整 tokens。修复把 post-experts 的 EP 与 TP sum 都标为完成，跳过二次归约；只让空 rank 跳过 collective 会造成 rank 间顺序不匹配，不能解决根因。",
+          "why": "新增四卡测试运行真实 StandardDispatcher.combine 与 NCCL，但不跑模型权重或 FP4 kernel：修补后各 rank 保留 1/2/3/4，旧路径却都变成 10，route-off 对照仍要求 EP sum。作者报告 CPU 422 项和四卡 2 项通过；GB300、GLM-5.2 NVFP4 TP4/DP4/EP4 的完整 GSM8K 1,319 题、5-shot、greedy 为 0.945，关闭该路由的 nightly 对照为 0.943，未修补的激活路由会 crash/deadlock。两次 C48 AgentX 的 3,600 秒阶段零请求错误属于 nightly overlay 实验，并非按当前完整 rebased head 部署的验收，也没有可比较的加速结论。本次只核代码、测试断言与公开报告，未独立运行 GPU。",
+          "source": "https://github.com/sgl-project/sglang/pull/41072",
+          "sourceLabel": "SGLang PR #41072 · 源码补读 · open 7ed1785",
+          "reading": "10 min",
+          "signal": "high",
+          "columns": [
+            "sglang",
+            "models",
+            "network"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-09-24T08:25:44Z",
+            "updated_at": "2026-10-01T18:20:56Z",
+            "head": "7ed1785f4e2f8c5fc62c960580481ff1f3c788a8",
+            "base": "b51d4a04f08a6a8cd1aabd2f95d4a0a9ae14abf0",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "merge_commit_sha": null,
+            "head_committed_at": "2026-10-01T07:19:48Z",
+            "verifiedAt": "2026-10-01T20:05:35Z",
+            "observationWindowEnd": "2026-10-01T20:00:00Z"
+          },
+          "supportingSources": [
+            {
+              "title": "固定 head：路由资格与 DP-local token 语义",
+              "url": "https://github.com/sgl-project/sglang/blob/7ed1785f4e2f8c5fc62c960580481ff1f3c788a8/python/sglang/srt/layers/moe/utils.py#L686-L706"
+            },
+            {
+              "title": "固定 head：同时免除 EP / TP post-experts 归约",
+              "url": "https://github.com/sgl-project/sglang/blob/7ed1785f4e2f8c5fc62c960580481ff1f3c788a8/python/sglang/srt/layers/moe/utils.py#L741-L777"
+            },
+            {
+              "title": "固定 head：真实四卡 combine 与 route-off 回归",
+              "url": "https://github.com/sgl-project/sglang/blob/7ed1785f4e2f8c5fc62c960580481ff1f3c788a8/test/registered/kernels/ops/moe/test_fp4_allgather_moe_reduction.py#L100-L144"
+            }
+          ],
+          "rank": "39"
+        },
+        {
+          "id": "sglang-hybrid-prefill-async-host-staging",
+          "category": "SGLANG · HYBRID PREFILL / OVERLAP",
+          "title": "Hybrid Prefill 去掉三处 Host 同步，收益取决于 Prefill 与 Decode 交错频率",
+          "summary": "#41762 最初于 9 月 29 日提出，10 月 1 日 17:49 UTC 重写后的固定 head 4f03ad1 仍 open。源码把 Mamba temporal 清零改为 index_fill_，请求行映射与 DFlash/Frozen-KV MTP 的长度列表改走 pinned-memory async_h2d，避免 CPU 为下一批 Prefill 准备时同步等前一批 Decode drain。Frozen-KV MTP 扩展与测试强化已在 9 月 30 日作者说明中出现，不能把 rebase 时间当作功能首次发布。",
+          "why": "作者以单卡 H200、Qwen3.5-4B＋DFlash、CUDA graph＋overlap、greedy，在三张 GPU 分别做配对测试，每卡两臂轮换且每臂三次：c16/c32、输出上限 256 的输出吞吐增 5.7%/9.1%，上限 1536 只增 2.9%/3.3%，c1 无收益；两个 arm 都含 #41761，目标 GDN verify 来自 #41486。约 14 ms/次 interleaved prefill 的节省是调度日志拟合，不是单 kernel 时间。新增测试在 sync_debug_mode(error) 下覆盖 fused clear、主/双缓冲映射和 H2D 值；作者报告 H100/H200/B200 各 13 项通过。async_h2d 明确不能在 CUDA graph capture 内调用，ReplaySSM cursor 同步仍未处理，AMD/XPU/NPU 与其他模型未实测。本次未独立 GPU 复现。",
+          "source": "https://github.com/sgl-project/sglang/pull/41762",
+          "sourceLabel": "SGLang PR #41762 · open 4f03ad1",
+          "reading": "9 min",
+          "signal": "high",
+          "columns": [
+            "sglang",
+            "kv-cache",
+            "models"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-09-29T21:22:18Z",
+            "updated_at": "2026-10-01T17:53:38Z",
+            "head": "4f03ad15a5cc1a47b2e72992e2da774ede8e9715",
+            "base": "fb92ba11279b02677da01ee6782afdb6cdb6a31c",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "merge_commit_sha": null,
+            "head_committed_at": "2026-10-01T17:49:50Z",
+            "verifiedAt": "2026-10-01T20:05:35Z",
+            "observationWindowEnd": "2026-10-01T20:00:00Z"
+          },
+          "supportingSources": [
+            {
+              "title": "固定 head：pinned staging helper 与 graph-capture 限制",
+              "url": "https://github.com/sgl-project/sglang/blob/4f03ad15a5cc1a47b2e72992e2da774ede8e9715/python/sglang/srt/utils/common.py#L564-L578"
+            },
+            {
+              "title": "固定 head：Mamba 清零与请求槽映射",
+              "url": "https://github.com/sgl-project/sglang/blob/4f03ad15a5cc1a47b2e72992e2da774ede8e9715/python/sglang/srt/mem_cache/memory_pool.py#L1008-L1020"
+            },
+            {
+              "title": "固定 head：映射索引异步搬运",
+              "url": "https://github.com/sgl-project/sglang/blob/4f03ad15a5cc1a47b2e72992e2da774ede8e9715/python/sglang/srt/mem_cache/memory_pool.py#L1485-L1502"
+            },
+            {
+              "title": "固定 head：host-sync 回归断言",
+              "url": "https://github.com/sgl-project/sglang/blob/4f03ad15a5cc1a47b2e72992e2da774ede8e9715/test/registered/unit/mem_cache/test_mamba_unittest.py#L174-L232"
+            },
+            {
+              "title": "9 月 30 日作者兼容性补充，避免把 rebase 当新功能",
+              "url": "https://github.com/sgl-project/sglang/pull/41762#issuecomment-5901527000"
+            }
+          ],
+          "rank": "40"
+        },
+        {
+          "id": "sglang-buffer-only-mamba-handoff-budget",
+          "category": "源码补读 · HICACHE / MAMBA",
+          "title": "HiCache Buffer-only 的 Mamba 恢复需要两个 Device 目的槽，准入必须一起计费",
+          "summary": "补读 8 月 25 日提出、10 月 1 日 17:28 UTC 更新的 #36345；固定 head 5a0dad6 仍 open，新增机制已在 9 月 30 日提交，最新 head 是合并 main。Buffer-only 不再排除 FULL/SWA/MAMBA：checkpoint 用节点末 KV 页 hash 存放，从一个 staged host state 分别 H2D 到树节点槽与请求私有槽。请求槽需要独立的 layer-gated H2D，因为原 deferred D2D CoW 发生在 layer gate 前。",
+          "why": "源码在 shared Mamba pool 的 admission 同时计算请求所缺槽和 host-hit 节点槽，按槽成本扣预算；缺 state 就丢弃整次 staged hit 后重算，容量不足有限次延后，分配失败回滚新请求槽；重复节点目的槽保留到 transfer ack，成功后重置 ReplaySSM write cursor 并取消 CoW/clear。至少需 2 个 host staging slots，不支持 int8 checkpoint。作者 H200、Inkling@test、file L3、wait_complete、page_first_direct 测试先存 512-token seed 再 flush，以 768-token prompt 恢复：8 项均有 512 storage hit 且 KL=0；这不是性能实验或所有模型 bit-exact 证明。代码仍有 KV-only existence tracking 的 checkpoint 覆盖缺口，现有 CPU 套件两项失败也见于 main。本次核完整 handoff 与测试路径，未独立运行 GPU。",
+          "source": "https://github.com/sgl-project/sglang/pull/36345",
+          "sourceLabel": "SGLang PR #36345 · 源码补读 · open 5a0dad6",
+          "reading": "11 min",
+          "signal": "high",
+          "columns": [
+            "sglang",
+            "kv-cache",
+            "models"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-08-25T15:49:41Z",
+            "updated_at": "2026-10-01T17:28:20Z",
+            "head": "5a0dad640fa7ca01217bb3a03c2de1e40fad5b27",
+            "base": "41cbe65de05b209f3263942389267f79bd749d6a",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "merge_commit_sha": null,
+            "head_committed_at": "2026-10-01T12:51:50Z",
+            "verifiedAt": "2026-10-01T20:05:35Z",
+            "observationWindowEnd": "2026-10-01T20:00:00Z"
+          },
+          "supportingSources": [
+            {
+              "title": "固定 head：一份 host checkpoint 到节点/请求两个目的槽",
+              "url": "https://github.com/sgl-project/sglang/blob/5a0dad640fa7ca01217bb3a03c2de1e40fad5b27/python/sglang/srt/mem_cache/buffer_mode/pipeline.py#L1117-L1170"
+            },
+            {
+              "title": "固定 head：admission 的请求槽与节点槽计费",
+              "url": "https://github.com/sgl-project/sglang/blob/5a0dad640fa7ca01217bb3a03c2de1e40fad5b27/python/sglang/srt/managers/schedule_policy.py#L832-L848"
+            },
+            {
+              "title": "固定 head：失败回滚、ReplaySSM cursor 与 CoW 状态清理",
+              "url": "https://github.com/sgl-project/sglang/blob/5a0dad640fa7ca01217bb3a03c2de1e40fad5b27/python/sglang/srt/mem_cache/unified_cache/components/mamba.py#L701-L735"
+            },
+            {
+              "title": "固定 head：缺失状态/容量与H2D目的槽生命周期",
+              "url": "https://github.com/sgl-project/sglang/blob/5a0dad640fa7ca01217bb3a03c2de1e40fad5b27/python/sglang/srt/mem_cache/buffer_mode/pipeline.py#L1274-L1390"
+            },
+            {
+              "title": "固定 head：L3强制恢复与KL测试定义",
+              "url": "https://github.com/sgl-project/sglang/blob/5a0dad640fa7ca01217bb3a03c2de1e40fad5b27/test/registered/radix_cache/unified_radix_tree/test_unified_radix_cache_kl_hybrid_bitexact.py#L466-L579"
+            }
+          ],
+          "rank": "41"
+        },
+        {
+          "id": "sglang-hicache-unmounted-cgroup-host-budget",
+          "category": "SGLANG · HICACHE / 容器部署",
+          "title": "HiCache 对未挂载 Cgroupfs 回退 Host 内存，显式预算可绕过探测但需运维守住上限",
+          "summary": "10 月 1 日 19:57 UTC 新开的 #42120 修复一种容器启动失败：进程有 cgroup membership、却完全没有 cgroup/cgroup2 挂载时，原先 HiCache 内存探测直接报错；现改成一次 warning 并采用 psutil host available。若 cgroupfs 已挂载却找不到本进程，仍 fail closed。固定 head489a694，open、未合并。",
+          "why": "新变量 SGLANG_HICACHE_HOST_MEMORY_BYTES 必须为正，设置后同时跳过 cgroup 与 psutil 探测；它给的是 host 级可用预算，现有 10 GiB reserve 及本机 rank 平分仍适用，不是每 rank 最终 pool 大小。回退到 host 不证明容器没有隐藏 limit，部署应显式给出有效预算，避免为解决启动错误而高估可分配内存。测试经 synthetic procfs 覆盖 v1/v2 未挂载、已挂载但无法定位、budget override 与零值拒绝，作者报告 9 tests＋13 subtests 通过，未做 GPU/E2E。本次核代码和预算消费路径；它与#42039 的 reclaimable file-cache 计数属于不同改动。 本次未运行测试。",
+          "source": "https://github.com/sgl-project/sglang/pull/42120",
+          "sourceLabel": "SGLang PR #42120 · open 489a694",
+          "reading": "6 min",
+          "signal": "medium",
+          "columns": [
+            "sglang",
+            "kv-cache"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-10-01T19:57:06Z",
+            "updated_at": "2026-10-01T19:58:05Z",
+            "head": "489a69413d2b6ca9311d14ffdc1f455787af5e42",
+            "base": "dcf4e182839c2df77f6eaf2c3303b80bcf982bff",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "merge_commit_sha": null,
+            "head_committed_at": "2026-10-01T19:54:36Z",
+            "verifiedAt": "2026-10-01T20:05:35Z",
+            "observationWindowEnd": "2026-10-01T20:00:00Z"
+          },
+          "supportingSources": [
+            {
+              "title": "固定 head：未挂载与无法定位两种失败分别处理",
+              "url": "https://github.com/sgl-project/sglang/blob/489a69413d2b6ca9311d14ffdc1f455787af5e42/python/sglang/srt/mem_cache/host_memory.py#L102-L136"
+            },
+            {
+              "title": "固定 head：host级预算仍减reserve并按rank切分",
+              "url": "https://github.com/sgl-project/sglang/blob/489a69413d2b6ca9311d14ffdc1f455787af5e42/python/sglang/srt/mem_cache/pool_host/base.py#L85-L105"
+            },
+            {
+              "title": "固定 head：synthetic procfs与显式预算回归",
+              "url": "https://github.com/sgl-project/sglang/blob/489a69413d2b6ca9311d14ffdc1f455787af5e42/test/registered/unit/mem_cache/test_host_memory.py#L119-L159"
+            }
+          ],
+          "rank": "42"
+        },
+        {
+          "id": "vllm-dspark-mxfp4-ignore-quantization",
+          "category": "VLLM · SPEC DECODE QUANTIZATION",
+          "title": "DeepSeek NVFP4 草稿专家修复提案：MXFP4 被误解读时，准确率正常也会完全拒绝 Draft",
+          "summary": "10 月 1 日 17:30 UTC 新开的 Draft #59655 处理 ModelOpt NVFP4 checkpoint 的混合格式：目标 MoE 为 NVFP4，但 ignore 列表中的 mtp.* 仍为 MXFP4。固定 head 888c69e 先把运行时 layers.{N+k} 映回 checkpoint 的 mtp.{k}，按 ignore 匹配保留 Mxfp4MoEMethod；其余专家延续原分派。作者在 GB300、TP4、DeepSeek-V4.1-Flash-NVFP4＋DSpark K=5 上报告 GSM8K acceptance length 1.000→3.559；当前 open、未合并。",
+          "why": "这是正确性检查不能只看最终准确率的例子：草稿全部被拒绝仍可由 target 正常作答，却只增加推测开销。新增 GSM8K 配置把 min_acceptance_length=2.5 与准确率门槛并列；7 项单测覆盖 ignored MTP、非 ignored NVFP4 草稿与无 ignore 情况。作者用 v0.30.0 挂载单个 quant_config.py 做硬件验证，非完整当前 head；三节点、80 条 MT-Bench 下，c1 输出吞吐为旧版 2.19–2.45×、c8 为 1.90–2.08×，但配置间运行相隔 1–2 小时且节点性能波动可达约 25%，不能声称与原生 checkpoint 严格等价。仅 V4.1-Flash 做端到端；独立外置 drafter 格式分歧及 FlashInfer mega-MoE 的全局 NVFP4 分派未改。本次核固定代码与公开证据，未独立 GPU 复现。",
+          "source": "https://github.com/vllm-project/vllm/pull/59655",
+          "sourceLabel": "vLLM PR #59655 · head 888c69e",
+          "reading": "9 min",
+          "signal": "high",
+          "columns": [
+            "vllm",
+            "models"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-10-01T17:30:09Z",
+            "updated_at": "2026-10-01T17:41:07Z",
+            "head": "888c69eaec1e075c5192c75b5f677d5806621028",
+            "base": "083060d046a84c685fdb4b8932d95869de060543",
+            "state": "open",
+            "draft": true,
+            "merged_at": null,
+            "merge_commit_sha": null,
+            "revisionCommittedAt": "2026-10-01T17:28:03Z",
+            "verifiedAt": "2026-10-01T20:07:08Z",
+            "observationWindowStart": "2026-10-01T16:00:00Z",
+            "observationWindowEnd": "2026-10-01T20:00:00Z",
+            "repository": "vllm-project/vllm",
+            "pullRequest": 59655
+          },
+          "supportingSources": [
+            {
+              "title": "固定 head：运行时专家名映射与 ignore 匹配",
+              "url": "https://github.com/vllm-project/vllm/blob/888c69eaec1e075c5192c75b5f677d5806621028/vllm/models/deepseek_v41/quant_config.py#L110-L124"
+            },
+            {
+              "title": "固定 head：读取 checkpoint ignore 与选择实际量化方法",
+              "url": "https://github.com/vllm-project/vllm/blob/888c69eaec1e075c5192c75b5f677d5806621028/vllm/models/deepseek_v41/quant_config.py#L189-L259"
+            },
+            {
+              "title": "固定 head：7 种专家格式分派回归",
+              "url": "https://github.com/vllm-project/vllm/blob/888c69eaec1e075c5192c75b5f677d5806621028/tests/quantization/test_fp8.py#L321-L396"
+            },
+            {
+              "title": "固定 head：GSM8K 增加 acceptance-length 门槛",
+              "url": "https://github.com/vllm-project/vllm/blob/888c69eaec1e075c5192c75b5f677d5806621028/tests/evals/gsm8k/configs/DeepSeek-V4.1-Flash-NVFP4-DSpark-TP4.yaml#L1-L15"
+            }
+          ],
+          "rank": "43"
+        },
+        {
+          "id": "vllm-nixl-sleep-registration-epoch",
+          "rank": "44",
+          "category": "VLLM · NIXL SLEEP LIFECYCLE",
+          "title": "NIXL Sleep 用注册 Epoch 刷新远端 Keys，但核心失败回滚仍有版本缺口",
+          "summary": "16:04 UTC 新开的 Draft #59635 在睡眠前撤销 NIXL 注册，唤醒后重建并递增 epoch；Pull 新 epoch 等旧 READ 排空再驱逐／重握手，旧 epoch 明确失败；Push 按目标检查在飞 WRITE。固定 head 39660ee，仍未合并。作者 H200、1P1D、Qwen3-0.6B 的回移植测试中，P／D／双方睡眠各两轮均为 30/30 输出一致，睡眠显存约 803–805 MiB，唤醒约 71797–71799 MiB。",
+          "why": "修复目标是 RDMA 注册钉住旧物理页导致 HTTP 200 下静默错 token 与唤醒显存翻倍。硬件来自 e97573215 加补丁，并非当前 main；339 passed＋1 skipped 是作者在另一 CI image 的报告，还排除了 gated checkpoint。重要版本差异：#59624 于 18:41／19:28 补上按 rank 回滚、部分 sleep 失败等待 wake 和任意异常拒绝，但 NIXL head 尚未纳入；Mooncake 兄弟 #59625 已 restack，仍靠传输失败重试刷新，D 唤醒首请求约 5 秒。缺失 epoch 的旧 proxy、固定 engine_id 重启及睡眠中握手仍有兼容边界；未覆盖多节点与当前 main 的硬件验证。本次核源码与作者材料，未独立运行测试或 GPU 复现。",
+          "source": "https://github.com/vllm-project/vllm/pull/59635",
+          "sourceLabel": "vLLM PR #59635 · draft 39660ee",
+          "reading": "10 min",
+          "signal": "high",
+          "columns": [
+            "vllm",
+            "mooncake",
+            "kv-cache",
+            "network"
+          ],
+          "sourceVersion": {
+            "repository": "vllm-project/vllm",
+            "pr": 59635,
+            "created_at": "2026-10-01T16:04:30Z",
+            "updated_at": "2026-10-01T18:00:33Z",
+            "closed_at": null,
+            "merged_at": null,
+            "state": "open",
+            "draft": true,
+            "head": "39660ee4ebd67b4b9d548bf97f2f30799d08ef08",
+            "headRef": "nixl-sleep-registration",
+            "base": "083060d046a84c685fdb4b8932d95869de060543",
+            "baseRef": "main",
+            "headAuthorAt": "2026-10-01T17:36:34Z",
+            "headCommitterAt": "2026-10-01T17:36:34Z",
+            "baseAuthorAt": "2026-10-01T17:28:27Z",
+            "baseCommitterAt": "2026-10-01T17:28:27Z",
+            "merge_commit_sha": null,
+            "mergeCommitMeaning": "merged_at=null；githubSyntheticMergeSha 仅保留 API 返回的候选 test-merge SHA，不是已合并提交",
+            "verifiedAt": "2026-10-01T20:07:34Z",
+            "commits": [
+              {
+                "sha": "6d1c3d0e2d60020c2d389c36492dc1adfbf1c9db",
+                "title": "[Core] Release KV connector registrations across sleep mode",
+                "authored_at": "2026-10-01T17:27:11Z",
+                "committed_at": "2026-10-01T17:27:11Z",
+                "parents": [
+                  "f3b77eff640b5ed5cc9221a4f5f402ab65adc021"
+                ]
+              },
+              {
+                "sha": "39660ee4ebd67b4b9d548bf97f2f30799d08ef08",
+                "title": "[NIXL] Support sleep mode: re-establish registrations and refresh peers",
+                "authored_at": "2026-10-01T17:36:34Z",
+                "committed_at": "2026-10-01T17:36:34Z",
+                "parents": [
+                  "6d1c3d0e2d60020c2d389c36492dc1adfbf1c9db"
+                ]
+              }
+            ],
+            "windowStart": "2026-10-01T16:00:00Z",
+            "windowEnd": "2026-10-01T20:00:00Z",
+            "windowEvent": "新 PR；16:04 创建，17:36 提交，18:00 最后更新",
+            "includedCoreCommit": "6d1c3d0e2d60020c2d389c36492dc1adfbf1c9db",
+            "missingLaterCoreCommits": [
+              "6532245c46d1bd3366127da2c1b9c3460035a869",
+              "b7318bd4a75b66ab09d7188ea1d8f5ecf252a8f8"
+            ],
+            "dependencies": [
+              {
+                "relationship": "required core hook; NIXL only includes initial 17:27 commit",
+                "repository": "vllm-project/vllm",
+                "pr": 59624,
+                "created_at": "2026-10-01T15:01:12Z",
+                "updated_at": "2026-10-01T19:28:27Z",
+                "closed_at": null,
+                "merged_at": null,
+                "state": "open",
+                "draft": true,
+                "head": "b7318bd4a75b66ab09d7188ea1d8f5ecf252a8f8",
+                "headRef": "kv-connector-sleep-registration",
+                "base": "3a6963664537ed21172e2ec12e96e3a2dcd3718c",
+                "baseRef": "main",
+                "headAuthorAt": "2026-10-01T19:28:23Z",
+                "headCommitterAt": "2026-10-01T19:28:23Z",
+                "baseAuthorAt": "2026-10-01T17:02:31Z",
+                "baseCommitterAt": "2026-10-01T17:02:31Z",
+                "merge_commit_sha": null,
+                "mergeCommitMeaning": "merged_at=null；githubSyntheticMergeSha 仅保留 API 返回的候选 test-merge SHA，不是已合并提交",
+                "verifiedAt": "2026-10-01T20:07:34Z",
+                "commits": [
+                  {
+                    "sha": "6d1c3d0e2d60020c2d389c36492dc1adfbf1c9db",
+                    "title": "[Core] Release KV connector registrations across sleep mode",
+                    "authored_at": "2026-10-01T17:27:11Z",
+                    "committed_at": "2026-10-01T17:27:11Z",
+                    "parents": [
+                      "f3b77eff640b5ed5cc9221a4f5f402ab65adc021"
+                    ]
+                  },
+                  {
+                    "sha": "6532245c46d1bd3366127da2c1b9c3460035a869",
+                    "title": "[Core] Roll back only the ranks that released the KV caches",
+                    "authored_at": "2026-10-01T18:41:48Z",
+                    "committed_at": "2026-10-01T18:41:48Z",
+                    "parents": [
+                      "6d1c3d0e2d60020c2d389c36492dc1adfbf1c9db"
+                    ]
+                  },
+                  {
+                    "sha": "b7318bd4a75b66ab09d7188ea1d8f5ecf252a8f8",
+                    "title": "[Core] Treat every failed KV cache release as a refusal",
+                    "authored_at": "2026-10-01T19:28:23Z",
+                    "committed_at": "2026-10-01T19:28:23Z",
+                    "parents": [
+                      "6532245c46d1bd3366127da2c1b9c3460035a869"
+                    ]
+                  }
+                ],
+                "githubSyntheticMergeSha": "fd1a51978c8899835f9555987d11aeb431dae059"
+              },
+              {
+                "relationship": "sibling implementation, not a dependency of NIXL; contains current core head",
+                "repository": "vllm-project/vllm",
+                "pr": 59625,
+                "created_at": "2026-10-01T15:07:59Z",
+                "updated_at": "2026-10-01T19:31:58Z",
+                "closed_at": null,
+                "merged_at": null,
+                "state": "open",
+                "draft": true,
+                "head": "f94377d1f42d4e4467aa0f9dfe1cf3adc8305b43",
+                "headRef": "mooncake-sleep-registration",
+                "base": "2a52715ef7ca533a0ce287e14dc1c0702bdc2e8d",
+                "baseRef": "main",
+                "headAuthorAt": "2026-10-01T18:08:03Z",
+                "headCommitterAt": "2026-10-01T19:28:35Z",
+                "baseAuthorAt": "2026-10-01T19:20:57Z",
+                "baseCommitterAt": "2026-10-01T19:20:57Z",
+                "merge_commit_sha": null,
+                "mergeCommitMeaning": "merged_at=null；githubSyntheticMergeSha 仅保留 API 返回的候选 test-merge SHA，不是已合并提交",
+                "verifiedAt": "2026-10-01T20:07:34Z",
+                "commits": [
+                  {
+                    "sha": "6d1c3d0e2d60020c2d389c36492dc1adfbf1c9db",
+                    "title": "[Core] Release KV connector registrations across sleep mode",
+                    "authored_at": "2026-10-01T17:27:11Z",
+                    "committed_at": "2026-10-01T17:27:11Z",
+                    "parents": [
+                      "f3b77eff640b5ed5cc9221a4f5f402ab65adc021"
+                    ]
+                  },
+                  {
+                    "sha": "6532245c46d1bd3366127da2c1b9c3460035a869",
+                    "title": "[Core] Roll back only the ranks that released the KV caches",
+                    "authored_at": "2026-10-01T18:41:48Z",
+                    "committed_at": "2026-10-01T18:41:48Z",
+                    "parents": [
+                      "6d1c3d0e2d60020c2d389c36492dc1adfbf1c9db"
+                    ]
+                  },
+                  {
+                    "sha": "b7318bd4a75b66ab09d7188ea1d8f5ecf252a8f8",
+                    "title": "[Core] Treat every failed KV cache release as a refusal",
+                    "authored_at": "2026-10-01T19:28:23Z",
+                    "committed_at": "2026-10-01T19:28:23Z",
+                    "parents": [
+                      "6532245c46d1bd3366127da2c1b9c3460035a869"
+                    ]
+                  },
+                  {
+                    "sha": "90d84beee96a80c8462c812372140bcebc9b5a87",
+                    "title": "[KV Connector] Mooncake: release the KV cache registration across sleep",
+                    "authored_at": "2026-10-01T14:30:31Z",
+                    "committed_at": "2026-10-01T19:28:35Z",
+                    "parents": [
+                      "b7318bd4a75b66ab09d7188ea1d8f5ecf252a8f8"
+                    ]
+                  },
+                  {
+                    "sha": "7e414994d45a30a70bda8f6eaace9a629b8aca1e",
+                    "title": "[KV Connector] Mooncake: serve pulls from the registered layout only",
+                    "authored_at": "2026-10-01T15:47:55Z",
+                    "committed_at": "2026-10-01T19:28:35Z",
+                    "parents": [
+                      "90d84beee96a80c8462c812372140bcebc9b5a87"
+                    ]
+                  },
+                  {
+                    "sha": "765300bd1d631116069508e4263dd6754550dba8",
+                    "title": "[KV Connector] Mooncake: document RDMA sleep support, test the real start-up",
+                    "authored_at": "2026-10-01T16:42:08Z",
+                    "committed_at": "2026-10-01T19:28:35Z",
+                    "parents": [
+                      "7e414994d45a30a70bda8f6eaace9a629b8aca1e"
+                    ]
+                  },
+                  {
+                    "sha": "cacac591eeca8ce211b1a81ce523cbcdd584b39d",
+                    "title": "[KV Connector] Mooncake: make re-registration idempotent",
+                    "authored_at": "2026-10-01T17:59:44Z",
+                    "committed_at": "2026-10-01T19:28:35Z",
+                    "parents": [
+                      "765300bd1d631116069508e4263dd6754550dba8"
+                    ]
+                  },
+                  {
+                    "sha": "f94377d1f42d4e4467aa0f9dfe1cf3adc8305b43",
+                    "title": "[KV Connector] Mooncake: document the peer refresh after wake-up",
+                    "authored_at": "2026-10-01T18:08:03Z",
+                    "committed_at": "2026-10-01T19:28:35Z",
+                    "parents": [
+                      "cacac591eeca8ce211b1a81ce523cbcdd584b39d"
+                    ]
+                  }
+                ],
+                "githubSyntheticMergeSha": "87101c3ee59db340fb88a8486fe862361849bb5c"
+              }
+            ],
+            "references": [
+              "https://github.com/vllm-project/vllm/blob/39660ee4ebd67b4b9d548bf97f2f30799d08ef08/vllm/distributed/kv_transfer/kv_connector/v1/nixl/base_worker.py#L1896-L1933",
+              "https://github.com/vllm-project/vllm/blob/39660ee4ebd67b4b9d548bf97f2f30799d08ef08/vllm/distributed/kv_transfer/kv_connector/v1/nixl/pull_worker.py#L134-L160",
+              "https://github.com/vllm-project/vllm/blob/39660ee4ebd67b4b9d548bf97f2f30799d08ef08/vllm/distributed/kv_transfer/kv_connector/v1/nixl/push_worker.py#L477-L504",
+              "https://github.com/vllm-project/vllm/blob/39660ee4ebd67b4b9d548bf97f2f30799d08ef08/vllm/distributed/kv_transfer/kv_connector/v1/nixl/push_worker.py#L158-L179",
+              "https://github.com/vllm-project/vllm/blob/39660ee4ebd67b4b9d548bf97f2f30799d08ef08/vllm/distributed/kv_transfer/kv_connector/v1/nixl/base_scheduler.py#L302-L335",
+              "https://github.com/vllm-project/vllm/blob/39660ee4ebd67b4b9d548bf97f2f30799d08ef08/vllm/v1/executor/abstract.py#L347-L361",
+              "https://github.com/vllm-project/vllm/blob/b7318bd4a75b66ab09d7188ea1d8f5ecf252a8f8/vllm/v1/executor/abstract.py#L347-L410",
+              "https://github.com/vllm-project/vllm/blob/b7318bd4a75b66ab09d7188ea1d8f5ecf252a8f8/vllm/v1/worker/gpu_worker.py#L276-L287",
+              "https://github.com/vllm-project/vllm/blob/b7318bd4a75b66ab09d7188ea1d8f5ecf252a8f8/tests/v1/executor/test_executor.py#L292-L346",
+              "https://github.com/vllm-project/vllm/blob/39660ee4ebd67b4b9d548bf97f2f30799d08ef08/tests/v1/kv_connector/unit/test_nixl_connector.py#L2622-L2718",
+              "https://github.com/vllm-project/vllm/blob/39660ee4ebd67b4b9d548bf97f2f30799d08ef08/tests/v1/kv_connector/unit/test_nixl_connector.py#L2735-L2814",
+              "https://github.com/vllm-project/vllm/blob/39660ee4ebd67b4b9d548bf97f2f30799d08ef08/tests/v1/kv_connector/unit/test_nixl_push_connector.py#L726-L763",
+              "https://github.com/vllm-project/vllm/blob/f94377d1f42d4e4467aa0f9dfe1cf3adc8305b43/vllm/distributed/kv_transfer/kv_connector/v1/mooncake/mooncake_connector.py#L2182-L2224",
+              "https://github.com/vllm-project/vllm/blob/f94377d1f42d4e4467aa0f9dfe1cf3adc8305b43/vllm/distributed/kv_transfer/kv_connector/v1/mooncake/mooncake_connector.py#L1587-L1603",
+              "https://github.com/vllm-project/vllm/pull/59635",
+              "https://github.com/vllm-project/vllm/pull/59624",
+              "https://github.com/vllm-project/vllm/pull/59625"
+            ],
+            "githubSyntheticMergeSha": "4a425c38ce6f5f85f8b9832a1b9dceb3c000a6c8",
+            "observationWindowStart": "2026-10-01T16:00:00Z",
+            "observationWindowEnd": "2026-10-01T20:00:00Z",
+            "pullRequest": 59635
+          },
+          "supportingSources": [
+            {
+              "title": "NIXL 固定 head：注册 epoch 与完整反注册",
+              "url": "https://github.com/vllm-project/vllm/blob/39660ee4ebd67b4b9d548bf97f2f30799d08ef08/vllm/distributed/kv_transfer/kv_connector/v1/nixl/base_worker.py#L1896-L1933",
+              "role": "production_code",
+              "finding": "每次完成注册递增 epoch；存在本地 READ handle 时拒绝，等待已排队握手后释放远端与本地 descriptor lists、注册区、Host buffers 和握手元数据"
+            },
+            {
+              "title": "NIXL 固定 head：Pull 新旧 epoch 分流",
+              "url": "https://github.com/vllm-project/vllm/blob/39660ee4ebd67b4b9d548bf97f2f30799d08ef08/vllm/distributed/kv_transfer/kv_connector/v1/nixl/pull_worker.py#L134-L160",
+              "role": "production_code",
+              "finding": "旧 epoch 进入失败队列；新 epoch 遇旧 READ 在飞则暂存，否则先驱逐再握手"
+            },
+            {
+              "title": "NIXL 固定 head：Push 拒绝旧 epoch 与按目标检查在飞 WRITE",
+              "url": "https://github.com/vllm-project/vllm/blob/39660ee4ebd67b4b9d548bf97f2f30799d08ef08/vllm/distributed/kv_transfer/kv_connector/v1/nixl/push_worker.py#L477-L504",
+              "role": "production_code",
+              "finding": "旧 epoch 或新 epoch 但该目的端仍有 WRITE 时丢弃此次 push，交给 lease/watchdog 回收；否则驱逐再握手"
+            },
+            {
+              "title": "NIXL 固定 head：停 writer 后反注册，失败恢复 writer",
+              "url": "https://github.com/vllm-project/vllm/blob/39660ee4ebd67b4b9d548bf97f2f30799d08ef08/vllm/distributed/kv_transfer/kv_connector/v1/nixl/push_worker.py#L158-L179",
+              "role": "production_code"
+            },
+            {
+              "title": "NIXL 固定 head：各 rank epoch 一致性与更新握手 payload",
+              "url": "https://github.com/vllm-project/vllm/blob/39660ee4ebd67b4b9d548bf97f2f30799d08ef08/vllm/distributed/kv_transfer/kv_connector/v1/nixl/base_scheduler.py#L302-L335",
+              "role": "production_code"
+            },
+            {
+              "title": "NIXL 固定 head：仍是旧 core 的全 rank 回滚路径",
+              "url": "https://github.com/vllm-project/vllm/blob/39660ee4ebd67b4b9d548bf97f2f30799d08ef08/vllm/v1/executor/abstract.py#L347-L361",
+              "role": "version_boundary",
+              "finding": "sleep 或 unregister 异常直接向所有 rank register；尚无 core 最新的按 rank 回滚／部分 unmap 后等待 wake 逻辑"
+            },
+            {
+              "title": "Core #59624 最新 head：只回滚成功释放 rank；sleep 部分失败等待 wake",
+              "url": "https://github.com/vllm-project/vllm/blob/b7318bd4a75b66ab09d7188ea1d8f5ecf252a8f8/vllm/v1/executor/abstract.py#L347-L410",
+              "role": "dependency_code"
+            },
+            {
+              "title": "Core #59624 最新 head：捕获任意异常并保证非空 refusal",
+              "url": "https://github.com/vllm-project/vllm/blob/b7318bd4a75b66ab09d7188ea1d8f5ecf252a8f8/vllm/v1/worker/gpu_worker.py#L276-L287",
+              "role": "dependency_code"
+            },
+            {
+              "title": "Core #59624 最新 head：拒绝回滚与失败 sleep 单测",
+              "url": "https://github.com/vllm-project/vllm/blob/b7318bd4a75b66ab09d7188ea1d8f5ecf252a8f8/tests/v1/executor/test_executor.py#L292-L346",
+              "role": "dependency_test_source"
+            },
+            {
+              "title": "NIXL 注册／反注册与幂等重试单测",
+              "url": "https://github.com/vllm-project/vllm/blob/39660ee4ebd67b4b9d548bf97f2f30799d08ef08/tests/v1/kv_connector/unit/test_nixl_connector.py#L2622-L2718",
+              "role": "test_source"
+            },
+            {
+              "title": "NIXL 新 epoch 延后再握手、旧 epoch 失败单测",
+              "url": "https://github.com/vllm-project/vllm/blob/39660ee4ebd67b4b9d548bf97f2f30799d08ef08/tests/v1/kv_connector/unit/test_nixl_connector.py#L2735-L2814",
+              "role": "test_source"
+            },
+            {
+              "title": "NIXL Push 按目的端／epoch 四种情况单测",
+              "url": "https://github.com/vllm-project/vllm/blob/39660ee4ebd67b4b9d548bf97f2f30799d08ef08/tests/v1/kv_connector/unit/test_nixl_push_connector.py#L726-L763",
+              "role": "test_source"
+            },
+            {
+              "title": "Mooncake #59625 固定 head：仅 RDMA、pending guard、反注册",
+              "url": "https://github.com/vllm-project/vllm/blob/f94377d1f42d4e4467aa0f9dfe1cf3adc8305b43/vllm/distributed/kv_transfer/kv_connector/v1/mooncake/mooncake_connector.py#L2182-L2224",
+              "role": "sibling_code"
+            },
+            {
+              "title": "Mooncake #59625：ready 后才解析完整传输 layout",
+              "url": "https://github.com/vllm-project/vllm/blob/f94377d1f42d4e4467aa0f9dfe1cf3adc8305b43/vllm/distributed/kv_transfer/kv_connector/v1/mooncake/mooncake_connector.py#L1587-L1603",
+              "role": "sibling_code"
+            },
+            {
+              "title": "NIXL #59635 作者硬件与单测报告、限制",
+              "url": "https://github.com/vllm-project/vllm/pull/59635",
+              "role": "author_report"
+            },
+            {
+              "title": "Core #59624 作者报告与依赖关系",
+              "url": "https://github.com/vllm-project/vllm/pull/59624",
+              "role": "author_report"
+            },
+            {
+              "title": "Mooncake #59625 作者硬件报告与约 5 秒首次刷新限制",
+              "url": "https://github.com/vllm-project/vllm/pull/59625",
+              "role": "author_report"
+            }
+          ],
+          "limitations": [
+            "全部相关 PR 均为 open draft，merged_at=null；不能写成 main 已修复或已可直接部署。NIXL 固定 head 不包含 core 在 18:41 和 19:28 的失败路径修复。",
+            "NIXL 作者 339 passed＋1 skipped 报告绑定 deb148e73 CI image 加此树；gated gemma checkpoint 测试排除，lmcache 一项跳过。不能将此数字当作最新 core b7318bd 单独验证；其正文仍保留旧 rollback 叙述，源码优先。",
+            "硬件是 H200，Qwen3-0.6B，1P1D，e97573215 加两提交的 backport；NIXL connector version 在 backport 为 13、该 head 为 14，V2 post_forward hunk 上下文不同。",
+            "作者最后代码重跑涵盖 rc_mlx5 的 P／D／双方各两轮、每轮30/30；表格其余 cuda_ipc、CPU staging、selective wake、level2、异构TP等不可一概说全部在最后 core 版本重跑。",
+            "多节点、跨节点 MNNVL/cuda_ipc、PP>1 push、当前 main 未在硬件覆盖；无独立 GPU 复现、无服务吞吐结论。",
+            "睡眠中 scheduler 仍可提供旧 metadata，此时新握手传输可失败；旧 epoch 请求的缓存块已丢失，显式失败而非恢复。epoch 缺失的旧 proxy 保持旧行为；固定 engine_id 重启可重复 epoch1，仍可能需 TTL 驱逐。",
+            "Mooncake #59625 是兄弟实现，只支持 RDMA；Python API 缺远端 cache invalidation，decode 唤醒首次 WRITE 出现 native REM_ACCESS_ERR 后重抓 descriptor 并重试，约5秒 vs 正常0.9秒。应用层0错误不表示传输无重试。MooncakeStore、非RDMA不在支持范围。",
+            "core #59624 与 Mooncake #59625 创建于15时、早于窗口；仅将其窗口内实质代码变化作为依赖/兄弟进展，不伪装成16时后新建 PR。"
+          ]
+        },
+        {
+          "id": "vllm-nixl-hisparse-paused-split-read",
+          "rank": "45",
+          "category": "VLLM · NIXL HISPARSE PAUSE",
+          "title": "HiSparse Split READ 保留暂停期轮询，避免 Prefill 等到 Lease 到期",
+          "summary": "19:37 UTC 新开的 Draft #59670 修复 NIXL＋HiSparse Decoder 在 keep pause 时停止轮询 split DRAM／VRAM READ 的停顿。固定 head f70cdcd：Scheduler 记录已交给 worker 的 awaiting_kvs，直到 finished_recving 才清除，借现有 has_pending_push_work hook 让暂停引擎继续零 token 步进，无需改 core。 当前仍 open、未合并。",
+          "why": "混合内存 READ 拆成两个 handle，只有 worker 确认全完成才通知 P 释放块；请求被 pause 隐藏不代表传输已结束。作者 2×H100、缩小版 DeepSeek-V3.2 dummy weights、debug hook 精确触发下，504 DRAM＋504 VRAM descriptors 的通知从恢复后约 47 秒变为读发起后 93 ms，P keep pause 从 28.0 秒降到 0.03 秒。该数字是暂停排空延迟，不是推理加速；CPU 单测 258 通过、2 项与 main 共有失败，dummy 输出相同也不能证明真实模型精度。本次只核固定源码与作者报告，未独立执行或 GPU 复现。",
+          "source": "https://github.com/vllm-project/vllm/pull/59670",
+          "sourceLabel": "vLLM PR #59670 · draft f70cdcd",
+          "reading": "6 min",
+          "signal": "high",
+          "columns": [
+            "vllm",
+            "kv-cache",
+            "network"
+          ],
+          "sourceVersion": {
+            "repository": "vllm-project/vllm",
+            "pr": 59670,
+            "created_at": "2026-10-01T19:37:27Z",
+            "updated_at": "2026-10-01T19:38:03Z",
+            "closed_at": null,
+            "merged_at": null,
+            "state": "open",
+            "draft": true,
+            "head": "f70cdcd6b42b6e6ed881252fec0b707b61df2414",
+            "headRef": "fix/nixl-paused-split-read-notify",
+            "base": "7b44aad5db820f8914810ae9f238ffb871e86d44",
+            "baseRef": "main",
+            "headAuthorAt": "2026-10-01T18:34:28Z",
+            "headCommitterAt": "2026-10-01T18:34:28Z",
+            "baseAuthorAt": "2026-10-01T19:32:27Z",
+            "baseCommitterAt": "2026-10-01T19:32:27Z",
+            "merge_commit_sha": null,
+            "mergeCommitMeaning": "merged_at=null；githubSyntheticMergeSha 仅保留 API 返回的候选 test-merge SHA，不是已合并提交",
+            "verifiedAt": "2026-10-01T20:07:34Z",
+            "commits": [
+              {
+                "sha": "f70cdcd6b42b6e6ed881252fec0b707b61df2414",
+                "title": "[KV Connector][NIXL] Keep a paused engine stepping while remote KV reads are in flight",
+                "authored_at": "2026-10-01T18:34:28Z",
+                "committed_at": "2026-10-01T18:34:28Z",
+                "parents": [
+                  "08e03df94028d5e7cff96bf569459d8d2b926d9e"
+                ]
+              }
+            ],
+            "windowStart": "2026-10-01T16:00:00Z",
+            "windowEnd": "2026-10-01T20:00:00Z",
+            "windowEvent": "新 PR；18:34 提交，19:37 创建，19:38 更新",
+            "references": [
+              "https://github.com/vllm-project/vllm/blob/f70cdcd6b42b6e6ed881252fec0b707b61df2414/vllm/distributed/kv_transfer/kv_connector/v1/nixl/base_scheduler.py#L475-L526",
+              "https://github.com/vllm-project/vllm/blob/f70cdcd6b42b6e6ed881252fec0b707b61df2414/vllm/v1/core/sched/scheduler.py#L2766-L2781",
+              "https://github.com/vllm-project/vllm/blob/f70cdcd6b42b6e6ed881252fec0b707b61df2414/tests/v1/kv_connector/unit/test_remote_prefill_lifecycle.py#L152-L178",
+              "https://github.com/vllm-project/vllm/blob/f70cdcd6b42b6e6ed881252fec0b707b61df2414/vllm/distributed/kv_transfer/kv_connector/v1/nixl/push_scheduler.py#L194-L205",
+              "https://github.com/vllm-project/vllm/blob/f70cdcd6b42b6e6ed881252fec0b707b61df2414/vllm/distributed/kv_transfer/kv_connector/v1/nixl/push_scheduler.py#L342-L357",
+              "https://github.com/vllm-project/vllm/pull/59670"
+            ],
+            "githubSyntheticMergeSha": "ac6ad39b5f2e1a92ceb63b2a784d5b648955228a",
+            "observationWindowStart": "2026-10-01T16:00:00Z",
+            "observationWindowEnd": "2026-10-01T20:00:00Z",
+            "pullRequest": 59670
+          },
+          "supportingSources": [
+            {
+              "title": "固定 head：登记待收 READ 并在 finished_recving 时移除",
+              "url": "https://github.com/vllm-project/vllm/blob/f70cdcd6b42b6e6ed881252fec0b707b61df2414/vllm/distributed/kv_transfer/kv_connector/v1/nixl/base_scheduler.py#L475-L526",
+              "role": "production_code"
+            },
+            {
+              "title": "固定 head：既有 Scheduler.has_requests 保活 hook",
+              "url": "https://github.com/vllm-project/vllm/blob/f70cdcd6b42b6e6ed881252fec0b707b61df2414/vllm/v1/core/sched/scheduler.py#L2766-L2781",
+              "role": "production_code"
+            },
+            {
+              "title": "新增 keep-pause 生命周期单测",
+              "url": "https://github.com/vllm-project/vllm/blob/f70cdcd6b42b6e6ed881252fec0b707b61df2414/tests/v1/kv_connector/unit/test_remote_prefill_lifecycle.py#L152-L178",
+              "role": "test_source",
+              "finding": "模拟 finished_recving 返回，检查 PAUSED_ALL 时保持 has_requests=true，收到后变 false；单测本身没有真的启动 split RDMA"
+            },
+            {
+              "title": "Push 路径 awaiting_kvs=False",
+              "url": "https://github.com/vllm-project/vllm/blob/f70cdcd6b42b6e6ed881252fec0b707b61df2414/vllm/distributed/kv_transfer/kv_connector/v1/nixl/push_scheduler.py#L194-L205",
+              "role": "scope_boundary"
+            },
+            {
+              "title": "Push 保留自身保活 hook",
+              "url": "https://github.com/vllm-project/vllm/blob/f70cdcd6b42b6e6ed881252fec0b707b61df2414/vllm/distributed/kv_transfer/kv_connector/v1/nixl/push_scheduler.py#L342-L357",
+              "role": "scope_boundary"
+            },
+            {
+              "title": "#59670 作者 2×H100 重现与单测结果",
+              "url": "https://github.com/vllm-project/vllm/pull/59670",
+              "role": "author_report"
+            }
+          ],
+          "limitations": [
+            "当前 open draft、未合并；从 #58041 拆出，此候选只改变 connector 保活，不能泛化为整个 P/D pause 语义已修复。",
+            "GPU报告是作者2×H100、shrunk DeepSeek-V3.2、dummy weights、P plain NIXL／D NIXL＋HiSparse，并用 debug-only hook 在发起 READ 后立即暂停；没有生产流量、真实checkpoint或统计重复数据。",
+            "报告 measured split read 有2 handles、504 DRAM＋504 VRAM descriptors；P pause 28.0→0.03秒是等待 lease 的控制流修复，不是RDMA带宽、token吞吐或TTFT提升。",
+            "作者报告新test在main失败、PR通过；connector CPU tests 258 passed，另2 failures也在main发生（startup/model download），不是全套无失败。新增源码单测用模拟 finished_recving，不独立验证真实split RDMA。",
+            "Push 子类已覆盖has_pending_push_work，且该路径awaiting_kvs=False；不可宣称新增对push性能的改善。",
+            "作者称失败与中止请求最终也由finished_recving排空；新增单测只覆盖正常完成的pause状态转换，本次未运行故障注入或GPU复现。"
+          ]
+        },
+        {
+          "id": "mooncake-tent-stamped-notify-resend",
+          "rank": "46",
+          "category": "MOONCAKE · NOTIFICATION FAULT TOLERANCE",
+          "title": "TENT 通知容错续篇：先跨路径去重，再把失败 QP 的在途通知换 NIC 重发",
+          "summary": "10 月 1 日 18:58–19:08 UTC 新开的 #4447／#4448／#4449，承接已报道的 #4442，补上三层机制：控制 RPC 失败不再一律当成陈旧 segment；通知以目标 segment name 对应的 session／seq 跨 RDMA、RPC 去重；已成功 post 的带戳 typed SEND，在 notify QP 失效或 endpoint 退役时交还后台线程，轮询其它本地／远端 NIC 配对，必要时走 RPC。三项均为 stacked draft、未合并，末端固定 head 9c3c0b7；对应代码提交均在 9 月 30 日，今日新增的是 PR 公开提案。",
+          "why": "源码能确认去重是重发的前置条件：旧 peer、未带戳通知或装不下 44-byte header 的 raw payload 不进入重发留存；新通知仍从原配对开始，没有路径健康表。重发最多三轮 RDMA，第四次交还直接尝试允许的 RPC；控制面 RPC 错误会提前停止。作者报告 TENT ctest 68/68、fake-verbs 回归及两主机 routed RoCE v2 故障注入：接收侧 QP 出错／退役的 4,000 条样本由 main 丢 256 条变为全到达、零重复；单 NIC 随机故障实验合计 515,698 条通知无重复、20,302 个失败 batch 不发通知、CRC 无错。这些是整套 stacked 分支的作者结果，不能拆归为某一 PR 的独立效果，本站未运行 RDMA／GPU 复现。去重窗口仅 4,096，严重乱序的首次交付也可能被丢；闲置 10 分钟后的 session 清理、失联 peer 的冷缓存、单 FIFO 重发线程及进程重启仍有边界。NIC 已确认但应用未读取时接收者崩溃仍会丢通知，不能称为端到端 exactly-once。",
+          "source": "https://github.com/kvcache-ai/Mooncake/pull/4449",
+          "sourceLabel": "Mooncake PR #4447–#4449 · stacked head 9c3c0b7",
+          "reading": "10 min",
+          "signal": "high",
+          "columns": [
+            "mooncake",
+            "network",
+            "kv-cache"
+          ],
+          "sourceVersion": {
+            "repository": "kvcache-ai/Mooncake",
+            "pullRequest": 4449,
+            "created_at": "2026-10-01T19:08:57Z",
+            "updated_at": "2026-10-01T19:14:54Z",
+            "head": "9c3c0b7b612516f50bfb652645acaf14212d9d6c",
+            "base": "0d1a8040faebb7c127c8901840a38c2ff57e80c5",
+            "state": "open",
+            "draft": true,
+            "merged_at": null,
+            "merge_commit_sha": null,
+            "revisionAuthoredAt": "2026-09-28T21:48:56Z",
+            "revisionCommittedAt": "2026-09-30T20:49:46Z",
+            "verifiedAt": "2026-10-01T20:07:34Z",
+            "observationWindowStart": "2026-10-01T16:00:00Z",
+            "observationWindowEnd": "2026-10-01T20:00:00Z",
+            "series": [
+              {
+                "repository": "kvcache-ai/Mooncake",
+                "pullRequest": 4447,
+                "created_at": "2026-10-01T18:58:33Z",
+                "updated_at": "2026-10-01T18:58:45Z",
+                "head": "3a01e529c3661f5f9c3a87134d44f3c04b1f61a3",
+                "base": "0d1a8040faebb7c127c8901840a38c2ff57e80c5",
+                "state": "open",
+                "draft": true,
+                "merged_at": null,
+                "merge_commit_sha": null,
+                "revisionAuthoredAt": "2026-09-08T06:33:56Z",
+                "revisionCommittedAt": "2026-09-30T17:03:34Z",
+                "verifiedAt": "2026-10-01T20:07:34Z",
+                "observationWindowStart": "2026-10-01T16:00:00Z",
+                "observationWindowEnd": "2026-10-01T20:00:00Z"
+              },
+              {
+                "repository": "kvcache-ai/Mooncake",
+                "pullRequest": 4448,
+                "created_at": "2026-10-01T19:00:50Z",
+                "updated_at": "2026-10-01T19:01:04Z",
+                "head": "0fad9b6928d9780a3c9ce444f28785b6506ace83",
+                "base": "0d1a8040faebb7c127c8901840a38c2ff57e80c5",
+                "state": "open",
+                "draft": true,
+                "merged_at": null,
+                "merge_commit_sha": null,
+                "revisionAuthoredAt": "2026-09-07T09:44:57Z",
+                "revisionCommittedAt": "2026-09-30T20:48:37Z",
+                "verifiedAt": "2026-10-01T20:07:34Z",
+                "observationWindowStart": "2026-10-01T16:00:00Z",
+                "observationWindowEnd": "2026-10-01T20:00:00Z"
+              },
+              {
+                "repository": "kvcache-ai/Mooncake",
+                "pullRequest": 4449,
+                "created_at": "2026-10-01T19:08:57Z",
+                "updated_at": "2026-10-01T19:14:54Z",
+                "head": "9c3c0b7b612516f50bfb652645acaf14212d9d6c",
+                "base": "0d1a8040faebb7c127c8901840a38c2ff57e80c5",
+                "state": "open",
+                "draft": true,
+                "merged_at": null,
+                "merge_commit_sha": null,
+                "revisionAuthoredAt": "2026-09-28T21:48:56Z",
+                "revisionCommittedAt": "2026-09-30T20:49:46Z",
+                "verifiedAt": "2026-10-01T20:07:34Z",
+                "observationWindowStart": "2026-10-01T16:00:00Z",
+                "observationWindowEnd": "2026-10-01T20:00:00Z"
+              }
+            ],
+            "requires": [
+              "kvcache-ai/Mooncake#4442"
+            ],
+            "rebaseAlsoPlannedOnto": [
+              "kvcache-ai/Mooncake#4434"
+            ]
+          },
+          "supportingSources": [
+            {
+              "title": "#4447：控制面失败语义、重试条件与作者测试",
+              "url": "https://github.com/kvcache-ai/Mooncake/pull/4447"
+            },
+            {
+              "title": "固定 #4447 head：仅可能改变地址的 registry 重取；相同地址保留原错误",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/3a01e529c3661f5f9c3a87134d44f3c04b1f61a3/mooncake-transfer-engine/tent/src/runtime/segment_manager.cpp#L168-L191"
+            },
+            {
+              "title": "#4448：兼容性、去重窗口及已知限制",
+              "url": "https://github.com/kvcache-ai/Mooncake/pull/4448"
+            },
+            {
+              "title": "固定 #4448 head：目标 session、序号及 4096 窗口",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/0fad9b6928d9780a3c9ce444f28785b6506ace83/mooncake-transfer-engine/tent/src/common/notify_frame.cpp#L145-L218"
+            },
+            {
+              "title": "固定末端 head：只有实际 post 的 tracked typed SEND 留存与交还",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/9c3c0b7b612516f50bfb652645acaf14212d9d6c/mooncake-transfer-engine/tent/src/transport/rdma/endpoint.cpp#L1240-L1418"
+            },
+            {
+              "title": "固定末端 head：换 NIC 配对、重发预算、RPC fallback 与单线程队列",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/9c3c0b7b612516f50bfb652645acaf14212d9d6c/mooncake-transfer-engine/tent/src/transport/rdma/rdma_transport.cpp#L1018-L1119"
+            },
+            {
+              "title": "固定末端 head：fake-verbs 的 tracked SEND、重发配对与退役回归",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/9c3c0b7b612516f50bfb652645acaf14212d9d6c/mooncake-transfer-engine/tent/tests/rdma_transport_test.cpp#L3091-L3203"
+            },
+            {
+              "title": "PR commit 时间与 stack 组成",
+              "url": "https://github.com/kvcache-ai/Mooncake/pull/4449/commits"
+            }
+          ]
+        },
+        {
+          "id": "vllm-prompt-embedding-dtype-cache-identity",
+          "category": "VLLM · PREFIX CACHE IDENTITY",
+          "title": "Prompt Embedding 的 Dtype 进入 Prefix Hash，阻止相同字节的 FP16／BF16 复用错误 KV",
+          "summary": "10 月 1 日 16:39 UTC 新开的 #59643 修正 embedding 输入的缓存身份：旧摘要只哈希原始 bytes，同样位模式按 FP16／BF16 解读可得到不同数值，却命中相同 KV。固定 head 63446f6 在 SHA256 前缀加入 dtype 与分隔符，保留每 request 摘要缓存以及 prompt_embeds 事件 key 结构。作者在 A30、Qwen2.5-0.5B-Instruct、MRV2 eager、65 行输入下报告，错误跨 dtype 命中 64 tokens 降为 0，输出 token 与 top-5 logprobs 恢复到隔离 BF16 基线；当前 open、未合并。",
+          "why": "它补的是“输入语义相同”这一前提，不能靠更强的字节哈希替代类型信息。两种 block hashing（SHA256／CBOR）回归同时验证跨 dtype 不共享、同 dtype clone 仍共享；作者报告 cache utils 161 项通过，同 dtypeBF16 重复仍命中 64 tokens。升级会改变这类 prompt embedding 的外部 cache key，producer／consumer 应使用一致版本；这里没有新吞吐结论，也未证明所有 embedding 输入组合。硬件验证使用固定 Python 源码 cfd54ca881、既有编译扩展及 Humming 依赖 overlay；本次核固定补丁与测试，未独立 GPU 复现。",
+          "source": "https://github.com/vllm-project/vllm/pull/59643",
+          "sourceLabel": "vLLM PR #59643 · head 63446f6",
+          "reading": "5 min",
+          "signal": "high",
+          "columns": [
+            "vllm",
+            "kv-cache"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-10-01T16:39:19Z",
+            "updated_at": "2026-10-01T16:40:44Z",
+            "head": "63446f6aa8f9e8c6456ae5225fd2660941010f75",
+            "base": "08e03df94028d5e7cff96bf569459d8d2b926d9e",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "merge_commit_sha": null,
+            "revisionCommittedAt": "2026-10-01T16:23:02Z",
+            "verifiedAt": "2026-10-01T20:07:08Z",
+            "observationWindowStart": "2026-10-01T16:00:00Z",
+            "observationWindowEnd": "2026-10-01T20:00:00Z",
+            "repository": "vllm-project/vllm",
+            "pullRequest": 59643
+          },
+          "supportingSources": [
+            {
+              "title": "固定 head：把 dtype 纳入 embedding 摘要",
+              "url": "https://github.com/vllm-project/vllm/blob/63446f6aa8f9e8c6456ae5225fd2660941010f75/vllm/v1/core/kv_cache_utils.py#L603-L616"
+            },
+            {
+              "title": "固定 head：跨 dtype 与同 dtype 正对照回归",
+              "url": "https://github.com/vllm-project/vllm/blob/63446f6aa8f9e8c6456ae5225fd2660941010f75/tests/v1/core/test_kv_cache_utils.py#L1020-L1041"
+            }
+          ],
+          "rank": "47"
+        },
+        {
+          "id": "vllm-engram-triton38-rocm-constexpr",
+          "category": "VLLM · ROCM COMPILER STABILITY",
+          "title": "Engram Lookup 合入 Triton 3.8 ROCm 绕过补丁，编译期固定 SORTED 分支",
+          "summary": "10 月 1 日 19:38 UTC 合并的 #59639 修复 #59327 排序 Host Lookup 引出的间歇编译崩溃：最终代码仅在 ROCm 且 Triton 版本以 3.8 开头时，把 SORTED 改成 constexpr，并从 do_not_specialize 中移除。固定合并提交 840c7c2；不能按 PR 正文概括为所有 Triton 3.8 平台都强制特化。",
+          "why": "故障发生在 RemoveLayoutConversions，甚至 unsorted lookup 也可能触发；上游 Triton #10706 已修复 rematMapping 的悬空键，但作者指出未进入 release/3.8.x。作者在 MI355X 上对 head-shard reconstruction 测试每组跑 20 次，main＋3.8.0 有 14 次失败，当前 workaround 与 main＋上游修复均为 0 次。该证据支持特定编译器／硬件组合的稳定性改善，不是 Engram 吞吐的新增收益，也不证明所有 lookup 形状已覆盖。本次核固定合并代码与上游修复说明，未独立运行 GPU 或编译回归。",
+          "source": "https://github.com/vllm-project/vllm/pull/59639",
+          "sourceLabel": "vLLM PR #59639 · merged 840c7c2",
+          "reading": "4 min",
+          "signal": "high",
+          "columns": [
+            "vllm",
+            "models"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-10-01T16:15:35Z",
+            "updated_at": "2026-10-01T19:38:56Z",
+            "head": "a3dcb3e838b579f89f1fda505b652e26186eda24",
+            "base": "e9be5323f0f864c1dc5a22a138530f3e106ebbb6",
+            "state": "closed",
+            "draft": false,
+            "merged_at": "2026-10-01T19:38:56Z",
+            "merge_commit_sha": "840c7c2f4bc72c7c55edb2dea6d23f9a9c9734e0",
+            "revisionCommittedAt": "2026-10-01T18:08:23Z",
+            "verifiedAt": "2026-10-01T20:07:08Z",
+            "observationWindowStart": "2026-10-01T16:00:00Z",
+            "observationWindowEnd": "2026-10-01T20:00:00Z",
+            "repository": "vllm-project/vllm",
+            "pullRequest": 59639
+          },
+          "supportingSources": [
+            {
+              "title": "固定合并版本：仅 ROCm＋Triton 3.8 采用 constexpr",
+              "url": "https://github.com/vllm-project/vllm/blob/840c7c2f4bc72c7c55edb2dea6d23f9a9c9734e0/vllm/models/deepseek_v41/common/engram.py#L608-L647"
+            },
+            {
+              "title": "Triton #10706：修复 rematMapping 悬空键",
+              "url": "https://github.com/triton-lang/triton/pull/10706"
+            },
+            {
+              "title": "原 Engram 排序 Lookup 改动 #59327",
+              "url": "https://github.com/vllm-project/vllm/pull/59327"
+            }
+          ],
+          "rank": "48"
+        },
+        {
+          "id": "vosti-deterministic-inference-contract",
+          "category": "PAPER · DETERMINISM",
+          "title": "Vosti 把确定性写成跨调度与缓存的系统契约，验证范围仍限固定单 GPU 部署",
+          "summary": "9 月 30 日 v1 将相同 prompt、模型、部署与初始采样状态下的逐位置 logits 一致性，扩展到 batching、chunking、Prefill/Decode 切换和 Prefix 复用。设计固定 kernel plan，以 Verus 引擎不变量与 Triton 关系验证连接逻辑前缀和数值路径；作者在单 H200 上报告七个 Llama/Gemma 模型共 5,488 对 logits 按位相同。",
+          "why": "比较版本为 vLLM 0.28.0 与 SGLang 0.5.19，不能外推当前主干。作者的四会话、六轮、Decode 占 91–93% 的工作负载，比 vLLM invariant 快 1.14–2.20×，仍慢于默认模式及 SGLang deterministic。固定源码明确不证明数值正确性、进度或跨硬件一致；SWA 仍保留完整历史，MoE/线性注意力不在范围。本次核读论文与源码，未运行证明器或 GPU。",
+          "source": "https://arxiv.org/html/2609.38981v1",
+          "sourceLabel": "Vosti · arXiv v1 / fixed artifact 347975f",
+          "reading": "12 min",
+          "signal": "high",
+          "columns": [
+            "kv-cache",
+            "sglang",
+            "vllm"
+          ],
+          "sourceVersion": {
+            "arxiv": "2609.38981v1",
+            "firstSubmittedAt": "2026-09-30T04:58:09Z",
+            "implementationHead": "347975fb658a7d073ee9788dc860a582949121a3",
+            "implementationHeadCommittedAt": "2026-10-01T02:11:56Z",
+            "implementationCommitNote": "本次 head 仅更新 README 论文链接；不作为论文实质修订",
+            "verifiedAt": "2026-10-01T20:09:25Z",
+            "observationWindowEnd": "2026-10-01T20:00:00Z",
+            "kind": "paper",
+            "version": "v1",
+            "versionSubmittedAt": "2026-09-30T04:58:09Z"
+          },
+          "supportingSources": [
+            {
+              "title": "v1：比较设置与有限测试口径（§2.2、§6）",
+              "url": "https://arxiv.org/html/2609.38981v1#S2.SS2"
+            },
+            {
+              "title": "固定源码：输出轨迹 prefix-comparable，显式排除进度和模型功能正确性",
+              "url": "https://github.com/QDelta/Vosti/blob/347975fb658a7d073ee9788dc860a582949121a3/src/spec.rs#L98-L119"
+            },
+            {
+              "title": "固定源码：只在 attention 数值域前提下声明系统定理",
+              "url": "https://github.com/QDelta/Vosti/blob/347975fb658a7d073ee9788dc860a582949121a3/src/proof.rs#L14-L26"
+            },
+            {
+              "title": "固定源码：cache candidate 的 depth、physical parent、duplicate 和 token 检查",
+              "url": "https://github.com/QDelta/Vosti/blob/347975fb658a7d073ee9788dc860a582949121a3/src/exec/cache_scheduler/prefix_cache.rs#L3269-L3342"
+            },
+            {
+              "title": "固定 artifact：支持范围、完整 SWA prefix 与未证明项",
+              "url": "https://github.com/QDelta/Vosti/blob/347975fb658a7d073ee9788dc860a582949121a3/README.md#L12-L39"
+            },
+            {
+              "title": "固定 artifact：TCB 与未覆盖保证",
+              "url": "https://github.com/QDelta/Vosti/blob/347975fb658a7d073ee9788dc860a582949121a3/docs/verification.md#L270-L304"
+            }
+          ],
+          "rank": "49"
+        },
+        {
+          "id": "thunderep-pcie-no-p2p-expert-parallel",
+          "category": "PAPER · PCIe EXPERT PARALLEL",
+          "title": "ThunderEP 重排无 P2P 的 EP 通信：Prefill 用 DMA，Decode 为 Graph 保留 SM 搬运",
+          "summary": "9 月 30 日 v1 面向单节点六张 RTX 4090 或 5090、同 NUMA 且无 P2P 的平台，保留 All-Gather/Reduce-Scatter，却去掉 Host 中转的多跳依赖。Prefill 用 DMA 与按 sender 就绪的流水；Decode 为双 Host buffer 的 CUDA Graph 回放改用 SM 搬运，并不做该流水。作者相对 vLLM 0.27.1 报告 Prefill 最高 1.66×、Decode throughput 最高 1.26×。",
+          "why": "六卡 All-Gather 的分析 PCIe 字节由每卡 10S 降至 6S；GPU-reduce Combine 不减少 payload，主要缩短同步链。给 NCCL 基线补同粒度异步流水后，作者仍报告该消融点 Prefill 1.24×。这是无 P2P 拓扑的条件收益，不能推广成 NVLink/RDMA 结论；未给同 SLO goodput。本次只核读论文，未找到可固定的作者公开实现，也未独立复现。",
+          "source": "https://arxiv.org/html/2609.40093v1",
+          "sourceLabel": "ThunderEP · arXiv:2609.40093v1",
+          "reading": "11 min",
+          "signal": "high",
+          "columns": [
+            "network",
+            "vllm",
+            "models"
+          ],
+          "sourceVersion": {
+            "arxiv": "2609.40093v1",
+            "firstSubmittedAt": "2026-09-30T16:32:25Z",
+            "verifiedAt": "2026-10-01T20:09:25Z",
+            "observationWindowEnd": "2026-10-01T20:00:00Z",
+            "kind": "paper",
+            "version": "v1",
+            "versionSubmittedAt": "2026-09-30T16:32:25Z"
+          },
+          "supportingSources": [
+            {
+              "title": "v1 §4.5：Decode SM 路径、仅 Prefill overlap 与未采用 routing-aware A2A",
+              "url": "https://arxiv.org/html/2609.40093v1#S4.SS5"
+            },
+            {
+              "title": "v1 §5.1：硬件、版本与五次运行均值",
+              "url": "https://arxiv.org/html/2609.40093v1#S5.SS1"
+            },
+            {
+              "title": "v1 §5.4：算法、DMA、overlap 消融及补过流水的 NCCL 对照",
+              "url": "https://arxiv.org/html/2609.40093v1#S5.SS4"
+            }
+          ],
+          "rank": "50"
+        },
+        {
+          "id": "shared-kv-provenance-binding",
+          "category": "PAPER · SHARED KV CORRECTNESS",
+          "title": "共享 KV 需要携带计算来源与共享权限；相同 Token 不能单独授权复用",
+          "summary": "9 月 30 日 v1 研究共享层重新按 tokens 派生 key 时丢失 provenance。作者在 vLLM 0.9.2 的 LMCache/文件路径及 SGLang 0.5.20、0.5.8.post1 上做运行实验；Mooncake connector 仅做源码审计。其相反标签策略 LoRA 短评测试出现准确率 0.94→0.64，说明错误复用不只是文本扰动。",
+          "why": "方案将 adapter、权重精度/版本、KV 表示与 tenant salt 绑定到一致的读写身份。论文明确 SGLang 0.5.20 已隔离 salt 和不同 named adapters，不能泛指仍有全部遗漏；同路径换 adapter bytes 是另一条件。隔离增加容量需求，作者固定预算实验中吞吐可由 42 降至 15 req/s。实验为单 host worker 访问独立 cache server，非真实跨机 fleet；本文未审计当前主干或复现。",
+          "source": "https://arxiv.org/html/2609.38706v1",
+          "sourceLabel": "Shared KV Provenance · arXiv:2609.38706v1",
+          "reading": "12 min",
+          "signal": "high",
+          "columns": [
+            "kv-cache",
+            "sglang",
+            "vllm",
+            "mooncake"
+          ],
+          "sourceVersion": {
+            "arxiv": "2609.38706v1",
+            "firstSubmittedAt": "2026-09-30T00:41:44Z",
+            "verifiedAt": "2026-10-01T20:09:25Z",
+            "observationWindowEnd": "2026-10-01T20:00:00Z",
+            "kind": "paper",
+            "version": "v1",
+            "versionSubmittedAt": "2026-09-30T00:41:44Z"
+          },
+          "supportingSources": [
+            {
+              "title": "v1 §3.3：三条 connector audit 与两条运行验证的区别",
+              "url": "https://arxiv.org/html/2609.38706v1#S3.SS3"
+            },
+            {
+              "title": "v1 §4.1–4.3：旧版设置、clean reference 与任务影响",
+              "url": "https://arxiv.org/html/2609.38706v1#S4.SS1"
+            },
+            {
+              "title": "v1 §5.3：resolved configuration 与读写两端身份",
+              "url": "https://arxiv.org/html/2609.38706v1#S5.SS3"
+            },
+            {
+              "title": "v1 §6.1：SGLang 0.5.20 paired matrix",
+              "url": "https://arxiv.org/html/2609.38706v1#S6.SS1"
+            },
+            {
+              "title": "v1 §6.5 / §7：容量代价与 single-host 范围",
+              "url": "https://arxiv.org/html/2609.38706v1#S6.SS5"
+            }
+          ],
+          "rank": "51"
         }
       ]
     },
@@ -4603,9 +6121,9 @@
       },
       "10.01": {
         "headline": "今日值得关注的 AI Infra 信号",
-        "subtitle": "本期 38 条 · 约 337 分钟",
-        "threadTitle": "从状态身份到数值边界：用真实工作量、容量与 SLO 解释收益",
-        "threadSummary": "保留此前全部记录；12:00 批次增补 PD Prefill 输入轮询、CP／EP／KDA 栈、HiCache cgroup 预算、Mooncake state-stride 校验、逐步 MTP 输出头、MoRI MXFP4 dispatch，以及 TENT 元数据生命周期和取消队列活性。Purlin 与 CLM/SCR 按 9 月 29 日原始 v1 补读；SCR 的旧状态语义与额外显存单列，E-10 仅为未运行的质量／同 HBM 对照。另在 9 月 30 日原条目修订 NIXL 双向恢复边界，保留旧记录。 16:00 批次新增 producer-fused MXFP8、DeepEP v2 精度边界补读、Kimi-K3 权重分片、TENT fail-fast 通知寿命与 PackServe 调度口径；原位更正已撤回的 Tail Margin 和已合并且补充功能报告的 GDN regather。两篇既有全文深化 aligned／live endpoint 与 KVSET 容量目标，保留原日期和旧版本；十项实验均未执行。",
+        "subtitle": "本期 51 条 · 约 452 分钟",
+        "threadTitle": "恢复不止要有数据：输入身份、槽位预算与故障完成语义",
+        "threadSummary": "保留此前全部记录；12:00 批次增补 PD Prefill 输入轮询、CP／EP／KDA 栈、HiCache cgroup 预算、Mooncake state-stride 校验、逐步 MTP 输出头、MoRI MXFP4 dispatch，以及 TENT 元数据生命周期和取消队列活性。Purlin 与 CLM/SCR 按 9 月 29 日原始 v1 补读；SCR 的旧状态语义与额外显存单列，E-10 仅为未运行的质量／同 HBM 对照。另在 9 月 30 日原条目修订 NIXL 双向恢复边界，保留旧记录。 16:00 批次新增 producer-fused MXFP8、DeepEP v2 精度边界补读、Kimi-K3 权重分片、TENT fail-fast 通知寿命与 PackServe 调度口径；原位更正已撤回的 Tail Margin 和已合并且补充功能报告的 GDN regather。两篇既有全文深化 aligned／live endpoint 与 KVSET 容量目标，保留原日期和旧版本；十项实验均未执行。 20:00 批次补充 FP4 collective 身份、hybrid prefill 同步、Mamba 双槽恢复、容器内存预算、DSpark 草稿量化、NIXL sleep／pause 生命周期、TENT 通知重发、embedding dtype 身份及 ROCm 编译稳定性；Vosti、ThunderEP 与共享 KV provenance 按原论文版本补读。HiSparse RDMA 注册条目在原日修订；两篇既有全文连接资源、恢复与通知边界，新增 E-11 的隔离环境 provenance 对照，十一项实验均未执行。",
         "revisions": [
           {
             "supersededAt": "2026-10-01T16:11:00Z",
@@ -4615,6 +6133,28 @@
               "subtitle": "本期 33 条 · 约 287 分钟",
               "threadTitle": "从传输就绪到上下文编辑：状态边界、调度活性与有效收益",
               "threadSummary": "保留此前全部记录；12:00 批次增补 PD Prefill 输入轮询、CP／EP／KDA 栈、HiCache cgroup 预算、Mooncake state-stride 校验、逐步 MTP 输出头、MoRI MXFP4 dispatch，以及 TENT 元数据生命周期和取消队列活性。Purlin 与 CLM/SCR 按 9 月 29 日原始 v1 补读；SCR 的旧状态语义与额外显存单列，E-10 仅为未运行的质量／同 HBM 对照。另在 9 月 30 日原条目修订 NIXL 双向恢复边界，保留旧记录。"
+            }
+          },
+          {
+            "supersededAt": "2026-10-01T20:13:00Z",
+            "reason": "新增 13 项日报，修订 1 项既有日报并深化既有全文；保留原始日期与完整历史版本。",
+            "record": {
+              "headline": "今日值得关注的 AI Infra 信号",
+              "subtitle": "本期 38 条 · 约 337 分钟",
+              "threadTitle": "从状态身份到数值边界：用真实工作量、容量与 SLO 解释收益",
+              "threadSummary": "保留此前全部记录；12:00 批次增补 PD Prefill 输入轮询、CP／EP／KDA 栈、HiCache cgroup 预算、Mooncake state-stride 校验、逐步 MTP 输出头、MoRI MXFP4 dispatch，以及 TENT 元数据生命周期和取消队列活性。Purlin 与 CLM/SCR 按 9 月 29 日原始 v1 补读；SCR 的旧状态语义与额外显存单列，E-10 仅为未运行的质量／同 HBM 对照。另在 9 月 30 日原条目修订 NIXL 双向恢复边界，保留旧记录。 16:00 批次新增 producer-fused MXFP8、DeepEP v2 精度边界补读、Kimi-K3 权重分片、TENT fail-fast 通知寿命与 PackServe 调度口径；原位更正已撤回的 Tail Margin 和已合并且补充功能报告的 GDN regather。两篇既有全文深化 aligned／live endpoint 与 KVSET 容量目标，保留原日期和旧版本；十项实验均未执行。",
+              "revisions": [
+                {
+                  "supersededAt": "2026-10-01T16:11:00Z",
+                  "reason": "保留本日旧版栏目摘要与计数；新增五条、修订两条及深化两篇既有文章。",
+                  "record": {
+                    "headline": "今日值得关注的 AI Infra 信号",
+                    "subtitle": "本期 33 条 · 约 287 分钟",
+                    "threadTitle": "从传输就绪到上下文编辑：状态边界、调度活性与有效收益",
+                    "threadSummary": "保留此前全部记录；12:00 批次增补 PD Prefill 输入轮询、CP／EP／KDA 栈、HiCache cgroup 预算、Mooncake state-stride 校验、逐步 MTP 输出头、MoRI MXFP4 dispatch，以及 TENT 元数据生命周期和取消队列活性。Purlin 与 CLM/SCR 按 9 月 29 日原始 v1 补读；SCR 的旧状态语义与额外显存单列，E-10 仅为未运行的质量／同 HBM 对照。另在 9 月 30 日原条目修订 NIXL 双向恢复边界，保留旧记录。"
+                  }
+                }
+              ]
             }
           }
         ]
@@ -4921,6 +6461,34 @@
         }
       ],
       "status": "unvalidated"
+    },
+    {
+      "title": "共享 KV：来源身份与租户许可是否跨读写边界保持一致？",
+      "status": "unvalidated",
+      "hypothesis": "在固定实现和受控私有 namespace 下，合法同来源 warm reuse 应保留；任何被声明禁止的来源／租户组合都不能加载对方状态，即使 tokens 与 KV 数值相同。",
+      "method": [
+        "未执行。仅在自建隔离环境、合成 prompts 与无真实用户数据的 namespace 中运行；固定 engine、connector、模型与 adapter bytes 的 SHA，记录 resolved dtype/layout 及读写 key 身份。",
+        "最小四臂：关闭共享层；同来源且同 tenant 自播种 warm；相同模型而不同 tenant；同 tenant、同 adapter 路径但换已知 adapter bytes。每臂独立进程与干净 namespace，增加同 bytes 不同路径的合法复用对照。",
+        "以实际 shared-load token 数与读取 key 验证命中；对照同请求自己的 no-cache raw logits／任务答案，并先建立相同引擎的数值噪声边界。日志不输出真实 salt 或用户文本。",
+        "若实现连最小隔离正确性都未通过则停止性能测试；通过后才在同总容量下测淘汰、TTFT 与 goodput，防止把额外 cache 容量视为免费。"
+      ],
+      "metrics": [
+        "禁止组合的 foreign adopted tokens（必须为 0）",
+        "合法同来源 warm adopted tokens 与 no-cache 参考差异",
+        "配置／namespace identity 跨 scheduler/store 的一致性",
+        "实际驻留字节、淘汰量、TTFT 尾延迟与固定 SLO goodput"
+      ],
+      "falsifier": "任一被禁止组合加载 foreign tokens 即否定隔离前提；若合法同来源也永不命中，则只是全量禁用缓存，不能证明绑定方案保留了合法复用。",
+      "sources": [
+        {
+          "title": "Shared KV Provenance v1：双端身份、差分 omission 与 paired controls",
+          "url": "https://arxiv.org/html/2609.38706v1#S5.SS3"
+        }
+      ],
+      "id": "E-11",
+      "related": [
+        "state-recovery"
+      ]
     }
   ]
 }
