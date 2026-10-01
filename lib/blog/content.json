@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-30T20:08:00Z",
+  "updatedAt": "2026-10-01T00:44:20Z",
   "posts": [
     {
       "slug": "state-recovery",
@@ -619,11 +619,11 @@
           "id": "vllm-pd-sliding-window-backoff",
           "rank": "04",
           "category": "VLLM · KV CONNECTOR",
-          "title": "vLLM 修正 Sliding-window PD 的最后一 Token 回退，避免静默错误与 NaN",
-          "summary": "9 月 30 日的 Draft #59330 发现 NIXL/Mooncake 会先加载全部 N 个 prompt tokens，再让 Decode 回退重算最后一个 token；对 sliding-window state，这可能提前丢掉 N−W 所在 block，使约 1/block_size 的请求读到 null block。新逻辑让所有 resume-dependent groups 在 P 端只传 N−1 tokens、D 端从 N−1 恢复，DeepSeek-V4.1 原先在 1,023/4,095/8,191 tokens 出现的 NaN 由此被结构性避免。",
-          "why": "PD 传输边界必须和模型状态的保留窗口一致，不能只按 full-attention KV 的语义处理。当前 2,234 个单元测试通过，但完整 TP4+TP4 GSM8K 验证仍是 TODO。",
+          "title": "vLLM 修正 Sliding-window PD 的最后一 Token 回退，新增双端一致性约束与实测",
+          "summary": "9 月 30 日的 #59330 将 NIXL／Mooncake 的 Mamba N−1 backoff 扩展到 sliding-window、chunked-local 与 circular-buffer groups：P 端少算最后一 token，D 端从同一位置恢复。固定 head 5a7171a，23:14 UTC 更新后仍 open、未合并。全 prompt 加载后的回退新增断言，拒绝从已丢失必需状态的位置恢复。",
+          "why": "本次更新已补 DeepSeek-V4.1-Flash、NIXL 1P1D TP4＋TP4、GSM8K 5-shot c512 两遍测试：作者报告补丁 pass1／pass2 为 0.9249／0.9310；main 两次运行约 0.9174–0.9249／0.9189–0.9219。有限轮次不能证明统计显著提分。更重要的是 P/D 必须同时升级：单独升级 D 端可在 N%block_size==1 时让尾部配块错一位；prompt logprobs 会省略最后一 prompt token。MoRIIO、offloading 与 NIXL handshake 仍有后续工作。单测存在两支共有的环境失败，并非全套无失败；本次核源码与公开报告，未独立 GPU 复现。",
           "source": "https://github.com/vllm-project/vllm/pull/59330",
-          "sourceLabel": "vLLM PR #59330",
+          "sourceLabel": "vLLM PR #59330 · revised head 5a7171a",
           "reading": "8 min",
           "signal": "high",
           "columns": [
@@ -631,7 +631,38 @@
             "kv-cache",
             "models",
             "network"
-          ]
+          ],
+          "revisions": [
+            {
+              "supersededAt": "2026-10-01T00:44:20Z",
+              "reason": "新增 PD GSM8K 实测、connector contract 与同步升级警告使旧条目 TODO 不再准确；保持原 ID 原日期并留存旧 record",
+              "record": {
+                "id": "vllm-pd-sliding-window-backoff",
+                "rank": "04",
+                "category": "VLLM · KV CONNECTOR",
+                "title": "vLLM 修正 Sliding-window PD 的最后一 Token 回退，避免静默错误与 NaN",
+                "summary": "9 月 30 日的 Draft #59330 发现 NIXL/Mooncake 会先加载全部 N 个 prompt tokens，再让 Decode 回退重算最后一个 token；对 sliding-window state，这可能提前丢掉 N−W 所在 block，使约 1/block_size 的请求读到 null block。新逻辑让所有 resume-dependent groups 在 P 端只传 N−1 tokens、D 端从 N−1 恢复，DeepSeek-V4.1 原先在 1,023/4,095/8,191 tokens 出现的 NaN 由此被结构性避免。",
+                "why": "PD 传输边界必须和模型状态的保留窗口一致，不能只按 full-attention KV 的语义处理。当前 2,234 个单元测试通过，但完整 TP4+TP4 GSM8K 验证仍是 TODO。",
+                "source": "https://github.com/vllm-project/vllm/pull/59330",
+                "sourceLabel": "vLLM PR #59330",
+                "reading": "8 min",
+                "signal": "high",
+                "columns": [
+                  "vllm",
+                  "kv-cache",
+                  "models",
+                  "network"
+                ]
+              }
+            }
+          ],
+          "sourceVersion": {
+            "created_at": "2026-09-30T00:36:29Z",
+            "head": "5a7171ac4bc39a240f77d59829bfa5f24865f990",
+            "updated_at": "2026-09-30T23:14:35Z",
+            "merged_at": null,
+            "verifiedAt": "2026-10-01T00:07:45Z"
+          }
         },
         {
           "id": "mooncake-native-layerwise-read-plan",
@@ -1920,9 +1951,202 @@
             "models"
           ]
         }
+      ],
+      "10.01": [
+        {
+          "id": "sglang-pp-spec-hybrid-state-commit",
+          "rank": "01",
+          "category": "SGLANG · HYBRID PP CORRECTNESS",
+          "title": "SGLang 合并 PP×推测解码状态修复：接受长度正常，也可能提交错 Recurrent State",
+          "summary": "#40001 于 9 月 30 日 20:05 UTC 合并为 4407a21：非末级 PP stage 现在按回传 acceptance 提交本层 recurrent state，并在推进 seq_lens 前完成更新；verify scratch 与延迟提交以稳定的 request-pool 行配对，避免后续 micro-batch 覆盖临时行。该策略受 SGLANG_ENABLE_PP_SPEC 控制；关闭时保留原路径。",
+          "why": "作者在 GB300、GSM8K-200 报告，GLM-5.3-Flash PP2×TP2+MTP 从 0.745 恢复至 0.990，旧版 accept length 仍看似正常；PP4 原先崩溃，修复后为 0.990。源码可见 chain 也回传 accept_index、forward 快照克隆 req_pool_indices、非末级调用共同的 state commit，以及 KDA PP verify 回退 Triton。新增 Qwen3.5 hybrid PP1/PP2 精度回归；这些是作者验证与源码证据，不能据此承诺其他模型、吞吐收益或所有后端一致。本次未独立运行 GPU 复现。",
+          "source": "https://github.com/sgl-project/sglang/pull/40001",
+          "sourceLabel": "SGLang PR #40001 · merged 4407a21",
+          "reading": "9 min",
+          "signal": "high",
+          "columns": [
+            "sglang",
+            "models",
+            "kv-cache"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-09-17T18:36:20Z",
+            "head": "78ca48b8908f027557591b118f49d9236a0b32b9",
+            "merged_at": "2026-09-30T20:05:40Z",
+            "merge_commit_sha": "4407a21f3c390b4c34c367ac8a7eddaa45138f56",
+            "verifiedAt": "2026-10-01T00:07:45Z"
+          }
+        },
+        {
+          "id": "sglang-unified-pd-matching-dcp",
+          "rank": "02",
+          "category": "SGLANG · UNIFIED PD TOPOLOGY",
+          "title": "Unified Hybrid-MLA PD 新增匹配 DCP 路径，按本地页坐标传输状态",
+          "summary": "9 月 30 日 23:36 UTC 新开的 #41958 是 #41953／#41956 之后的第三层：在 Mooncake、PP1、无推测解码条件下，允许两端 attention TP 相等且 DCP size/rank 匹配的 unified-memory PD。逻辑 token ID 先缩回本地行做 virtual→physical 映射，再扩回传输坐标，保留 chunk 与 prefix 切片长度；KV 仍整页、recurrent state 仍整槽复制。固定 head b12fbe8，open、未合并。",
+          "why": "它明确区分“相同布局的本地页直拷”与跨 DCP 重分布：后者及不同 TP+DCP 仍拒绝。底层 #41953 描述每个 tensor 的 offset、stride 和 TP 轴，#41956 才在 DCP1 下支持 TP2↔TP4 的 state 分片，不能把两条能力任意组合。已核固定 diff；GitHub 的 targeted matching-DCP 与 unequal-TP GPU CI 均在各自固定 head 成功。作者另报单台 8×H200、TP4/DCP2、66/257-token prompts、64-token chunks、cached replay 的 RDMA logprob parity；没有多节点或性能结论，本次未独立 GPU 复现。",
+          "source": "https://github.com/sgl-project/sglang/pull/41958",
+          "sourceLabel": "SGLang PR #41958 · head b12fbe8",
+          "reading": "9 min",
+          "signal": "high",
+          "columns": [
+            "sglang",
+            "mooncake",
+            "kv-cache",
+            "network"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-09-30T23:36:33Z",
+            "head": "b12fbe83e744a3ad8bc85bf6d4afa2fa6ac59fcf",
+            "merged_at": null,
+            "verifiedAt": "2026-10-01T00:07:45Z"
+          },
+          "supportingSources": [
+            {
+              "title": "布局描述基础 #41953",
+              "url": "https://github.com/sgl-project/sglang/pull/41953",
+              "head": "c70d9503f9b221e78bfc689f0bb706c8574178c0",
+              "codeUrl": "https://github.com/sgl-project/sglang/blob/c70d9503f9b221e78bfc689f0bb706c8574178c0/python/sglang/srt/mem_cache/layout/transfer.py"
+            },
+            {
+              "title": "DCP1 下不同 TP 的状态分片 #41956",
+              "url": "https://github.com/sgl-project/sglang/pull/41956",
+              "head": "8be99438bd14a661aa0581a3dc39f4e49da09270",
+              "codeUrl": "https://github.com/sgl-project/sglang/blob/8be99438bd14a661aa0581a3dc39f4e49da09270/python/sglang/srt/disaggregation/utils.py"
+            },
+            {
+              "title": "匹配 DCP 固定 head 的 targeted GPU CI",
+              "url": "https://github.com/sgl-project/sglang/actions/runs/36792036162",
+              "head": "b12fbe83e744a3ad8bc85bf6d4afa2fa6ac59fcf"
+            },
+            {
+              "title": "不同 TP 固定 head 的 targeted GPU CI",
+              "url": "https://github.com/sgl-project/sglang/actions/runs/36791882100",
+              "head": "8be99438bd14a661aa0581a3dc39f4e49da09270"
+            }
+          ]
+        },
+        {
+          "id": "sglang-amd-ultraquant-four-bit-kv",
+          "rank": "03",
+          "category": "SGLANG · AMD 4-BIT KV",
+          "title": "AMD UltraQuant KV 提案把 K 旋转与 FP4 存储接进服务路径，容量收益仍需分离验证",
+          "summary": "9 月 30 日 23:02 UTC 新开的 Draft #41949 增加 ultraquant_4bit KV 与专用 attention backend：K 先做 Hadamard 旋转，Q 使用同一基底，K/V 保存 FP4 E2M1 codes 与每 32 元素一份 UE8M0 scale；gfx950 的 head_dim=256、GQA 6/8/16 可走 FlyDSL decode，其余受支持形状走 Triton。固定 head 20b2911，open draft、未合并。",
+          "why": "源码核查确认独立 code/scale buffers、32-bit 地址上限的 pool cap、ROCm 与 backend 配对校验，以及 MLA／SWA hybrid pool 排除；decode 还拒绝 DCP。大 prefill chunk 会申请反量化 workspace，因此不能只凭 4-bit 名称推导整机容量。作者声称同内存 token 容量为 FP8 的 2.26×，但裸格式含 scale 为 4.25 bit/元素，不能把该数当通用压缩比。GPQA-Diamond 单次 198 题为 90.40% vs 89.90%，不足以证明质量提高；Qwen3.8 长上下文与 replay 结果尚未齐备。本次仅核公开报告和关键生产代码，没有 GPU／端到端性能复现。",
+          "source": "https://github.com/sgl-project/sglang/pull/41949",
+          "sourceLabel": "SGLang PR #41949 · draft 20b2911",
+          "reading": "10 min",
+          "signal": "medium",
+          "columns": [
+            "sglang",
+            "kv-cache",
+            "models"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-09-30T23:02:25Z",
+            "head": "20b29115d19aaff274d9b512a2c695271b252559",
+            "merged_at": null,
+            "verifiedAt": "2026-10-01T00:07:45Z"
+          }
+        },
+        {
+          "id": "vllm-hisparse-durable-prefix-livelock",
+          "rank": "04",
+          "category": "VLLM · HISPARSE PREFILL",
+          "title": "HiSparse 修复长 Prefill 活锁：提前发布 Host 前缀，并兑现准入窗口",
+          "summary": "9 月 30 日 20:45 UTC 新开的 #59494 处理长 chunked-prefill 反复被抢占、从 token 0 重算的问题：按 min(已计算长度, 已完成 Host 写入页) 发布可复用前缀，并在驻留页达到准入预留窗口时请求 hot region，而非只等待全局低水位。固定 head 2c01791，仍 open、未合并。",
+          "why": "准入时假定旧页可下沉，运行时就必须及时释放已回写页；全前缀写完才发布，会让被抢占请求没有恢复点。源码与新增测试覆盖窗口阈值、分块恢复和多 worker 写入确认。作者在 H100、缩小至 8 层的 DeepSeek-V3.2、8,192-token chunks 上报告：120K prompt／4,000 blocks 的旧版卡在 24,576 tokens，完整补丁 32 steps、0 preemptions；4 项 E2E 与 169 项单测通过。这是特定复现场景，非完整模型吞吐结论；本次未独立运行 GPU。",
+          "source": "https://github.com/vllm-project/vllm/pull/59494",
+          "sourceLabel": "vLLM PR #59494 · head 2c01791",
+          "reading": "7 min",
+          "signal": "high",
+          "columns": [
+            "vllm",
+            "kv-cache"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-09-30T20:45:00Z",
+            "head": "2c0179141a167138814ab92c99bc039e9336f3df",
+            "updated_at": "2026-09-30T22:58:15Z",
+            "merged_at": null,
+            "verifiedAt": "2026-10-01T00:07:45Z"
+          }
+        },
+        {
+          "id": "vllm-static-fp8-silu-flat-grid",
+          "rank": "05",
+          "category": "VLLM · ACTIVATION KERNEL",
+          "title": "SiLU＋静态 FP8 改用 Flat Grid，修正失效向量循环；作者报告 H100 Serving 提升 3.8%",
+          "summary": "9 月 30 日 23:23 UTC 新开的 #59514 修正 silu_and_mul_quant 的向量循环边界参数颠倒，并以跨行 flat grid、16-element 向量访问和 packed FP8 conversion 重写内核。SiLU、乘法、缩放改为 FP32 fast-math 连续计算，最后一次舍入至 FP8；未对齐输入走标量路径。固定 head 82a6204，open、未合并。",
+          "why": "手写融合并不天然快于编译器路径。作者在 H100、Llama-3.1-8B-FP8 的三轮交错 serving 测试中报告，相对 main 手写内核输出吞吐 4,821→5,005 tok/s（+3.8%），但相对 Inductor 仅 +0.6%；小 batch 的内核仍可慢于 Inductor。新增测试核对向量／标量位级一致性并限制 FP8 ULP 偏差；245 passed／76 skipped 为作者结果。算法改变了旧内核的中间舍入语义，GSM8K 分数存在差异，不能宣称与旧实现逐位等价或精度不变。本次核验生产补丁及测试，未独立 GPU 复现。",
+          "source": "https://github.com/vllm-project/vllm/pull/59514",
+          "sourceLabel": "vLLM PR #59514 · head 82a6204",
+          "reading": "9 min",
+          "signal": "high",
+          "columns": [
+            "vllm",
+            "models"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-09-30T23:23:38Z",
+            "head": "82a6204e24edaa1b6dfbbea55930e402f7d88737",
+            "updated_at": "2026-09-30T23:24:16Z",
+            "merged_at": null,
+            "verifiedAt": "2026-10-01T00:07:45Z"
+          }
+        },
+        {
+          "id": "vllm-flashinfer-replayssm-mtp",
+          "rank": "06",
+          "category": "VLLM · MAMBA2 MTP",
+          "title": "FlashInfer ReplaySSM 的 Mamba2 MTP 支持合入：单状态页与共享接受游标",
+          "summary": "#52928 于 9 月 30 日 21:41 UTC 合入 deb148e。每层保留 checkpoint 与输入 ring，同 cache group 在下一次 forward 前统一提交上一窗口接受长度；MTP verify 长度与物理状态页数解耦，不再为每个 draft position 预留完整状态页。均匀批用 dense MTP 输入，变长批用 cu_seqlens，CUDA Graph 的 state-index 缓冲保持固定地址。",
+          "why": "这条路径让状态容量、接受进度和图重放一起满足 MTP 语义。合并代码要求 FlashInfer backend、mamba_cache_mode=none，buffer 长度覆盖 verify window 且不超过 16，不能当作新增 prefix-cache align 支持。作者以 Nemotron-3.5-Lightning-30B-A3B-NVFP4、K=3、FP32 SSM、关闭 stochastic rounding 比较 #49847 Triton：GB200 默认 PDL off 提升约 4.1%–5.7%，GSM8K 均为 437/512；CUDA Graph 已隐藏大部分 Python launch 开销，不能套用 eager 微基准倍率。PDL 默认关闭；本次检查固定 merge 生产代码，未独立运行测试或 GPU。",
+          "source": "https://github.com/vllm-project/vllm/pull/52928",
+          "sourceLabel": "vLLM PR #52928 · merged deb148e",
+          "reading": "9 min",
+          "signal": "high",
+          "columns": [
+            "vllm",
+            "kv-cache",
+            "models"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-08-19T10:37:28Z",
+            "head": "2a31ab1ea8aabea0bab033ab84e714cdca754990",
+            "updated_at": "2026-09-30T21:41:18Z",
+            "merged_at": "2026-09-30T21:41:18Z",
+            "merge_commit_sha": "deb148e730225c64427f8ccf1f313cb4b33325b0",
+            "verifiedAt": "2026-10-01T00:07:45Z"
+          }
+        },
+        {
+          "id": "janus-ssd-sparse-append-prefill",
+          "rank": "07",
+          "category": "KV CACHE · AGENTIC SSD",
+          "title": "Janus 用提前 Indexer 预测隐藏 SSD 读取，瞄准 Agent 的 Append Prefill",
+          "summary": "本批次补充核读 9 月 29 日提交的 arXiv:2609.36938v1。Janus 提前用目标层自身 indexer 预测稀疏 KV，漏项在 attention 前补读；配合相邻块合读、CPU 写入打包与读期间限写，把优化重点移到 agent 追加输入的 append prefill。作者报告隔离请求平均 TTFT 相对 Tutti／LMCache 提升 1.22×／1.85×。",
+          "why": "价值在于区分“少读”和“及时读”：等精确选择后才读 SSD，可能比可提前重叠的全量读取更慢。评估为单机 8×H200、8 块 SSD、三模型三 traces，CPU KV 空间限 16 GB，LMCache 为 SSD-only；不能外推到充足 DRAM 的分层缓存。Serving P95 TTFT 相对 LMCache 提升 1.31–3.04×；补读保护输出是论文机制主张。本次核读论文，未审计源码或独立 GPU 复现。",
+          "source": "https://arxiv.org/abs/2609.36938v1",
+          "sourceLabel": "Janus · arXiv:2609.36938v1",
+          "reading": "10 min",
+          "signal": "high",
+          "columns": [
+            "kv-cache",
+            "vllm",
+            "network"
+          ],
+          "sourceCreatedAt": "2026-09-29T07:50:41Z",
+          "sourceVersion": "2609.36938v1",
+          "sourceVerifiedAt": "2026-10-01T00:08:30Z"
+        }
       ]
     },
     "dates": [
+      {
+        "day": "01",
+        "week": "THU",
+        "key": "10.01"
+      },
       {
         "day": "30",
         "week": "WED",
@@ -2209,6 +2433,12 @@
         "subtitle": "本期 2 条 · 约 11 分钟",
         "threadTitle": "Page-first Direct 在 L2→L1 回填上优于 Page-first Kernel",
         "threadSummary": "实验验证的是清空 L1 后的 L2 load-back，不包含 Mooncake L3、H2D 暴露或 submission-head latency；可作为方向证据，不能直接外推到完整三级缓存。"
+      },
+      "10.01": {
+        "headline": "今日值得关注的 AI Infra 信号",
+        "subtitle": "本期 7 条 · 约 63 分钟",
+        "threadTitle": "状态提交、存储准入与内核边界：从正确运行到有条件的加速",
+        "threadSummary": "00:00 UTC 批次记录 PP 推测状态修复、Unified PD matching-DCP、AMD 4-bit KV 提案、HiSparse 活锁、静态 FP8 内核和 ReplaySSM MTP；补充核读此前提交的 Janus v1，保留论文原始日期。另原位修订上一期 #59330 的双端升级约束与作者实测，追加未执行的 E-07 实验。代码合入、开放提案、作者结果和独立复现边界分别说明。"
       }
     }
   },
@@ -2330,6 +2560,34 @@
       "related": [
         "vllm-aiter-a4w4-opt-in"
       ]
+    },
+    {
+      "id": "E-07",
+      "title": "Janus：提前稀疏读取在不同 DRAM 预算下何时成立？",
+      "hypothesis": "提前 indexer 预测可把 SSD 等待与计算重叠，但收益取决于预测覆盖率、补读尾延迟和 CPU KV 预算；SSD-only 对照的优势未必适用于充足 DRAM 的分层缓存。",
+      "method": [
+        "未执行。最小实验先固定一个 sparse-attention checkpoint、引擎/实现提交、SSD 与 GPU 拓扑和一组可公开的 agent append-prefill traces；对照精确选择后读取、提前预测+补读、全量提前读取，保持相同总缓存容量与并发",
+        "从论文 16 GB CPU KV 预算起，再增加 DRAM 预算；分别固定和放开 I/O 合读与写入限流，避免把预取、合读、分层容量的收益混在一起",
+        "记录每层预测命中/漏项与补读完成时间；先对照完整 KV 的 logits/logprob，再用固定到达轨迹重复测服务尾延迟，报告误差与版本。无法获取公开实现或复用 trace 时先标记阻塞，不宣称复现论文"
+      ],
+      "metrics": [
+        "Append-prefill TTFT p50/p95/p99 与同 SLO goodput",
+        "预测覆盖率、误读字节、补读字节和关键路径等待",
+        "SSD IOPS/队列深度、读写干扰与 CPU staging 峰值",
+        "CPU KV 命中率、实际 adopted tokens 与数值一致性"
+      ],
+      "falsifier": "若在目标 DRAM 预算下提前预测没有稳定降低 P95 TTFT 或提升同 SLO goodput，或补读/误读造成更差尾延迟，则不支持部署该策略；若数值不一致，则补读正确性前提不成立。",
+      "related": [
+        "state-recovery",
+        "pd-c2c-coordination"
+      ],
+      "sources": [
+        {
+          "title": "Janus · arXiv:2609.36938v1",
+          "url": "https://arxiv.org/abs/2609.36938v1"
+        }
+      ],
+      "status": "unvalidated"
     }
   ]
 }
