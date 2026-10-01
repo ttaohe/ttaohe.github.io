@@ -110,15 +110,15 @@ export default function DailyDashboard({data}:{data:DailyData}) {
     <div className="min-h-screen bg-[#eef1f2] text-[#10222b] selection:bg-[#c7ff5e] selection:text-[#10222b]">
       <div className="mx-auto grid min-h-screen max-w-[1600px] lg:grid-cols-[238px_minmax(0,1fr)] xl:grid-cols-[238px_minmax(0,1fr)_306px]">
         <aside className="sticky top-0 hidden h-screen border-r border-[#d2dadd] bg-[#10222b] px-5 py-7 text-white lg:flex lg:flex-col">
-          <div className="flex items-center gap-3 px-2">
+          <a href="https://ttaohe.github.io/" aria-label="ttaohe · 返回个人主页" className="flex items-center gap-3 rounded px-2 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#c7ff5e]">
             <div className="grid size-10 place-items-center rounded-[14px] bg-[#c7ff5e] text-[#10222b] shadow-[0_0_0_5px_rgba(199,255,94,.08)]">
               <Radar className="size-5" strokeWidth={2.4} />
             </div>
             <div>
-              <p className="text-[15px] font-extrabold tracking-tight">INFRA SIGNAL</p>
+              <p className="text-[15px] font-extrabold tracking-tight">ttaohe</p>
               <p className="text-xs text-white/45">DAILY / 09:00</p>
             </div>
-          </div>
+          </a>
 
           <nav aria-label="日报导航" className="mt-12 space-y-2">
             <a href={sitePath("/")} className="flex w-full items-center gap-3 rounded-xl border border-[#c7ff5e]/25 bg-[#c7ff5e]/10 px-3 py-3 text-left text-sm font-semibold text-[#c7ff5e] transition hover:bg-[#c7ff5e]/20"><BookOpen className="size-4" />研究库与实验</a>
@@ -176,15 +176,15 @@ export default function DailyDashboard({data}:{data:DailyData}) {
 
         <main className="min-w-0 px-4 pb-28 pt-5 sm:px-7 sm:pt-8 xl:px-10">
           <header className="mb-7 flex items-center justify-between lg:mb-10">
-            <div className="flex items-center gap-3 lg:hidden">
+            <a href="https://ttaohe.github.io/" aria-label="ttaohe · 返回个人主页" className="flex items-center gap-3 rounded focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-teal-700 lg:hidden">
               <div className="grid size-9 place-items-center rounded-xl bg-[#10222b] text-[#c7ff5e]">
                 <Radar className="size-4" />
               </div>
               <div>
-                <p className="text-sm font-extrabold tracking-tight">INFRA SIGNAL</p>
+                <p className="text-sm font-extrabold tracking-tight">ttaohe</p>
                 <p className="text-[11px] text-[#6c7b81]">每日 09:00</p>
               </div>
-            </div>
+            </a>
             <div className="hidden lg:block">
               <p className="text-xs font-bold tracking-[0.16em] text-[#738288]">{viewEyebrow}</p>
               <h1 className="mt-2 text-[clamp(2.1rem,4vw,4.2rem)] font-black leading-[0.95] tracking-[-0.055em] text-[#10222b]">{isColumn ? <>{selectedColumn?.name}<br />专栏</> : tab === "saved" ? <>已收藏<br />AI Infra 信号</> : isToday ? <>{issue.headline}</> : <>往期简报<br />AI Infra 信号</>}</h1>

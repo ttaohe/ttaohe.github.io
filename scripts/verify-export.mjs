@@ -15,6 +15,7 @@ const routes = ['', 'daily', 'research', 'experiments', ...content.posts.map(pos
 for (const route of routes) {
   const html = await readFile(path.join(appOutput, route, 'index.html'), 'utf8');
   const text = decodeText(html);
+  assert(/<a[^>]+href="https:\/\/ttaohe\.github\.io\/"[^>]+aria-label="ttaohe · 返回个人主页"/.test(html), `Missing personal-home brand link on ${basePath}/${route}`);
   assert(html.includes('<html'), `Missing static HTML for ${basePath}/${route}`);
   assert(!/portfolio-visits(?:\.[a-f0-9]+)?\.js/.test(html), `Homepage-only counter must not load on ${basePath}/${route}`);
   assert(html.includes('内容源暂时无法更新') === status.stale, `Incorrect stale-data notice on ${basePath}/${route}`);
@@ -36,6 +37,7 @@ assert(!landing.includes('知识地图 <'), 'Root must remain the portfolio land
 for (const text of ['TaoHe', '何涛', 'Northwestern Polytechnical University', 'Wuhan University', '西北工业大学 · 本科 · 电子信息工程', '武汉大学 · 硕士 · 计算机应用技术', 'Electronic Information Engineering', 'Computer Application Technology', '经历与项目', 'MLA L2 Host Cache Deduplication', '距离下次资料检查', '上次内容更新']) assert(landing.includes(text), `Missing confirmed portfolio content: ${text}`);
 assert(landing.includes('id="mla-tp-l2-cache-deduplication"') && landing.includes('href="/projects/mla-tp-l2-cache-deduplication/"'), 'Project index must link to its stable document');
 const projectDocument = await readFile(path.join(output, 'projects/mla-tp-l2-cache-deduplication/index.html'), 'utf8');
+assert(/<a href="\/" aria-label="ttaohe · 返回个人主页"><em>ttaohe<\/em><\/a>/.test(projectDocument), 'Project brand must link to the personal homepage');
 assert(projectDocument.includes('id="record-status">待补充') && projectDocument.includes('href="/#mla-tp-l2-cache-deduplication"'), 'Project document must disclose pending content and link back to its summary');
 assert(/href="\/assets\/portfolio\.[a-f0-9]{16}\.css"/.test(projectDocument), 'Project document must use fingerprinted theme styles');
 for (const years of [['2019', '2023'], ['2023', '2026']]) assert(landing.includes(`<time datetime="${years[0]}">${years[0]}</time>–<time datetime="${years[1]}">${years[1]}</time>`), `Missing confirmed education years ${years.join('–')}`);
