@@ -1,7 +1,7 @@
 "use client";
 import {sitePath} from "@/lib/site-path";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowUpRight,
   BookOpen,
@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { archiveDateLabel, archiveDateFromSearch, archiveDateUrl } from "@/lib/daily-archive";
 import { researchForSource } from "@/lib/research-library";
 import {
   Sheet,
@@ -33,7 +34,10 @@ import type { DailyData } from "@/lib/blog/types";
 
 export default function DailyDashboard({data}:{data:DailyData}) {
   const {reports,dates,columns,topicBars,year}=data;
-  const [date, setDate] = useState(data.dates[0]?.key || "");
+  const archiveDates = useMemo(() => dates.filter((item) => reports[item.key]?.length), [dates, reports]);
+  const archiveKeys = useMemo(() => archiveDates.map((item) => item.key), [archiveDates]);
+  const [date, setDate] = useState(archiveDates[0]?.key || "");
+  const archiveOpener = useRef<HTMLButtonElement | null>(null);
   const [tab, setTab] = useState("today");
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [columnOpen, setColumnOpen] = useState(false);
@@ -41,7 +45,7 @@ export default function DailyDashboard({data}:{data:DailyData}) {
   const [saved, setSaved] = useState<string[]>([]);
   const [read, setRead] = useState<string[]>([]);
 
-  const latestDate = dates[0]?.key || "";
+  const latestDate = archiveKeys[0] || "";
   const issue=data.issueMeta?.[date] || {headline:"今日值得关注的 AI Infra 信号",subtitle:`本期 ${reports[date]?.length || 0} 条`,threadTitle:reports[date]?.[0]?.title || "本期线索",threadSummary:reports[date]?.[0]?.why || ""};
   const isColumn = activeColumn !== "all" && tab === "today";
   const isToday = date === latestDate && tab === "today" && !isColumn;
@@ -57,6 +61,25 @@ export default function DailyDashboard({data}:{data:DailyData}) {
       // Device-local preferences are optional.
     }
   }, []);
+
+  useEffect(() => {
+    const restoreDate = () => {
+      const selected = archiveDateFromSearch(window.location.search, year, archiveKeys);
+      setDate(selected);
+      setTab("today");
+      setActiveColumn("all");
+      setArchiveOpen(false);
+      setColumnOpen(false);
+      // Normalize invalid dates without adding a misleading history entry.
+      const canonical = archiveDateUrl(window.location.href, year, selected, latestDate);
+      const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      if (canonical !== current) window.history.replaceState(window.history.state, "", canonical);
+    };
+    // Restore the URL only after hydration; the static export renders the latest issue.
+    restoreDate();
+    window.addEventListener("popstate", restoreDate);
+    return () => window.removeEventListener("popstate", restoreDate);
+  }, [archiveKeys, latestDate, year]);
 
   const allItems = useMemo(
     () => Object.entries(reports).flatMap(([reportDate, list]) => list.map((item) => ({ ...item, reportDate }))),
@@ -83,7 +106,16 @@ export default function DailyDashboard({data}:{data:DailyData}) {
     localStorage.setItem("infra-daily-read", JSON.stringify(next));
   };
 
+  const openArchive = (opener: HTMLButtonElement) => {
+    archiveOpener.current = opener;
+    setArchiveOpen(true);
+  };
+
   const selectDate = (key: string) => {
+    if (!archiveKeys.includes(key)) return;
+    const nextUrl = archiveDateUrl(window.location.href, year, key, latestDate);
+    const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    if (nextUrl !== currentUrl) window.history.pushState(window.history.state, "", nextUrl);
     setDate(key);
     setTab("today");
     setActiveColumn("all");
@@ -126,6 +158,10 @@ export default function DailyDashboard({data}:{data:DailyData}) {
               <Newspaper className="size-4 text-[#c7ff5e]" /> 今日简报
               <span className="ml-auto rounded-full bg-[#c7ff5e] px-2 py-0.5 text-[11px] font-bold text-[#10222b]">{reports[latestDate]?.length || 0}</span>
             </button>
+            <button onClick={(event) => openArchive(event.currentTarget)} aria-haspopup="dialog" aria-expanded={archiveOpen} aria-controls="daily-archive-dialog" className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition ${date !== latestDate && tab === "today" && !isColumn ? "bg-white/10 text-[#c7ff5e]" : "text-white/75 hover:bg-white/5 hover:text-white"}`}>
+              <CalendarDays className="size-4" /> 往期归档
+              <span className="ml-auto text-xs text-white/45">{archiveDates.length} 期</span>
+            </button>
             <button onClick={goSaved} className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition ${tab === "saved" ? "bg-white/10 font-semibold text-white" : "text-white/60 hover:bg-white/5 hover:text-white"}`}>
               <Bookmark className="size-4" /> 已收藏
               <span className="ml-auto text-xs text-white/35">{saved.length}</span>
@@ -152,14 +188,15 @@ export default function DailyDashboard({data}:{data:DailyData}) {
           <div className="mt-8 min-h-0 flex-1 overflow-y-auto px-2 pr-1 [scrollbar-width:thin]">
             <p className="text-[11px] font-bold tracking-[0.18em] text-white/35">历史归档</p>
             <div className="mt-4 space-y-1">
-              {dates.map((item) => (
+              {archiveDates.map((item) => (
                 <button
                   key={item.key}
                   onClick={() => selectDate(item.key)}
-                  className={`flex w-full items-center rounded-xl px-3 py-2.5 text-left transition ${date === item.key && tab !== "saved" ? "bg-[#c7ff5e] text-[#10222b]" : "text-white/52 hover:bg-white/5 hover:text-white"}`}
+                  aria-label={`查看 ${archiveDateLabel(year, item.key)} 简报`}
+                  aria-current={date === item.key && tab === "today" && !isColumn ? "date" : undefined}
+                  className={`flex w-full items-center rounded-xl px-3 py-2.5 text-left transition ${date === item.key && tab === "today" && !isColumn ? "bg-[#c7ff5e] text-[#10222b]" : "text-white/52 hover:bg-white/5 hover:text-white"}`}
                 >
-                  <span className="w-10 text-xl font-bold tabular-nums">{item.day}</span>
-                  <span className="text-[11px] font-semibold tracking-[0.13em] opacity-55">{item.week}</span>
+                  <span><span className="block text-sm font-bold tabular-nums">{archiveDateLabel(year, item.key)}</span><span className="mt-1 block text-[10px] font-semibold tracking-[0.1em] opacity-65">{item.week} · {reports[item.key]?.length || 0} 条</span></span>
                   {reports[item.key] && <span className="ml-auto size-1.5 rounded-full bg-current opacity-40" />}
                 </button>
               ))}
@@ -198,6 +235,19 @@ export default function DailyDashboard({data}:{data:DailyData}) {
             <p className="text-[11px] font-bold tracking-[0.15em] text-[#738288]">{viewEyebrow}</p>
             <h1 className="mt-2 text-[2.35rem] font-black leading-[0.96] tracking-[-0.055em]">{isColumn ? <>{selectedColumn?.name}<br />专栏</> : tab === "saved" ? <>已收藏<br />AI Infra 信号</> : isToday ? <>{issue.headline}</> : <>往期简报<br />AI Infra 信号</>}</h1>
             {isColumn && <p className="mt-3 text-sm text-[#6d7e85]">{selectedColumn?.description}</p>}
+          </section>
+
+          <section aria-label="简报日期导航" className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#c5d2d6] bg-white p-3 shadow-sm sm:p-4">
+            <div className="min-w-0 pl-1">
+              <p className="text-[11px] font-semibold text-[#64777f]">{tab === "saved" ? "跨期收藏" : isColumn ? "跨期专栏" : date === latestDate ? "最新一期" : "正在阅读往期"}</p>
+              <p className="mt-1 text-base font-extrabold tabular-nums tracking-tight">{tab === "saved" || isColumn ? `共 ${archiveDates.length} 期简报` : archiveDateLabel(year, date)}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {date !== latestDate && tab === "today" && !isColumn && <button onClick={goToday} className="rounded-xl px-3 py-3 text-xs font-semibold text-[#1d6c84] hover:bg-[#edf3f3]">回到最新</button>}
+              <button onClick={(event) => openArchive(event.currentTarget)} aria-haspopup="dialog" aria-expanded={archiveOpen} aria-controls="daily-archive-dialog" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#10222b] px-4 py-3 text-sm font-bold text-[#c7ff5e] transition hover:bg-[#1c3743] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1d6c84]">
+                <CalendarDays className="size-4" /> 往期归档 <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white">{archiveDates.length} 期</span>
+              </button>
+            </div>
           </section>
 
           <div className="mb-6 flex items-center justify-between gap-3">
@@ -366,37 +416,33 @@ export default function DailyDashboard({data}:{data:DailyData}) {
           </SheetContent>
         </Sheet>
         <button onClick={goSaved} className={`flex flex-col items-center gap-1 rounded-2xl py-2 text-[10px] ${tab === "saved" ? "bg-white/10 text-[#c7ff5e]" : "text-white/45"}`}><Bookmark className="size-4" />收藏</button>
-        <Sheet open={archiveOpen} onOpenChange={setArchiveOpen}>
-          <SheetTrigger asChild>
-            <button className={`flex flex-col items-center gap-1 rounded-2xl py-2 text-[10px] ${tab === "today" && date !== latestDate ? "bg-white/10 text-[#c7ff5e]" : "text-white/45"}`}><CalendarDays className="size-4" />往期</button>
-          </SheetTrigger>
-          <SheetContent side="bottom" className="max-h-[72vh] rounded-t-[30px] border-[#d7dfe1] bg-[#f5f7f7] px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-2 text-[#10222b]">
-            <div className="mx-auto mt-1 h-1.5 w-10 rounded-full bg-[#c4ced1]" />
-            <SheetHeader className="px-1 pb-2 pt-5">
-              <SheetTitle className="text-2xl font-black tracking-[-0.04em]">往期简报</SheetTitle>
-              <SheetDescription>选择日期查看当天归档</SheetDescription>
-            </SheetHeader>
-            <div className="mt-2 grid min-h-0 flex-1 gap-2 overflow-y-auto">
-              {dates.slice(1).map((item) => {
-                const count = reports[item.key]?.length || 0;
-                const active = date === item.key && tab === "today";
-                return (
-                  <button
-                    key={item.key}
-                    disabled={!count}
-                    onClick={() => selectDate(item.key)}
-                    className={`flex min-h-16 items-center rounded-2xl border px-4 text-left transition ${active ? "border-[#10222b] bg-[#10222b] text-white" : count ? "border-[#d7dfe1] bg-white text-[#10222b] active:scale-[0.99]" : "border-transparent bg-[#e9edef] text-[#8d999d]"}`}
-                  >
-                    <span className="w-12 text-2xl font-black tabular-nums">{item.day}</span>
-                    <span className="text-xs font-bold tracking-[0.14em] opacity-55">{item.key.split(".")[0]}月 · {item.week}</span>
-                    <span className={`ml-auto rounded-full px-2.5 py-1 text-xs font-semibold ${active ? "bg-[#c7ff5e] text-[#10222b]" : count ? "bg-[#eef2f3] text-[#607178]" : "bg-transparent"}`}>{count ? `${count} 条` : "暂无"}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </SheetContent>
-        </Sheet>
+        <button onClick={(event) => openArchive(event.currentTarget)} aria-haspopup="dialog" aria-expanded={archiveOpen} aria-controls="daily-archive-dialog" className={`flex flex-col items-center gap-1 rounded-2xl py-2 text-[10px] ${tab === "today" && date !== latestDate && !isColumn ? "bg-white/10 text-[#c7ff5e]" : "text-white/65"}`}><CalendarDays className="size-4" />往期归档</button>
       </nav>
+
+      <Sheet open={archiveOpen} onOpenChange={setArchiveOpen}>
+        <SheetContent id="daily-archive-dialog" side="bottom" onCloseAutoFocus={(event) => { event.preventDefault(); archiveOpener.current?.focus(); }} className="mx-auto max-h-[82dvh] w-full max-w-2xl rounded-t-[30px] border-[#d7dfe1] bg-[#f5f7f7] px-4 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-2 text-[#10222b] sm:px-6">
+          <div className="mx-auto mt-1 h-1.5 w-10 rounded-full bg-[#c4ced1]" />
+          <SheetHeader className="px-1 pb-2 pt-5">
+            <SheetTitle className="text-2xl font-black tracking-[-0.04em]">往期归档</SheetTitle>
+            <SheetDescription>共 {archiveDates.length} 期 · 按日期查看完整简报，链接可保存与分享</SheetDescription>
+          </SheetHeader>
+          <div className="mt-2 grid min-h-0 flex-1 gap-2 overflow-y-auto overscroll-contain px-1 pb-1">
+            {archiveDates.map((item) => {
+              const count = reports[item.key]?.length || 0;
+              const active = date === item.key && tab === "today" && !isColumn;
+              return (
+                <button key={item.key} onClick={() => selectDate(item.key)} aria-label={`查看 ${archiveDateLabel(year, item.key)} 简报`} aria-current={active ? "date" : undefined} className={`flex min-h-20 shrink-0 items-center gap-3 rounded-2xl border px-4 py-3 text-left transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1d6c84] ${active ? "border-[#10222b] bg-[#10222b] text-white" : "border-[#d7dfe1] bg-white text-[#10222b] hover:bg-[#edf3f3]"}`}>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex flex-wrap items-center gap-2"><span className="text-base font-extrabold tabular-nums">{archiveDateLabel(year, item.key)}</span><span className={`text-[10px] font-bold ${active ? "text-[#c7ff5e]" : "text-[#61767e]"}`}>{item.key === latestDate ? "最新一期" : item.week}{active ? " · 当前" : ""}</span></span>
+                    <span className={`mt-1.5 block truncate text-xs ${active ? "text-white/65" : "text-[#657880]"}`}>{data.issueMeta?.[item.key]?.headline || reports[item.key]?.[0]?.title || "每日 AI Infra 简报"}</span>
+                  </span>
+                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${active ? "bg-[#c7ff5e] text-[#10222b]" : "bg-[#eef2f3] text-[#607178]"}`}>{count} 条</span>
+                </button>
+              );
+            })}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
