@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-10-01T20:13:00Z",
+  "updatedAt": "2026-10-02T00:05:00Z",
   "posts": [
     {
       "slug": "state-recovery",
@@ -5824,9 +5824,334 @@
           ],
           "rank": "51"
         }
+      ],
+      "10.02": [
+        {
+          "id": "sglang-megamoe-modelopt-w13-layout",
+          "rank": "01",
+          "category": "SGLANG · MOE CORRECTNESS",
+          "title": "MegaMoE 修复 NVFP4 专家布局：应服从实际消费者，而非名义 runner",
+          "summary": "10 月 1 日 23:12 UTC 合并 #39388（5423a4d）。ModelOpt NVFP4 可能保留 TRT-LLM 名义 runner，却经 MegaMoE all-to-all 交给 DeepGEMM 消费；旧 loader 因前者选择 W31，令后者把 gate/up 颠倒。合并代码单独决定权重布局：实际 MegaMoE 消费者始终使用 canonical W13，并把分片映射、可选交错权重拆分和构建前断言绑定到同一条件。",
+          "why": "这是静默精度错误的修复，不是换 kernel 后的吞吐宣传。作者在 200 题诊断中报告旧 DeepSeek-V4 NVFP4 MegaMoE 约 25%–26%、修复后 98%–98.5%；这些局部样本不能冒充完整评测。完整 1,314 题的若干配置结果与固定形状吞吐近似持平另有报告，均未由本次独立复现。源码改动发生在加载期，FP8、MxInt4 等路径继续沿用原布局判定；不能扩大为全部 MoE 量化格式的修复。",
+          "source": "https://github.com/sgl-project/sglang/pull/39388",
+          "sourceLabel": "SGLang PR #39388 · merged 5423a4d",
+          "reading": "8 min",
+          "signal": "high",
+          "columns": [
+            "sglang",
+            "models"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-09-14T08:15:40Z",
+            "updated_at": "2026-10-01T23:12:35Z",
+            "head": "e3213e60cbf10a0c78a07d9e700ac39d8b0e8ac0",
+            "base": "1a0250c5b6f25d2b59d39855e3636ce701d06248",
+            "state": "closed",
+            "draft": false,
+            "merged_at": "2026-10-01T23:12:35Z",
+            "merge_commit_sha": "5423a4d88526416b45395d69164bfcd23835e507",
+            "head_committed_at": "2026-10-01T11:06:02Z",
+            "verifiedAt": "2026-10-02T00:03:00Z",
+            "observationWindowEnd": "2026-10-02T00:00:00Z"
+          },
+          "supportingSources": [
+            {
+              "title": "固定合并提交：实际仅两个生产文件的布局修复",
+              "url": "https://github.com/sgl-project/sglang/commit/5423a4d88526416b45395d69164bfcd23835e507"
+            },
+            {
+              "title": "ModelOpt：消费者决定W13/W31、构建断言及deinterleave",
+              "url": "https://github.com/sgl-project/sglang/blob/5423a4d88526416b45395d69164bfcd23835e507/python/sglang/srt/layers/quantization/modelopt_quant.py#L2359-L2364"
+            },
+            {
+              "title": "专家loader：权重和scale分片采用新布局条件",
+              "url": "https://github.com/sgl-project/sglang/blob/5423a4d88526416b45395d69164bfcd23835e507/python/sglang/srt/layers/moe/fused_moe_triton/layer.py#L1213-L1225"
+            }
+          ]
+        },
+        {
+          "id": "sglang-router-dp-rank-worker-auth",
+          "rank": "02",
+          "category": "SGLANG · ROUTING & DEPLOYMENT",
+          "title": "实验 router 将路由细化到 DP rank，并补齐带 API key 的 worker 发现",
+          "summary": "10 月 1 日 21:51／21:55 UTC，#41974 与 #41996 先后合并。experimental/sgl-router 的可选 --dp-aware 在选好 worker 后，依次按会话键哈希、rank 本地最深缓存前缀、router 记录的在途请求数选 rank，再写入 X-Data-Parallel-Rank；客户端同名 header 先被移除。PD 中 Decode 按负载选择，Prefill bootstrap room 与所选 rank 按模数对齐。后续合并的 --worker-api-key 让 router 自发的模型/能力/KV-event 查询可以访问受保护引擎。",
+          "why": "同一 worker URL 背后存在多个独立 KV cache，worker 命中不保证下一轮落到持有前缀的 rank。边界也重要：外部 KV indexer 当前没有 rank 信息，跳过前缀层；负载是 router 本地观察值，作者尚未进行真实多 rank 引擎验证。存储的 worker key 只用于自发查询；聊天仍转发用户 Authorization，flush_cache 也只转发调用者凭据。仍 open 的 #42147 已提出 batch／n>1 时取消 Prefill 固定 rank 的补充处理，因此不能把本次合并描述为全部 PD fan-out 场景均已验证。",
+          "source": "https://github.com/sgl-project/sglang/pull/41974",
+          "sourceLabel": "SGLang PR #41974 / #41996 · merged",
+          "reading": "9 min",
+          "signal": "high",
+          "columns": [
+            "sglang",
+            "network"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-10-01T02:46:23Z",
+            "updated_at": "2026-10-01T21:51:03Z",
+            "head": "bc86ce6784b25e74f52dfc23430523690fd7dc9e",
+            "base": "dcf4e182839c2df77f6eaf2c3303b80bcf982bff",
+            "state": "closed",
+            "draft": false,
+            "merged_at": "2026-10-01T21:51:00Z",
+            "merge_commit_sha": "d7565215ec9631d55e737437b3ac9f19dc0f2ab2",
+            "head_committed_at": "2026-10-01T21:23:57Z",
+            "verifiedAt": "2026-10-02T00:03:00Z",
+            "observationWindowEnd": "2026-10-02T00:00:00Z",
+            "companion": {
+              "created_at": "2026-10-01T04:40:14Z",
+              "updated_at": "2026-10-01T21:55:04Z",
+              "head": "83e905e5c4ec5bb4dcae2ec14bc4dfe2c87cf31c",
+              "base": "d7565215ec9631d55e737437b3ac9f19dc0f2ab2",
+              "state": "closed",
+              "draft": false,
+              "merged_at": "2026-10-01T21:55:00Z",
+              "merge_commit_sha": "a21dcbd3204f485ef43d24adea03543d0897ac9b",
+              "head_committed_at": "2026-10-01T21:51:04Z",
+              "verifiedAt": "2026-10-02T00:03:00Z",
+              "observationWindowEnd": "2026-10-02T00:00:00Z"
+            }
+          },
+          "supportingSources": [
+            {
+              "title": "固定合并：sticky、前缀与inflight选择次序",
+              "url": "https://github.com/sgl-project/sglang/blob/d7565215ec9631d55e737437b3ac9f19dc0f2ab2/experimental/sgl-router/src/policies/dp_rank.rs"
+            },
+            {
+              "title": "固定合并：rank header与PD bootstrap room",
+              "url": "https://github.com/sgl-project/sglang/blob/d7565215ec9631d55e737437b3ac9f19dc0f2ab2/experimental/sgl-router/src/server/routes/chat/forward.rs"
+            },
+            {
+              "title": "固定合并：worker自发查询的认证client",
+              "url": "https://github.com/sgl-project/sglang/blob/a21dcbd3204f485ef43d24adea03543d0897ac9b/experimental/sgl-router/src/workers/introspect.rs"
+            },
+            {
+              "title": "固定合并：flush只转发调用者Authorization",
+              "url": "https://github.com/sgl-project/sglang/blob/a21dcbd3204f485ef43d24adea03543d0897ac9b/experimental/sgl-router/src/server/routes/cache.rs"
+            },
+            {
+              "title": "认证补丁正文与合并状态",
+              "url": "https://github.com/sgl-project/sglang/pull/41996"
+            },
+            {
+              "title": "尚未合并的batch/n>1 PD fan-out后续边界",
+              "url": "https://github.com/sgl-project/sglang/pull/42147"
+            }
+          ]
+        },
+        {
+          "id": "sglang-mamba-ssd-autotune-restored",
+          "rank": "03",
+          "category": "SGLANG · MAMBA KERNELS",
+          "title": "Mamba2 SSD 恢复 autotune：消除固定小 tile，也控制首次调优开销",
+          "summary": "10 月 1 日 21:25 UTC 合并 #39130（bf2d686）。此前迁移来的 Mamba2 SSD Triton 内核没有启用 autotune，仍按默认 BLOCK_SIZE=16 启动。此次为 BMM、chunk scan/state、state passing 恢复形状相关配置，复用磁盘调优缓存，并剪掉宽于所覆盖维度的 tile；同时修复 one_batch 基准未初始化 Mamba state-update backend 的问题。",
+          "why": "优化不能只看稳态 kernel：冷启动测试矩阵即使有持久缓存仍会大量编译，剪枝才降低首次调优成本。作者在 GB300 TP4、Nemotron-3-Ultra NVFP4、输入 8K／输出 1K、并发 16–512 的 serving 实测中报告总 token 吞吐约 1.13–1.28×，单用户约 1.05–1.22×；这是特定完整部署结果，不能推广为所有 Mamba 模型。改变 BLOCK_SIZE_K 也改变 FP32 累加分组，输出不保证 bitwise 一致；GSM8K 报告相近，不能据此宣称数值完全等价。本次核验固定源码与公开测试报告，未独立运行 GPU。",
+          "source": "https://github.com/sgl-project/sglang/pull/39130",
+          "sourceLabel": "SGLang PR #39130 · merged bf2d686",
+          "reading": "8 min",
+          "signal": "high",
+          "columns": [
+            "sglang",
+            "models"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-09-11T21:32:23Z",
+            "updated_at": "2026-10-01T21:25:38Z",
+            "head": "763de4b66fd8cf2c1003b759c3511868a4cd1a8b",
+            "base": "b51d4a04f08a6a8cd1aabd2f95d4a0a9ae14abf0",
+            "state": "closed",
+            "draft": false,
+            "merged_at": "2026-10-01T21:25:38Z",
+            "merge_commit_sha": "bf2d686a82a1fdb4bd7f1fa9ff18ad2562dd8314",
+            "head_committed_at": "2026-10-01T07:33:16Z",
+            "verifiedAt": "2026-10-02T00:03:00Z",
+            "observationWindowEnd": "2026-10-02T00:00:00Z"
+          },
+          "supportingSources": [
+            {
+              "title": "固定合并：oversized tile剪枝与持久cache kwargs",
+              "url": "https://github.com/sgl-project/sglang/blob/bf2d686a82a1fdb4bd7f1fa9ff18ad2562dd8314/python/sglang/kernels/ops/mamba/triton_ops/autotune.py"
+            },
+            {
+              "title": "固定合并：BMM autotune配置、key与剪枝",
+              "url": "https://github.com/sgl-project/sglang/blob/bf2d686a82a1fdb4bd7f1fa9ff18ad2562dd8314/python/sglang/kernels/ops/mamba/triton_ops/ssd_bmm.py"
+            },
+            {
+              "title": "固定合并：chunk-state的配置与varlen路径",
+              "url": "https://github.com/sgl-project/sglang/blob/bf2d686a82a1fdb4bd7f1fa9ff18ad2562dd8314/python/sglang/kernels/ops/mamba/triton_ops/ssd_chunk_state.py"
+            },
+            {
+              "title": "固定合并：基准初始化state-update backend",
+              "url": "https://github.com/sgl-project/sglang/blob/bf2d686a82a1fdb4bd7f1fa9ff18ad2562dd8314/python/sglang/benchmark/one_batch.py"
+            }
+          ]
+        },
+        {
+          "id": "vllm-deepep-v2-sequence-parallel-capacity",
+          "rank": "04",
+          "category": "VLLM · MOE COMMUNICATION",
+          "title": "DeepEP v2 按序列分片缩小缓冲，并补上非二次幂 dispatch 上界",
+          "summary": "10 月 1 日新开的 #59687 将 ElasticBuffer 的每 rank 容量从完整 token budget 改为 ceil(max_num_tokens / sp_size)，并将二次幂取整后的 dispatch 上界截到真实容量；超过容量的真实输入则明确报错。固定 head ef54da7，23:40 UTC 提交后仍 open、未合并。容量调整与上界检查必须一起部署：budget 10240、SP4 时容量为 2560，未经截断的 4096 会触发 DeepEP host assert。",
+          "why": "这是通信临时内存与实际 SP 工作量不一致的问题。作者在 16×B200、Kimi-K3 TP4×DP4×EP16、budget16384 的 dummy-weight 配置报告每 GPU 缓冲 3.56→0.89 GiB；另在真实权重、budget4096 下，12 个 greedy prompts 的 token 与 top-20 logprobs 一致。前一组约 2.7 GiB 节省不能当作后一组实测，更不是吞吐提升；端到端只验证 allow_multiple_reduction=1、allow_hybrid_mode=0。源码两处修改已核对，本站未运行 GPU。",
+          "source": "https://github.com/vllm-project/vllm/pull/59687",
+          "sourceLabel": "vLLM PR #59687 · open head ef54da7",
+          "reading": "8 min",
+          "signal": "high",
+          "columns": [
+            "vllm",
+            "network",
+            "models"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-10-01T20:45:49Z",
+            "updated_at": "2026-10-01T23:46:27Z",
+            "head": "ef54da7a861363a4055aa1dc8235e6c4cdfc3490",
+            "base": "e6674262f19a0da389dad1c37b5bbd937db80778",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "merge_commit_sha": null,
+            "head_committed_at": "2026-10-01T23:40:13Z",
+            "verifiedAt": "2026-10-02T00:03:10Z",
+            "observationWindowEnd": "2026-10-02T00:00:00Z"
+          },
+          "supportingSources": [
+            {
+              "title": "固定源码：分片容量同时传入缓冲和 prepare/finalize",
+              "url": "https://github.com/vllm-project/vllm/blob/ef54da7a861363a4055aa1dc8235e6c4cdfc3490/vllm/model_executor/layers/fused_moe/all2all_utils.py"
+            },
+            {
+              "title": "固定源码：真实输入检查与二次幂上界截断",
+              "url": "https://github.com/vllm-project/vllm/blob/ef54da7a861363a4055aa1dc8235e6c4cdfc3490/vllm/model_executor/layers/fused_moe/prepare_finalize/deepep_v2.py"
+            }
+          ]
+        },
+        {
+          "id": "vllm-async-output-event-loop-fairness",
+          "rank": "05",
+          "category": "VLLM · FRONTEND SCHEDULING",
+          "title": "输出持续就绪时主动让出事件循环，让 abort／pause 获得执行机会",
+          "summary": "新 PR #59697 在两个持续 drain 输出的位置加入 asyncio.sleep(0)：IPC reader 将输出放入队列之后，以及 AsyncLLM 处理完每个 EngineCore 输出 batch 之后。已有 await 若总能立即完成，并不保证协程让出执行权；输出积压因此可能让 abort／pause 等控制任务迟迟无法运行。固定 head 464f213，10 月 1 日 22:04 UTC 提交，仍 open、未合并。",
+          "why": "改动解决的是服务前端控制面的公平性，不能推导出模型 scheduler 公平性或推理吞吐提升。新增 CPU 回归预装 10 个就绪输出，检查控制回调在首个输出后即可执行，而不是等整个 backlog 排空；作者报告该回归与 admission-control 共 52 项通过。本站核对了两个 yield 和测试源码，未运行 GPU，也没有尾延迟基准可据此量化收益。",
+          "source": "https://github.com/vllm-project/vllm/pull/59697",
+          "sourceLabel": "vLLM PR #59697 · open head 464f213",
+          "reading": "8 min",
+          "signal": "high",
+          "columns": [
+            "vllm"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-10-01T22:06:41Z",
+            "updated_at": "2026-10-01T22:09:06Z",
+            "head": "464f213e9dfdb9ca459a9864720e4aa3243879f6",
+            "base": "ca65eb67d995f5401c575ec90cba523757127ec7",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "merge_commit_sha": null,
+            "head_committed_at": "2026-10-01T22:04:34Z",
+            "verifiedAt": "2026-10-02T00:03:10Z",
+            "observationWindowEnd": "2026-10-02T00:00:00Z"
+          },
+          "supportingSources": [
+            {
+              "title": "固定源码：IPC 输出入队后的显式 yield",
+              "url": "https://github.com/vllm-project/vllm/blob/464f213e9dfdb9ca459a9864720e4aa3243879f6/vllm/v1/engine/core_client.py"
+            },
+            {
+              "title": "固定源码：每个 EngineCore batch 处理后的 yield",
+              "url": "https://github.com/vllm-project/vllm/blob/464f213e9dfdb9ca459a9864720e4aa3243879f6/vllm/v1/engine/async_llm.py"
+            },
+            {
+              "title": "固定源码：两个就绪 backlog 的确定性回归",
+              "url": "https://github.com/vllm-project/vllm/blob/464f213e9dfdb9ca459a9864720e4aa3243879f6/tests/v1/engine/test_async_output_fairness.py"
+            }
+          ]
+        },
+        {
+          "id": "vllm-minimax-m3-nvfp4-msa-cache",
+          "rank": "06",
+          "category": "VLLM · MSA NVFP4",
+          "title": "MiniMax-M3 稀疏 MSA 接通 NVFP4 KV：页布局与强制 CUTLASS 一同落地",
+          "summary": "#59300 于 10 月 1 日 21:39 UTC 合并，固定 merge 7566d83。SM100-family 上的 MiniMax-M3 sparse MSA 可用 nvfp4 KV；新 backend 固定 HND／LBHNC，以每个 KV head 的 K、V 两个独立 slot 保存 packed E2M1 数据与 E4M3 block scales。Prefill 直接读该页布局，decode 在所有 batch size 强制 CUTLASS；不支持的几何或缺少可执行计划会报错，不能回退到 Triton。",
+          "why": "量化接入不只是减小 dtype：writer、reader 和 TP 切片必须认同 head-slot 布局，融合 norm／RoPE／KV-insert 同时负责 NVFP4 编码。代码将计划固定到 kv_mode3；新依赖虽带有 Q8KV4 路径，但当前缓存计划不刷新它需要的长度和页偏移，不能宣称 Q8KV4 decode 已启用。nvfp4_4over6 不支持，indexer cache 仍由自身 dtype 控制。作者在 GB300 源码构建报告三组 kernel 测试 80、42、108 项通过及 45 项 ROCm 跳过；这证明的是所测布局／内核边界，没有给出端到端速度或模型准确率结论。本站未独立 GPU 复现。",
+          "source": "https://github.com/vllm-project/vllm/pull/59300",
+          "sourceLabel": "vLLM PR #59300 · merged 7566d83",
+          "reading": "8 min",
+          "signal": "high",
+          "columns": [
+            "vllm",
+            "models",
+            "kv-cache"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-09-29T20:44:02Z",
+            "updated_at": "2026-10-01T21:39:57Z",
+            "head": "1673e568bbcc248ddc61ec6566d6e1b726ed05af",
+            "base": "70be6aae19587a251987c405b5bdf2d540da5991",
+            "state": "closed",
+            "draft": false,
+            "merged_at": "2026-10-01T21:39:56Z",
+            "merge_commit_sha": "7566d83bd35cdfd7cd3f9e521a005d2fc1ed1c33",
+            "verifiedAt": "2026-10-02T00:03:10Z",
+            "observationWindowEnd": "2026-10-02T00:00:00Z",
+            "merge_committed_at": "2026-10-01T21:39:55Z"
+          },
+          "supportingSources": [
+            {
+              "title": "固定源码：NVFP4 backend 布局、prefill 读取与无 fallback 检查",
+              "url": "https://github.com/vllm-project/vllm/blob/7566d83bd35cdfd7cd3f9e521a005d2fc1ed1c33/vllm/models/minimax_m3/nvidia/sparse_attention_msa.py"
+            },
+            {
+              "title": "固定源码：head-slot 视图、CUTLASS 条件与 kv_mode3 计划",
+              "url": "https://github.com/vllm-project/vllm/blob/7566d83bd35cdfd7cd3f9e521a005d2fc1ed1c33/vllm/models/minimax_m3/nvidia/msa_cutlass_sparse_decode.py"
+            },
+            {
+              "title": "固定源码：融合写入和编码",
+              "url": "https://github.com/vllm-project/vllm/blob/7566d83bd35cdfd7cd3f9e521a005d2fc1ed1c33/csrc/libtorch_stable/fused_minimax_m3_qknorm_rope_kv_insert_kernel.cu"
+            },
+            {
+              "title": "固定源码：MSA 依赖固定 be4a52a",
+              "url": "https://github.com/vllm-project/vllm/blob/7566d83bd35cdfd7cd3f9e521a005d2fc1ed1c33/cmake/external_projects/fmha_sm100.cmake"
+            }
+          ]
+        },
+        {
+          "id": "vllm-disaggregation-render-tier-contract",
+          "category": "BLOG · SERVING ARCHITECTURE",
+          "title": "vLLM 把 Render 层移出 GPU 节点：拆分收益需要连同 Parser 回放与传输成本计算",
+          "summary": "补读 9 月 29 日官方部署指南：在 P/D 之外，以 Render→Token IDs→Engine→Derender 分离模板、分词与解析，文档要求 v0.30.0 或更高。作者双 L40S、Qwen2.5-7B、8K 输入测试改善 ITL 尾延迟，却因无 P2P 与传输开销错过 TTFT 目标，不能只凭阶段隔离推断 goodput 增长。",
+          "why": "接口拆分也搬移状态成本：流式解析逐 Chunk 回放客户端历史；工具／推理 Parser 的 CPU 与长 Prompt 重传可能成为瓶颈。#57571 仍 open，提出带身份摘要、TTL 与并发保护的 Parser Cache，不能当作已实现。先测 Render CPU、KV Transfer 和 TTFT/ITL 联合 SLO，再决定拆哪些层；本文仅阅读官方报告和讨论，未复现实验。",
+          "source": "https://vllm.ai/blog/2026-09-29-disaggregated-serving-guide",
+          "sourceLabel": "vLLM 官方博客 · 2026-09-29",
+          "reading": "10 min",
+          "signal": "high",
+          "columns": [
+            "vllm",
+            "network"
+          ],
+          "sourceVersion": {
+            "kind": "blog",
+            "publishedAt": "2026-09-29",
+            "verifiedAt": "2026-10-02T00:03:00Z",
+            "reportedMinimumVersion": "v0.30.0",
+            "discussionState": "open",
+            "discussionUpdatedAt": "2026-09-25T17:23:37Z"
+          },
+          "supportingSources": [
+            {
+              "title": "流式 Derender Parser Cache 与重试 ID 设计讨论（尚未实现的提案）",
+              "url": "https://github.com/vllm-project/vllm/issues/57571"
+            }
+          ],
+          "rank": "07"
+        }
       ]
     },
     "dates": [
+      {
+        "day": "02",
+        "week": "FRI",
+        "key": "10.02"
+      },
       {
         "day": "01",
         "week": "THU",
@@ -6158,6 +6483,12 @@
             }
           }
         ]
+      },
+      "10.02": {
+        "headline": "今日值得关注的 AI Infra 信号",
+        "subtitle": "本期 7 条 · 约 59 分钟",
+        "threadTitle": "从布局正确性到调度公平性：优化之前先守住执行契约",
+        "threadSummary": "本期聚焦已合并的 MegaMoE NVFP4 权重布局、DP-rank 路由、Mamba2 autotune 与 MiniMax-M3 NVFP4 MSA，以及尚未合并的 DeepEP SP 容量和前端事件循环公平性；补读官方 Render/Derender 部署指南，区分阶段隔离、CPU 解析和传输成本。原始来源日期及固定代码版本逐条保留；均为源码／文献阅读，作者报告不等于本站独立复现。"
       }
     }
   },
