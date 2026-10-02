@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-10-02T04:20:00Z",
+  "updatedAt": "2026-10-02T13:17:12Z",
   "posts": [
     {
       "slug": "state-recovery",
@@ -2861,12 +2861,12 @@
           "id": "mooncake-replica-host-spread",
           "rank": "05",
           "category": "MOONCAKE · STORE",
-          "title": "Mooncake Host 反亲和新增请求级开关，避免每次 Put 重建主机索引",
-          "summary": "#4335 原始提出于 9 月 26 日；10 月 1 日 03:29 UTC 的实质修订加入 avoid_replicas_on_same_host，请求默认启用、调用方可关闭，并暴露 Python 配置。host_id 改由 SegmentAllocatorRegistration 携带，挂载和恢复时写入；snapshot 复用 registration 的 shared_ptr，不再每次 Put 反向重建 segment→host map。固定 head ed40b34，04:05 UTC 核验仍 open、未合并。",
-          "why": "它区分 segment 隔离和主机故障域，但属于 best-effort：RandomAllocationStrategy 第一轮按已知 host 去重，未满足副本数时第二轮允许同 host，未知 host 也不强制去重。因此 replica_num≥2 不能单独保证主机级容灾；NoF live-manager 路径与 RankedAllocationStrategy 仍未覆盖。移除的是额外 host-map 构造，既有锁内 allocator snapshot 拷贝仍在，不能据此声称 Put 加速。固定 diff 含跨 host、关闭开关和单 host fallback 三类回归；截至核验时新 head 的格式检查失败，CTest 仍在运行。本次未执行测试，也无独立性能结论。",
+          "title": "Mooncake Host 反亲和延伸到 FreeRatioFirst，副本数仍不等于主机级容灾保证",
+          "summary": "#4335 原始提出于 9 月 26 日；10 月 2 日 10:28 UTC 修订将 Random 路径的 host 检查抽成共享 TryPlaceReplica，并接入 RankedAllocationStrategy 的 preferred、评分候选与 random fallback，覆盖 FreeRatioFirst。请求级 avoid_replicas_on_same_host 仍默认 true，可通过 Python 关闭；host 随 registration 保存，snapshot 复用 shared_ptr。固定 head a4bf58f，仍 open、未合并，保留原 09.27 条目日期。",
+          "why": "这补齐了旧版仅 Random 路径做主机反亲和的缺口，但策略依旧 best-effort：不足时第二轮允许同 host，未知 host 跳过去重；候选采样与有限重试也不构成寻找全局可行分配的保证。内存副本的路径扩展不能外推 NoF/CXL 或宣称副本数等于故障域数，亦没有 Put 延迟实测。固定 diff 新增 FreeRatioFirst 跨 host 回归；13:03 UTC 复核同一 head：CTest 于 11:07:31 成功、格式检查成功，但整体 CI Gate 于 11:07:37 因 Python3.12 wheel 测试失败为红。已读失败日志显示 Mooncake PG 缺少 torch2.14.1 对应模块，不能把整体 CI 失败直接归因于分配逻辑，也不能称全套通过。本次没有运行 RDMA 或 Store 实验。",
           "source": "https://github.com/kvcache-ai/Mooncake/pull/4335",
-          "sourceLabel": "Mooncake PR #4335 · revision ed40b34",
-          "reading": "6 min",
+          "sourceLabel": "Mooncake #4335 · revision a4bf58f",
+          "reading": "7 min",
           "signal": "high",
           "columns": [
             "mooncake",
@@ -2874,36 +2874,318 @@
             "network"
           ],
           "sourceCreatedAt": "2026-09-26T11:42:15Z",
-          "sourceHead": "ed40b34b45bbd98cb7436bf5ae9f0ef751536948",
-          "sourceVerifiedAt": "2026-10-01T04:05:43Z",
+          "sourceHead": "a4bf58fd913c61270e33c6726fbba06941979f44",
+          "sourceVerifiedAt": "2026-10-02T13:12:09Z",
           "supportingSources": [
             {
-              "title": "本次修订固定 commit",
-              "url": "https://github.com/kvcache-ai/Mooncake/commit/ed40b34b45bbd98cb7436bf5ae9f0ef751536948"
+              "title": "共享放置状态与host判定",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/a4bf58fd913c61270e33c6726fbba06941979f44/mooncake-store/include/allocation_strategy.h#L448-L491"
             },
             {
-              "title": "默认开启的请求级配置",
-              "url": "https://github.com/kvcache-ai/Mooncake/blob/ed40b34b45bbd98cb7436bf5ae9f0ef751536948/mooncake-store/include/replica.h#L104-L132"
+              "title": "Ranked两遍放置与FreeRatioFirst入口",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/a4bf58fd913c61270e33c6726fbba06941979f44/mooncake-store/include/allocation_strategy.h#L508-L625"
             },
             {
-              "title": "两阶段分配与 Ranked 路径边界",
-              "url": "https://github.com/kvcache-ai/Mooncake/blob/ed40b34b45bbd98cb7436bf5ae9f0ef751536948/mooncake-store/include/allocation_strategy.h#L326-L596"
+              "title": "新增FreeRatioFirst跨host回归",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/a4bf58fd913c61270e33c6726fbba06941979f44/mooncake-store/tests/allocation_strategy_test.cpp#L247-L273"
             },
             {
-              "title": "固定 head CI",
-              "url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36810785781"
+              "title": "当前head CTest成功",
+              "url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36995670360/job/110801759332"
+            },
+            {
+              "title": "当前head Python3.12 wheel失败：PG模块与Torch版本",
+              "url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36995670360/job/110809319422"
             }
           ],
           "sourceVersion": {
+            "repository": "kvcache-ai/Mooncake",
+            "pullRequest": 4335,
             "created_at": "2026-09-26T11:42:15Z",
-            "updated_at": "2026-10-01T03:30:05Z",
-            "head": "ed40b34b45bbd98cb7436bf5ae9f0ef751536948",
-            "base": "16b7ba3c7364eb8d36d04378bc7d28013bea1a1e",
+            "updated_at": "2026-10-02T10:37:07Z",
+            "head": "a4bf58fd913c61270e33c6726fbba06941979f44",
+            "base": "0d1a8040faebb7c127c8901840a38c2ff57e80c5",
             "state": "open",
             "draft": false,
             "merged_at": null,
-            "revisionCommittedAt": "2026-10-01T03:29:32Z",
-            "verifiedAt": "2026-10-01T04:05:43Z"
+            "merge_commit_sha": null,
+            "head_committed_at": "2026-10-02T10:28:06Z",
+            "verifiedAt": "2026-10-02T13:12:09Z",
+            "observationWindowStart": "2026-10-02T08:00:00Z",
+            "observationWindowEnd": "2026-10-02T12:00:00Z",
+            "evidenceBoundary": "只读GitHub元数据、固定源码与提交差异、上游CI状态/日志；作者报告与CI证据分开；本次未独立运行CPU/GPU、RDMA、模型评测或服务实验",
+            "closed_at": null,
+            "merged": false,
+            "metadataVerifiedAt": "2026-10-02T13:12:09Z",
+            "sourceReview": {
+              "retainedFixedSourceHead": "a4bf58fd913c61270e33c6726fbba06941979f44",
+              "retainedSourceReviewedAt": "2026-10-02T12:15:38Z",
+              "metadataRefreshDoesNotReexecuteTests": true,
+              "basis": "head a4bf58f与午间修订相同；保留原固定源码diff与host-placement审读，本轮复核metadata及CI结束时间。"
+            },
+            "ciEvidence": {
+              "observedAt": "2026-10-02T13:04:56Z",
+              "workflowRuns": [
+                {
+                  "id": 36995670360,
+                  "name": "Build & Test (Linux)",
+                  "status": "completed",
+                  "conclusion": "failure",
+                  "run_number": 14773,
+                  "jobs_url": "https://api.github.com/repos/kvcache-ai/Mooncake/actions/runs/36995670360/jobs",
+                  "logs_url": "https://api.github.com/repos/kvcache-ai/Mooncake/actions/runs/36995670360/logs",
+                  "workflow_id": 151607469
+                }
+              ],
+              "statusContexts": [],
+              "boundary": "GitHub Actions列表只返回pull_request触发的首个页面；statusContexts为connector返回的快照，不由缺失结果推断通过。",
+              "jobsObservedAt": "2026-10-02T13:05:59Z",
+              "totalJobs": 24,
+              "jobs": [
+                {
+                  "id": 110801697811,
+                  "name": "Check reshard manifest types",
+                  "head_sha": "a4bf58fd913c61270e33c6726fbba06941979f44",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T10:28:35Z",
+                  "completed_at": "2026-10-02T10:28:50Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36995670360/job/110801697811"
+                },
+                {
+                  "id": 110801697975,
+                  "name": "Test external CI lifecycle helpers",
+                  "head_sha": "a4bf58fd913c61270e33c6726fbba06941979f44",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T10:28:36Z",
+                  "completed_at": "2026-10-02T10:28:42Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36995670360/job/110801697975"
+                },
+                {
+                  "id": 110801697988,
+                  "name": "Check code format",
+                  "head_sha": "a4bf58fd913c61270e33c6726fbba06941979f44",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T10:28:36Z",
+                  "completed_at": "2026-10-02T10:29:13Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36995670360/job/110801697988"
+                },
+                {
+                  "id": 110801697997,
+                  "name": "check-paths",
+                  "head_sha": "a4bf58fd913c61270e33c6726fbba06941979f44",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T10:28:38Z",
+                  "completed_at": "2026-10-02T10:28:46Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36995670360/job/110801697997"
+                },
+                {
+                  "id": 110801698059,
+                  "name": "Test CI scripts",
+                  "head_sha": "a4bf58fd913c61270e33c6726fbba06941979f44",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T10:28:36Z",
+                  "completed_at": "2026-10-02T10:28:47Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36995670360/job/110801698059"
+                },
+                {
+                  "id": 110801698060,
+                  "name": "Spell Check with Typos",
+                  "head_sha": "a4bf58fd913c61270e33c6726fbba06941979f44",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T10:28:35Z",
+                  "completed_at": "2026-10-02T10:28:45Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36995670360/job/110801698060"
+                },
+                {
+                  "id": 110801698067,
+                  "name": "Check Python with Ruff",
+                  "head_sha": "a4bf58fd913c61270e33c6726fbba06941979f44",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T10:28:36Z",
+                  "completed_at": "2026-10-02T10:28:47Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36995670360/job/110801698067"
+                },
+                {
+                  "id": 110801759332,
+                  "name": "CTest unit tests (Python 3.12)",
+                  "head_sha": "a4bf58fd913c61270e33c6726fbba06941979f44",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T10:28:48Z",
+                  "completed_at": "2026-10-02T11:07:31Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36995670360/job/110801759332"
+                },
+                {
+                  "id": 110801759396,
+                  "name": "build-flags",
+                  "head_sha": "a4bf58fd913c61270e33c6726fbba06941979f44",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T10:28:49Z",
+                  "completed_at": "2026-10-02T10:39:29Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36995670360/job/110801759396"
+                },
+                {
+                  "id": 110801760526,
+                  "name": "Check Sphinx docs build",
+                  "head_sha": "a4bf58fd913c61270e33c6726fbba06941979f44",
+                  "status": "completed",
+                  "conclusion": "skipped",
+                  "started_at": "2026-10-02T10:28:47Z",
+                  "completed_at": "2026-10-02T10:28:47Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36995670360/job/110801760526"
+                },
+                {
+                  "id": 110801883265,
+                  "name": "build-wheel-rocm / build-wheel-rocm (3.10)",
+                  "head_sha": "a4bf58fd913c61270e33c6726fbba06941979f44",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T10:29:15Z",
+                  "completed_at": "2026-10-02T10:51:29Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36995670360/job/110801883265"
+                },
+                {
+                  "id": 110801883318,
+                  "name": "build-wheel-cu13 / build (3.12)",
+                  "head_sha": "a4bf58fd913c61270e33c6726fbba06941979f44",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T10:29:15Z",
+                  "completed_at": "2026-10-02T10:51:00Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36995670360/job/110801883318"
+                },
+                {
+                  "id": 110801883348,
+                  "name": "build-wheel-rocm / build-wheel-rocm (3.12)",
+                  "head_sha": "a4bf58fd913c61270e33c6726fbba06941979f44",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T10:29:16Z",
+                  "completed_at": "2026-10-02T10:52:26Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36995670360/job/110801883348"
+                },
+                {
+                  "id": 110801883364,
+                  "name": "build-wheel / build (3.12)",
+                  "head_sha": "a4bf58fd913c61270e33c6726fbba06941979f44",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T10:29:15Z",
+                  "completed_at": "2026-10-02T10:54:46Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36995670360/job/110801883364"
+                },
+                {
+                  "id": 110801883371,
+                  "name": "build-wheel / build (3.10)",
+                  "head_sha": "a4bf58fd913c61270e33c6726fbba06941979f44",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T10:29:15Z",
+                  "completed_at": "2026-10-02T10:51:18Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36995670360/job/110801883371"
+                },
+                {
+                  "id": 110801883609,
+                  "name": "build-wheel-efa / build-wheel-efa (non-cuda, 3.10, arm64) / build (3.10)",
+                  "head_sha": "a4bf58fd913c61270e33c6726fbba06941979f44",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T10:29:18Z",
+                  "completed_at": "2026-10-02T10:38:07Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36995670360/job/110801883609"
+                },
+                {
+                  "id": 110801883634,
+                  "name": "build-wheel-efa / build-wheel-efa (cuda13, 3.12, arm64) / build (3.12)",
+                  "head_sha": "a4bf58fd913c61270e33c6726fbba06941979f44",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T10:29:17Z",
+                  "completed_at": "2026-10-02T10:40:46Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36995670360/job/110801883634"
+                },
+                {
+                  "id": 110801883635,
+                  "name": "build-wheel-efa / build-wheel-efa (cuda13, 3.12) / build (3.12)",
+                  "head_sha": "a4bf58fd913c61270e33c6726fbba06941979f44",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T10:29:17Z",
+                  "completed_at": "2026-10-02T10:41:37Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36995670360/job/110801883635"
+                },
+                {
+                  "id": 110801883638,
+                  "name": "build-wheel-efa / build-wheel-efa (non-cuda, 3.10) / build (3.10)",
+                  "head_sha": "a4bf58fd913c61270e33c6726fbba06941979f44",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T10:29:15Z",
+                  "completed_at": "2026-10-02T10:41:20Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36995670360/job/110801883638"
+                },
+                {
+                  "id": 110801883660,
+                  "name": "build-wheel-efa / build-wheel-efa (cuda, 3.12) / build (3.12)",
+                  "head_sha": "a4bf58fd913c61270e33c6726fbba06941979f44",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T10:29:16Z",
+                  "completed_at": "2026-10-02T10:44:02Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36995670360/job/110801883660"
+                },
+                {
+                  "id": 110801884185,
+                  "name": "tent-ci (${{ matrix.name }})",
+                  "head_sha": "a4bf58fd913c61270e33c6726fbba06941979f44",
+                  "status": "completed",
+                  "conclusion": "skipped",
+                  "started_at": "2026-10-02T10:29:13Z",
+                  "completed_at": "2026-10-02T10:29:13Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36995670360/job/110801884185"
+                },
+                {
+                  "id": 110809319422,
+                  "name": "test-wheel-ubuntu (ubuntu-22.04, 3.12, mooncake-wheel-ci-py312)",
+                  "head_sha": "a4bf58fd913c61270e33c6726fbba06941979f44",
+                  "status": "completed",
+                  "conclusion": "failure",
+                  "started_at": "2026-10-02T10:54:48Z",
+                  "completed_at": "2026-10-02T11:04:08Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36995670360/job/110809319422"
+                },
+                {
+                  "id": 110809319476,
+                  "name": "test-wheel-ubuntu (ubuntu-24.04, 3.10, mooncake-wheel-ci-py310)",
+                  "head_sha": "a4bf58fd913c61270e33c6726fbba06941979f44",
+                  "status": "completed",
+                  "conclusion": "cancelled",
+                  "started_at": "2026-10-02T10:54:48Z",
+                  "completed_at": "2026-10-02T11:04:12Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36995670360/job/110809319476"
+                },
+                {
+                  "id": 110812977988,
+                  "name": "CI Gate",
+                  "head_sha": "a4bf58fd913c61270e33c6726fbba06941979f44",
+                  "status": "completed",
+                  "conclusion": "failure",
+                  "started_at": "2026-10-02T11:07:34Z",
+                  "completed_at": "2026-10-02T11:07:37Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36995670360/job/110812977988"
+                }
+              ],
+              "allJobPagesRead": true,
+              "qualification": "CTest成功，Python3.12 wheel因PG缺少torch2.14.1模块失败（沿用午间已读完整日志）；整体CI Gate失败，不归因于host-placement代码。"
+            }
           },
           "revisions": [
             {
@@ -2926,8 +3208,247 @@
                   "network"
                 ]
               }
+            },
+            {
+              "revisedAt": "2026-10-02T12:15:38Z",
+              "reason": "10月2日固定源码将host反亲和扩展至Ranked/FreeRatioFirst；旧版本与原日期保留",
+              "record": {
+                "id": "mooncake-replica-host-spread",
+                "rank": "05",
+                "category": "MOONCAKE · STORE",
+                "title": "Mooncake Host 反亲和新增请求级开关，避免每次 Put 重建主机索引",
+                "summary": "#4335 原始提出于 9 月 26 日；10 月 1 日 03:29 UTC 的实质修订加入 avoid_replicas_on_same_host，请求默认启用、调用方可关闭，并暴露 Python 配置。host_id 改由 SegmentAllocatorRegistration 携带，挂载和恢复时写入；snapshot 复用 registration 的 shared_ptr，不再每次 Put 反向重建 segment→host map。固定 head ed40b34，04:05 UTC 核验仍 open、未合并。",
+                "why": "它区分 segment 隔离和主机故障域，但属于 best-effort：RandomAllocationStrategy 第一轮按已知 host 去重，未满足副本数时第二轮允许同 host，未知 host 也不强制去重。因此 replica_num≥2 不能单独保证主机级容灾；NoF live-manager 路径与 RankedAllocationStrategy 仍未覆盖。移除的是额外 host-map 构造，既有锁内 allocator snapshot 拷贝仍在，不能据此声称 Put 加速。固定 diff 含跨 host、关闭开关和单 host fallback 三类回归；截至核验时新 head 的格式检查失败，CTest 仍在运行。本次未执行测试，也无独立性能结论。",
+                "source": "https://github.com/kvcache-ai/Mooncake/pull/4335",
+                "sourceLabel": "Mooncake PR #4335 · revision ed40b34",
+                "reading": "6 min",
+                "signal": "high",
+                "columns": [
+                  "mooncake",
+                  "kv-cache",
+                  "network"
+                ],
+                "sourceCreatedAt": "2026-09-26T11:42:15Z",
+                "sourceHead": "ed40b34b45bbd98cb7436bf5ae9f0ef751536948",
+                "sourceVerifiedAt": "2026-10-01T04:05:43Z",
+                "supportingSources": [
+                  {
+                    "title": "本次修订固定 commit",
+                    "url": "https://github.com/kvcache-ai/Mooncake/commit/ed40b34b45bbd98cb7436bf5ae9f0ef751536948"
+                  },
+                  {
+                    "title": "默认开启的请求级配置",
+                    "url": "https://github.com/kvcache-ai/Mooncake/blob/ed40b34b45bbd98cb7436bf5ae9f0ef751536948/mooncake-store/include/replica.h#L104-L132"
+                  },
+                  {
+                    "title": "两阶段分配与 Ranked 路径边界",
+                    "url": "https://github.com/kvcache-ai/Mooncake/blob/ed40b34b45bbd98cb7436bf5ae9f0ef751536948/mooncake-store/include/allocation_strategy.h#L326-L596"
+                  },
+                  {
+                    "title": "固定 head CI",
+                    "url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36810785781"
+                  }
+                ],
+                "sourceVersion": {
+                  "created_at": "2026-09-26T11:42:15Z",
+                  "updated_at": "2026-10-01T03:30:05Z",
+                  "head": "ed40b34b45bbd98cb7436bf5ae9f0ef751536948",
+                  "base": "16b7ba3c7364eb8d36d04378bc7d28013bea1a1e",
+                  "state": "open",
+                  "draft": false,
+                  "merged_at": null,
+                  "revisionCommittedAt": "2026-10-01T03:29:32Z",
+                  "verifiedAt": "2026-10-01T04:05:43Z"
+                },
+                "revisions": [
+                  {
+                    "revisedAt": "2026-10-01T04:06:35Z",
+                    "reason": "固定上游新版本核验；保留原日期、ID 与旧版完整记录",
+                    "record": {
+                      "id": "mooncake-replica-host-spread",
+                      "rank": "05",
+                      "category": "MOONCAKE · STORE",
+                      "title": "Mooncake 副本分配从“不同 Segment”升级为“不同 Host”",
+                      "summary": "9 月 26 日发布的 Mooncake #4335 修复 RandomAllocationStrategy：一台机器拥有多个 segment 时，两个 replica 过去可能都落在同一主机，单机故障会同时丢失两份。新策略第一轮按 host 去重，资源不足时第二轮才回退到同 host，以保持 best-effort replica count。",
+                      "why": "对多 NIC、多 MR segment 的 KV Store，segment diversity 不等于 failure-domain diversity。副本元数据必须理解 host 边界，replica_num 大于等于 2 时才真正提供容灾。",
+                      "source": "https://github.com/kvcache-ai/Mooncake/pull/4335",
+                      "sourceLabel": "Mooncake PR #4335",
+                      "reading": "6 min",
+                      "signal": "high",
+                      "columns": [
+                        "mooncake",
+                        "kv-cache",
+                        "network"
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "revisedAt": "2026-10-02T13:11:41Z",
+              "reason": "13:03复核同一host反亲和修订head，明确CTest/CI Gate结束时间并保留午间完整replacement及既有历史。",
+              "record": {
+                "id": "mooncake-replica-host-spread",
+                "rank": "05",
+                "category": "MOONCAKE · STORE",
+                "title": "Mooncake Host反亲和延伸到FreeRatioFirst，副本数仍不等于主机级容灾保证",
+                "summary": "#4335原始提出于9月26日；10月2日10:28 UTC修订将Random路径的host检查抽成共享TryPlaceReplica，并接入RankedAllocationStrategy的preferred、评分候选与random fallback，覆盖FreeRatioFirst。请求级avoid_replicas_on_same_host仍默认true，可通过Python关闭；host随registration保存，snapshot复用shared_ptr。固定head a4bf58f，仍open、未合并，保留原09.27条目日期。",
+                "why": "这补齐了旧版仅Random路径做主机反亲和的缺口，但策略依旧best-effort：不足时第二轮允许同host，未知host跳过去重；候选采样与有限重试也不构成寻找全局可行分配的保证。内存副本的路径扩展不能外推NoF/CXL或宣称副本数等于故障域数，亦没有Put延迟实测。固定diff新增FreeRatioFirst跨host回归；截至12:08 UTC该head的CTest成功、格式检查成功，但整体CI gate因Python3.12 wheel测试失败仍为红。已读失败日志显示Mooncake PG缺少torch2.14.1对应模块，不能把整体CI失败直接归因于分配逻辑，也不能称全套通过。本次没有运行RDMA或Store实验。",
+                "source": "https://github.com/kvcache-ai/Mooncake/pull/4335",
+                "sourceLabel": "Mooncake #4335 · revision a4bf58f",
+                "reading": "7 min",
+                "signal": "high",
+                "columns": [
+                  "mooncake",
+                  "kv-cache",
+                  "network"
+                ],
+                "sourceCreatedAt": "2026-09-26T11:42:15Z",
+                "sourceHead": "a4bf58fd913c61270e33c6726fbba06941979f44",
+                "sourceVerifiedAt": "2026-10-02T12:15:38Z",
+                "supportingSources": [
+                  {
+                    "title": "共享放置状态与host判定",
+                    "url": "https://github.com/kvcache-ai/Mooncake/blob/a4bf58fd913c61270e33c6726fbba06941979f44/mooncake-store/include/allocation_strategy.h#L448-L491"
+                  },
+                  {
+                    "title": "Ranked两遍放置与FreeRatioFirst入口",
+                    "url": "https://github.com/kvcache-ai/Mooncake/blob/a4bf58fd913c61270e33c6726fbba06941979f44/mooncake-store/include/allocation_strategy.h#L508-L625"
+                  },
+                  {
+                    "title": "新增FreeRatioFirst跨host回归",
+                    "url": "https://github.com/kvcache-ai/Mooncake/blob/a4bf58fd913c61270e33c6726fbba06941979f44/mooncake-store/tests/allocation_strategy_test.cpp#L247-L273"
+                  },
+                  {
+                    "title": "当前head CTest成功",
+                    "url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36995670360/job/110801759332"
+                  },
+                  {
+                    "title": "当前head Python3.12 wheel失败：PG模块与Torch版本",
+                    "url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36995670360/job/110809319422"
+                  }
+                ],
+                "sourceVersion": {
+                  "repository": "kvcache-ai/Mooncake",
+                  "pullRequest": 4335,
+                  "created_at": "2026-09-26T11:42:15Z",
+                  "updated_at": "2026-10-02T10:37:07Z",
+                  "head": "a4bf58fd913c61270e33c6726fbba06941979f44",
+                  "base": "0d1a8040faebb7c127c8901840a38c2ff57e80c5",
+                  "state": "open",
+                  "draft": false,
+                  "merged_at": null,
+                  "merge_commit_sha": null,
+                  "head_committed_at": "2026-10-02T10:28:06Z",
+                  "verifiedAt": "2026-10-02T12:15:38Z",
+                  "observationWindowStart": "2026-10-02T08:00:00Z",
+                  "observationWindowEnd": "2026-10-02T12:00:00Z",
+                  "evidenceBoundary": "固定源码、上游作者报告与CI读取；本次未运行GPU、RDMA、模型评测或服务实验"
+                },
+                "revisions": [
+                  {
+                    "revisedAt": "2026-10-01T04:06:35Z",
+                    "reason": "固定上游新版本核验；保留原日期、ID 与旧版完整记录",
+                    "record": {
+                      "id": "mooncake-replica-host-spread",
+                      "rank": "05",
+                      "category": "MOONCAKE · STORE",
+                      "title": "Mooncake 副本分配从“不同 Segment”升级为“不同 Host”",
+                      "summary": "9 月 26 日发布的 Mooncake #4335 修复 RandomAllocationStrategy：一台机器拥有多个 segment 时，两个 replica 过去可能都落在同一主机，单机故障会同时丢失两份。新策略第一轮按 host 去重，资源不足时第二轮才回退到同 host，以保持 best-effort replica count。",
+                      "why": "对多 NIC、多 MR segment 的 KV Store，segment diversity 不等于 failure-domain diversity。副本元数据必须理解 host 边界，replica_num 大于等于 2 时才真正提供容灾。",
+                      "source": "https://github.com/kvcache-ai/Mooncake/pull/4335",
+                      "sourceLabel": "Mooncake PR #4335",
+                      "reading": "6 min",
+                      "signal": "high",
+                      "columns": [
+                        "mooncake",
+                        "kv-cache",
+                        "network"
+                      ]
+                    }
+                  },
+                  {
+                    "revisedAt": "2026-10-02T12:15:38Z",
+                    "reason": "10月2日固定源码将host反亲和扩展至Ranked/FreeRatioFirst；旧版本与原日期保留",
+                    "record": {
+                      "id": "mooncake-replica-host-spread",
+                      "rank": "05",
+                      "category": "MOONCAKE · STORE",
+                      "title": "Mooncake Host 反亲和新增请求级开关，避免每次 Put 重建主机索引",
+                      "summary": "#4335 原始提出于 9 月 26 日；10 月 1 日 03:29 UTC 的实质修订加入 avoid_replicas_on_same_host，请求默认启用、调用方可关闭，并暴露 Python 配置。host_id 改由 SegmentAllocatorRegistration 携带，挂载和恢复时写入；snapshot 复用 registration 的 shared_ptr，不再每次 Put 反向重建 segment→host map。固定 head ed40b34，04:05 UTC 核验仍 open、未合并。",
+                      "why": "它区分 segment 隔离和主机故障域，但属于 best-effort：RandomAllocationStrategy 第一轮按已知 host 去重，未满足副本数时第二轮允许同 host，未知 host 也不强制去重。因此 replica_num≥2 不能单独保证主机级容灾；NoF live-manager 路径与 RankedAllocationStrategy 仍未覆盖。移除的是额外 host-map 构造，既有锁内 allocator snapshot 拷贝仍在，不能据此声称 Put 加速。固定 diff 含跨 host、关闭开关和单 host fallback 三类回归；截至核验时新 head 的格式检查失败，CTest 仍在运行。本次未执行测试，也无独立性能结论。",
+                      "source": "https://github.com/kvcache-ai/Mooncake/pull/4335",
+                      "sourceLabel": "Mooncake PR #4335 · revision ed40b34",
+                      "reading": "6 min",
+                      "signal": "high",
+                      "columns": [
+                        "mooncake",
+                        "kv-cache",
+                        "network"
+                      ],
+                      "sourceCreatedAt": "2026-09-26T11:42:15Z",
+                      "sourceHead": "ed40b34b45bbd98cb7436bf5ae9f0ef751536948",
+                      "sourceVerifiedAt": "2026-10-01T04:05:43Z",
+                      "supportingSources": [
+                        {
+                          "title": "本次修订固定 commit",
+                          "url": "https://github.com/kvcache-ai/Mooncake/commit/ed40b34b45bbd98cb7436bf5ae9f0ef751536948"
+                        },
+                        {
+                          "title": "默认开启的请求级配置",
+                          "url": "https://github.com/kvcache-ai/Mooncake/blob/ed40b34b45bbd98cb7436bf5ae9f0ef751536948/mooncake-store/include/replica.h#L104-L132"
+                        },
+                        {
+                          "title": "两阶段分配与 Ranked 路径边界",
+                          "url": "https://github.com/kvcache-ai/Mooncake/blob/ed40b34b45bbd98cb7436bf5ae9f0ef751536948/mooncake-store/include/allocation_strategy.h#L326-L596"
+                        },
+                        {
+                          "title": "固定 head CI",
+                          "url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36810785781"
+                        }
+                      ],
+                      "sourceVersion": {
+                        "created_at": "2026-09-26T11:42:15Z",
+                        "updated_at": "2026-10-01T03:30:05Z",
+                        "head": "ed40b34b45bbd98cb7436bf5ae9f0ef751536948",
+                        "base": "16b7ba3c7364eb8d36d04378bc7d28013bea1a1e",
+                        "state": "open",
+                        "draft": false,
+                        "merged_at": null,
+                        "revisionCommittedAt": "2026-10-01T03:29:32Z",
+                        "verifiedAt": "2026-10-01T04:05:43Z"
+                      },
+                      "revisions": [
+                        {
+                          "revisedAt": "2026-10-01T04:06:35Z",
+                          "reason": "固定上游新版本核验；保留原日期、ID 与旧版完整记录",
+                          "record": {
+                            "id": "mooncake-replica-host-spread",
+                            "rank": "05",
+                            "category": "MOONCAKE · STORE",
+                            "title": "Mooncake 副本分配从“不同 Segment”升级为“不同 Host”",
+                            "summary": "9 月 26 日发布的 Mooncake #4335 修复 RandomAllocationStrategy：一台机器拥有多个 segment 时，两个 replica 过去可能都落在同一主机，单机故障会同时丢失两份。新策略第一轮按 host 去重，资源不足时第二轮才回退到同 host，以保持 best-effort replica count。",
+                            "why": "对多 NIC、多 MR segment 的 KV Store，segment diversity 不等于 failure-domain diversity。副本元数据必须理解 host 边界，replica_num 大于等于 2 时才真正提供容灾。",
+                            "source": "https://github.com/kvcache-ai/Mooncake/pull/4335",
+                            "sourceLabel": "Mooncake PR #4335",
+                            "reading": "6 min",
+                            "signal": "high",
+                            "columns": [
+                              "mooncake",
+                              "kv-cache",
+                              "network"
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
             }
-          ]
+          ],
+          "lastRevisedAt": "2026-10-02T13:17:12Z"
         }
       ],
       "09.26": [
@@ -8291,6 +8812,2669 @@
               "url": "https://arxiv.org/list/cs.DC/new"
             }
           ]
+        },
+        {
+          "id": "sglang-gdn-exact-fold-verify",
+          "category": "SGLANG · SPECULATIVE STATE",
+          "title": "GDN 提案以原始输入 Ring 换掉逐步状态快照，精确 Verify 与 Compact Replay 分开比较",
+          "summary": "10 月 2 日 07:38 UTC 新开的 #42209，为 GDN 的 --enable-linear-replayssm-spec 增加默认关闭的 SGLANG_ENABLE_GDN_REPLAYSSM_FOLD：verify 沿 recurrent 路径写入原始窗口，commit 再折叠已接受前缀。DFLASH 的独立 commit hook 同时接通 GDN fold／circular 两路；接受长度为 last_correct_step + 1。固定 head adb3648，仍 open、未合并。",
+          "why": "作者单 GH200、Qwen3.5-4B FP32 state 固定 batch 对照报告 80/80 请求的 token 序列与 top-5 logprobs 一致；开启 radix 的测试没有实际 prefix hits，且早于 checkpoint rework，不能证明新版缓存恢复。DFLASH block16 在并发 1 时慢 3.3%，并发 32 约快 11.5%，同配置 KV pool 从约 30.8 万达到 100 万 token 上限；不能把容量增幅当成同容量吞吐收益。NEXTN 对主干 compact replay 的非配对跨会话比较反而较慢，价值是所测输出精确性。PP 被代码拒绝，TP/DP、其他 GPU 及 BF16 state 未测。本次核固定源码和作者测试范围，未运行 GPU。",
+          "reading": "10 min",
+          "columns": [
+            "sglang",
+            "kv-cache",
+            "models"
+          ],
+          "source": "https://github.com/sgl-project/sglang/pull/42209",
+          "signal": "high",
+          "sourceLabel": "sgl-project/sglang #42209 · open adb3648",
+          "sourceVersion": {
+            "created_at": "2026-10-02T07:38:48Z",
+            "updated_at": "2026-10-02T07:39:47Z",
+            "head": "adb36489df91a885a1f2e85680dd6c86f35c3feb",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "verifiedAt": "2026-10-02T13:02:46Z",
+            "observationWindowEnd": "2026-10-02T08:00:00Z",
+            "base": "d954c88a4f8b81d93066883ba1a079f146f33748",
+            "closed_at": null,
+            "head_authored_at": "2026-10-02T01:01:49Z",
+            "head_committed_at": "2026-10-02T07:00:36Z",
+            "metadataVerifiedAt": "2026-10-02T13:02:46Z",
+            "commitMetadataVerifiedAt": "2026-10-02T13:04:20Z",
+            "fixedCodeReadingVerifiedAt": "2026-10-02T08:03:00Z",
+            "merge_commit_sha": null,
+            "merge_test_sha": "2d7cf4785111fce05f5e5dc82afcc332330b934f",
+            "merge_test_sha_note": "PR remains open and unmerged. GitHub merge_commit_sha is the temporary test-merge SHA, not a merged commit."
+          },
+          "supportingSources": [
+            {
+              "title": "GDN commit 路由与接受长度",
+              "url": "https://github.com/sgl-project/sglang/blob/adb36489df91a885a1f2e85680dd6c86f35c3feb/python/sglang/srt/layers/attention/hybrid_linear_attn_backend.py#L1534-L1632"
+            },
+            {
+              "title": "按 slot 分配 raw ring",
+              "url": "https://github.com/sgl-project/sglang/blob/adb36489df91a885a1f2e85680dd6c86f35c3feb/python/sglang/srt/mem_cache/memory_pool.py#L568-L717"
+            },
+            {
+              "title": "默认关闭开关",
+              "url": "https://github.com/sgl-project/sglang/blob/adb36489df91a885a1f2e85680dd6c86f35c3feb/python/sglang/srt/environ.py#L1389-L1391"
+            }
+          ],
+          "revisions": [
+            {
+              "supersededAt": "2026-10-02T13:17:12Z",
+              "reason": "更新上游状态、代码差异与证据范围；保留此前记录。",
+              "record": {
+                "id": "sglang-gdn-exact-fold-verify",
+                "category": "SGLANG · SPECULATIVE STATE",
+                "title": "GDN 提案以原始输入 Ring 换掉逐步状态快照，精确 Verify 与 Compact Replay 分开比较",
+                "summary": "10 月 2 日 07:38 UTC 新开的 #42209，为 GDN 的 --enable-linear-replayssm-spec 增加默认关闭的 SGLANG_ENABLE_GDN_REPLAYSSM_FOLD：verify 沿 recurrent 路径写入原始窗口，commit 再折叠已接受前缀。DFLASH 的独立 commit hook 同时接通 GDN fold／circular 两路；接受长度为 last_correct_step + 1。固定 head adb3648，仍 open、未合并。",
+                "why": "作者单 GH200、Qwen3.5-4B FP32 state 固定 batch 对照报告 80/80 tokens 与 top-5 logprobs 一致；开启 radix 的测试没有实际 prefix hits，且早于 checkpoint rework，不能证明新版缓存恢复。DFLASH block16 在并发1时慢3.3%，并发32约快11.5%，同配置 KV pool 从约30.8万达到100万token上限；不能把容量增幅当成同容量吞吐收益。NEXTN 对主干 compact replay 的非配对跨会话比较反而较慢，价值是所测输出精确性。PP被代码拒绝，TP/DP、其他GPU及BF16 state未测。本次核固定源码和作者测试范围，未运行GPU。",
+                "reading": "10 min",
+                "columns": [
+                  "sglang",
+                  "kv-cache",
+                  "models"
+                ],
+                "source": "https://github.com/sgl-project/sglang/pull/42209",
+                "signal": "high",
+                "sourceLabel": "sgl-project/sglang #42209 · open adb3648",
+                "sourceVersion": {
+                  "created_at": "2026-10-02T07:38:48Z",
+                  "updated_at": "2026-10-02T07:39:47Z",
+                  "head": "adb36489df91a885a1f2e85680dd6c86f35c3feb",
+                  "state": "open",
+                  "draft": false,
+                  "merged_at": null,
+                  "verifiedAt": "2026-10-02T08:03:00Z",
+                  "observationWindowEnd": "2026-10-02T08:00:00Z"
+                },
+                "supportingSources": [
+                  {
+                    "title": "GDN commit 路由与接受长度",
+                    "url": "https://github.com/sgl-project/sglang/blob/adb36489df91a885a1f2e85680dd6c86f35c3feb/python/sglang/srt/layers/attention/hybrid_linear_attn_backend.py#L1534-L1632"
+                  },
+                  {
+                    "title": "按 slot 分配 raw ring",
+                    "url": "https://github.com/sgl-project/sglang/blob/adb36489df91a885a1f2e85680dd6c86f35c3feb/python/sglang/srt/mem_cache/memory_pool.py#L568-L717"
+                  },
+                  {
+                    "title": "默认关闭开关",
+                    "url": "https://github.com/sgl-project/sglang/blob/adb36489df91a885a1f2e85680dd6c86f35c3feb/python/sglang/srt/environ.py#L1389-L1391"
+                  }
+                ]
+              }
+            }
+          ],
+          "rank": "24"
+        },
+        {
+          "id": "sglang-tma-down-padding-filter",
+          "category": "SGLANG · MOE KERNELS",
+          "title": "TMA Down 路径不再让无效 Padding 行占满激活与量化工作",
+          "summary": "10 月 2 日 07:52 UTC 新开的 #42212，把 MoE sorted token 边界传到激活与 block-FP8 down-input 量化。TMA up 输出按最坏情况分配，down GEMM 实际只读取 token_mask 保留行；新激活分支跳过超出 padded frontier、sentinel 与无本地专家的行。固定 head 5e346a3，open、未合并。",
+          "why": "固定量化代码只在整 warp 都为 padding 时退出，混合 warp 仍会量化部分无效行，不能简化为所有 padding 都零计算；它也不缩小已分配 workspace。作者 H100、Qwen3.6-35B-A3B-FP8、输入 256/输出 32，交错运行前后与非 TMA 对照，TP1 端到端约+1.4%–2.5%、TP4/EP4 约+1.8%–2.4%；kernel 微基准的倍数不等于服务倍数。作者报告保留行与若干 MoE/生成测试 bitwise 一致；本次核固定源码，未运行 GPU。它与既有 FP4 live-row 笔记共享“边界贯穿 FFN”的思路，但不是同一量化格式或同一实现。",
+          "reading": "7 min",
+          "columns": [
+            "sglang",
+            "models"
+          ],
+          "source": "https://github.com/sgl-project/sglang/pull/42212",
+          "signal": "high",
+          "sourceLabel": "sgl-project/sglang #42212 · open 5e346a3",
+          "sourceVersion": {
+            "created_at": "2026-10-02T07:52:54Z",
+            "updated_at": "2026-10-02T08:09:10Z",
+            "head": "5e346a328d9ce642a00eedfe5f780642e6a36738",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "verifiedAt": "2026-10-02T13:02:46Z",
+            "observationWindowEnd": "2026-10-02T08:00:00Z",
+            "base": "d954c88a4f8b81d93066883ba1a079f146f33748",
+            "closed_at": null,
+            "head_authored_at": "2026-10-02T07:16:44Z",
+            "head_committed_at": "2026-10-02T07:49:42Z",
+            "metadataVerifiedAt": "2026-10-02T13:02:46Z",
+            "commitMetadataVerifiedAt": "2026-10-02T13:04:20Z",
+            "fixedCodeReadingVerifiedAt": "2026-10-02T08:03:00Z",
+            "merge_commit_sha": null,
+            "merge_test_sha": "89e098504a38ef68c7c4bb7d5c479a7fe4ddd8b0",
+            "merge_test_sha_note": "PR remains open and unmerged. GitHub merge_commit_sha is the temporary test-merge SHA, not a merged commit."
+          },
+          "supportingSources": [
+            {
+              "title": "激活按 sorted frontier 与专家过滤",
+              "url": "https://github.com/sgl-project/sglang/blob/5e346a328d9ce642a00eedfe5f780642e6a36738/python/sglang/kernels/jit/csrc/elementwise/activation.cuh#L80-L93"
+            },
+            {
+              "title": "量化 warp 级退出边界",
+              "url": "https://github.com/sgl-project/sglang/blob/5e346a328d9ce642a00eedfe5f780642e6a36738/python/sglang/kernels/jit/csrc/gemm/per_token_group_quant.cuh#L440-L453"
+            },
+            {
+              "title": "block-FP8 TMA 路径接线",
+              "url": "https://github.com/sgl-project/sglang/blob/5e346a328d9ce642a00eedfe5f780642e6a36738/python/sglang/srt/layers/moe/moe_runner/triton_utils/fused_moe.py#L875-L892"
+            }
+          ],
+          "rank": "25"
+        },
+        {
+          "id": "vllm-tool-parser-startup-validation",
+          "category": "VLLM · AGENT DEPLOYMENT",
+          "title": "Tool Parser 与 Tokenizer 不匹配时，提案让启动阶段就失败",
+          "summary": "10 月 2 日 07:14 UTC 提出的#59749，在 ParserManager.get_parser 解析出 tool parser 后，若有 tokenizer 就试构造 parser，并将 TypeError／ValueError／RuntimeError 包装成兼容性错误。08:43 修订 head d075591 保留相同生产 guard，把测试从下载 GPT2 tokenizer 改为无特殊 token 的 MagicMock 词表；仍 open、未合并。",
+          "why": "这是部署诊断提前，不是工具调用质量或模型准确率提升。当前七项测试定义包含四种 parser 缺 token 应失败，以及 Hermes 降级、无 parser、无 tokenizer 三个对照；PR 正文仍写真实 GPT2，与当前 mock 实现不同。直接比对确认 parser_manager.py 新旧 blob 完全相同；tools=None 构造与无 tokenizer 跳过的边界不变，不能证明真实工具 schema、流式解析和所有 tokenizer 版本兼容。当前 head 的 pre-commit workflow 因预运行 label／作者合并数门槛失败，真正 pre-commit job 被跳过；另有文档构建失败，不能据此判定新增七项测试失败或通过。本次只核源码与 CI 日志，未执行测试。",
+          "reading": "4 min",
+          "columns": [
+            "vllm",
+            "models"
+          ],
+          "source": "https://github.com/vllm-project/vllm/pull/59749",
+          "signal": "high",
+          "sourceLabel": "vLLM #59749 · open d075591 · mock测试修订",
+          "sourceVersion": {
+            "created_at": "2026-10-02T07:14:40Z",
+            "updated_at": "2026-10-02T08:43:40Z",
+            "head": "d07559169cd0fc9644d6b4cc92955dce6586884e",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "verifiedAt": "2026-10-02T13:12:09Z",
+            "observationWindowEnd": "2026-10-02T08:00:00Z",
+            "repository": "vllm-project/vllm",
+            "pullRequest": 59749,
+            "closed_at": null,
+            "base": "58b3298457dde7b4554b3b4e20b238c0ac2c3a65",
+            "merged": false,
+            "merge_commit_sha": null,
+            "head_committed_at": "2026-10-02T08:43:17Z",
+            "metadataVerifiedAt": "2026-10-02T13:12:09Z",
+            "evidenceBoundary": "只读GitHub元数据、固定源码与提交差异、上游CI状态/日志；作者报告与CI证据分开；本次未独立运行CPU/GPU、RDMA、模型评测或服务实验",
+            "sourceReview": {
+              "retainedFixedSourceHead": "9814ef39315b744bfc6b649ce592f1dec02385e7",
+              "retainedSourceReviewedAt": "2026-10-02T08:03:00Z",
+              "metadataRefreshDoesNotReexecuteTests": true,
+              "deltaReviewedAt": "2026-10-02T13:05:59Z",
+              "currentHead": "d07559169cd0fc9644d6b4cc92955dce6586884e",
+              "basis": "保留08:00固定源码审读；重读d075591完整commit，并直接读取新旧parser_manager.py确认全文相同；读取noon已保存的test逐文件diff",
+              "productionBlobUnchanged": "15ba8bf0b8c285f81132babfa01aac577215594d"
+            },
+            "ciEvidence": {
+              "observedAt": "2026-10-02T13:04:56Z",
+              "workflowRuns": [
+                {
+                  "id": 36985694366,
+                  "name": "PR title",
+                  "status": "completed",
+                  "conclusion": "skipped",
+                  "run_number": 38002,
+                  "jobs_url": "https://api.github.com/repos/vllm-project/vllm/actions/runs/36985694366/jobs",
+                  "logs_url": "https://api.github.com/repos/vllm-project/vllm/actions/runs/36985694366/logs",
+                  "workflow_id": 344893698
+                },
+                {
+                  "id": 36985694367,
+                  "name": "pre-commit",
+                  "status": "completed",
+                  "conclusion": "failure",
+                  "run_number": 234843,
+                  "jobs_url": "https://api.github.com/repos/vllm-project/vllm/actions/runs/36985694367/jobs",
+                  "logs_url": "https://api.github.com/repos/vllm-project/vllm/actions/runs/36985694367/logs",
+                  "workflow_id": 137737330
+                }
+              ],
+              "statusContexts": [
+                {
+                  "context": "CodeRabbit",
+                  "state": "success",
+                  "target_url": null
+                },
+                {
+                  "context": "docs/readthedocs.org:vllm",
+                  "state": "failure",
+                  "target_url": "https://app.readthedocs.org/projects/vllm/builds/34894659/"
+                }
+              ],
+              "boundary": "GitHub Actions列表只返回pull_request触发的首个页面；statusContexts为connector返回的快照，不由缺失结果推断通过。",
+              "qualification": "pre-run-check失败是运行门槛；真正pre-commit skipped。未读取到七项parser测试成功日志。ReadTheDocs失败根因未核验。"
+            }
+          },
+          "supportingSources": [
+            {
+              "title": "相同生产guard，当前固定head",
+              "url": "https://github.com/vllm-project/vllm/blob/d07559169cd0fc9644d6b4cc92955dce6586884e/vllm/parser/parser_manager.py#L111-L126"
+            },
+            {
+              "title": "七项测试已改为mock词表",
+              "url": "https://github.com/vllm-project/vllm/blob/d07559169cd0fc9644d6b4cc92955dce6586884e/tests/tool_parsers/test_parser_tokenizer_validation.py"
+            },
+            {
+              "title": "预运行门槛失败，实际pre-commit被跳过",
+              "url": "https://github.com/vllm-project/vllm/actions/runs/36985694367/job/110770089513"
+            }
+          ],
+          "revisions": [
+            {
+              "revisedAt": "2026-10-02T13:11:41Z",
+              "reason": "08:43 head修订改变测试证据：真实GPT2改为mock词表；生产guard全文相同；补入当前head CI门槛状态。",
+              "record": {
+                "id": "vllm-tool-parser-startup-validation",
+                "category": "VLLM · AGENT DEPLOYMENT",
+                "title": "Tool Parser 与 Tokenizer 不匹配时，提案让启动阶段就失败",
+                "summary": "10 月 2 日 07:14 UTC 新开的 #59749，在 ParserManager.get_parser 解析出 tool parser 后，若有 tokenizer 就试构造 parser，并将 TypeError／ValueError／RuntimeError 包装成明确兼容性错误。原来所需特殊token缺失可能直到每次聊天请求才返回500，进程却看似健康。固定 head 9814ef3，open、未合并。",
+                "why": "这是部署诊断提前，不是工具调用质量或模型准确率提升。新增测试列出四种parser配gpt2应失败，以及Hermes降级、无parser、无tokenizer三个对照；没有tokenizer时仍跳过验证。源码使用 tools=None 构造，因此不能据此证明真实工具schema、流式解析和所有tokenizer版本兼容。本次核源码与测试定义，未执行测试；PR提供测试计划而非可核实的完整通过日志。",
+                "reading": "4 min",
+                "columns": [
+                  "vllm",
+                  "models"
+                ],
+                "source": "https://github.com/vllm-project/vllm/pull/59749",
+                "signal": "high",
+                "sourceLabel": "vllm-project/vllm #59749 · open 9814ef3",
+                "sourceVersion": {
+                  "created_at": "2026-10-02T07:14:40Z",
+                  "updated_at": "2026-10-02T07:42:15Z",
+                  "head": "9814ef39315b744bfc6b649ce592f1dec02385e7",
+                  "state": "open",
+                  "draft": false,
+                  "merged_at": null,
+                  "verifiedAt": "2026-10-02T08:03:00Z",
+                  "observationWindowEnd": "2026-10-02T08:00:00Z"
+                },
+                "supportingSources": [
+                  {
+                    "title": "构造期兼容性检查",
+                    "url": "https://github.com/vllm-project/vllm/blob/9814ef39315b744bfc6b649ce592f1dec02385e7/vllm/parser/parser_manager.py#L111-L126"
+                  },
+                  {
+                    "title": "兼容／不兼容及跳过测试",
+                    "url": "https://github.com/vllm-project/vllm/blob/9814ef39315b744bfc6b649ce592f1dec02385e7/tests/tool_parsers/test_parser_tokenizer_validation.py"
+                  }
+                ]
+              }
+            }
+          ],
+          "rank": "26"
+        },
+        {
+          "id": "mooncake-handshake-stalled-send-timeout",
+          "category": "MOONCAKE · CONTROL PLANE",
+          "title": "Handshake 单线程被不读响应的 Peer 卡住：提案补齐发送超时与短写失败",
+          "summary": "10 月 2 日 05:24 UTC 提出的#4451，为经典 Transfer Engine 的 accepted handshake socket 配置 5 秒 SO_SNDTIMEO，并让 writeFully 遇到 EAGAIN／EWOULDBLOCK 返回已写字节数，避免超时后继续重试。09:31 新 head fbaa115 仅格式化回归测试，生产逻辑与此前 70b5581 一致；仍 open、未合并。此前只有接收超时，peer 请求大 Metadata 后不读响应可堵住单 listener 线程。",
+          "why": "只添加 socket 超时不够，writeFully 若持续重试仍不会释放控制面；两处修改共同让上层把短写转成 ERR_SOCKET 并关闭连接。作者 hardware-free socketpair 回归使用 1 秒 timeout、4KB 发送缓冲和 8MB 响应，报告补丁约 2 秒失败、旧实现 15 秒仍未结束；这不是实测所有握手都在 5 秒内完成，也不是整个 frame 的绝对 deadline。当前 head CTest 于 10:15:03 UTC 成功，但整体 CI Gate 失败；已读 Python3.12 wheel 日志显示缺少 mooncake.pg_2_14_1、PG 未按 torch2.14.1 构建，不能归因于发送超时逻辑。持续小步进展的慢 peer 与真实 RDMA 集成仍需另测；本次未独立复现。",
+          "reading": "6 min",
+          "columns": [
+            "mooncake",
+            "network"
+          ],
+          "source": "https://github.com/kvcache-ai/Mooncake/pull/4451",
+          "signal": "high",
+          "sourceLabel": "Mooncake #4451 · open fbaa115 · CTest成功／整体CI失败",
+          "sourceVersion": {
+            "created_at": "2026-10-02T05:24:18Z",
+            "updated_at": "2026-10-02T09:31:59Z",
+            "head": "fbaa115bba675ff32afda7ae4748bd718212b571",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "verifiedAt": "2026-10-02T13:12:09Z",
+            "observationWindowEnd": "2026-10-02T08:00:00Z",
+            "repository": "kvcache-ai/Mooncake",
+            "pullRequest": 4451,
+            "closed_at": null,
+            "base": "0d1a8040faebb7c127c8901840a38c2ff57e80c5",
+            "merged": false,
+            "merge_commit_sha": null,
+            "head_committed_at": "2026-10-02T09:31:55Z",
+            "metadataVerifiedAt": "2026-10-02T13:12:09Z",
+            "evidenceBoundary": "只读GitHub元数据、固定源码与提交差异、上游CI状态/日志；作者报告与CI证据分开；本次未独立运行CPU/GPU、RDMA、模型评测或服务实验",
+            "sourceReview": {
+              "retainedFixedSourceHead": "70b55810c5b590a281fcc02050c3248eda8f20ad",
+              "retainedSourceReviewedAt": "2026-10-02T08:03:00Z",
+              "metadataRefreshDoesNotReexecuteTests": true,
+              "deltaReviewedAt": "2026-10-02T13:04:09Z",
+              "currentHead": "fbaa115bba675ff32afda7ae4748bd718212b571",
+              "basis": "保留70b5581固定代码审读；读取fbaa115完整commit确认仅两处setsockopt测试格式变化，无生产源码变化"
+            },
+            "ciEvidence": {
+              "observedAt": "2026-10-02T13:04:56Z",
+              "workflowRuns": [
+                {
+                  "id": 36990327028,
+                  "name": "Build & Test (Linux)",
+                  "status": "completed",
+                  "conclusion": "failure",
+                  "run_number": 14771,
+                  "jobs_url": "https://api.github.com/repos/kvcache-ai/Mooncake/actions/runs/36990327028/jobs",
+                  "logs_url": "https://api.github.com/repos/kvcache-ai/Mooncake/actions/runs/36990327028/logs",
+                  "workflow_id": 151607469
+                }
+              ],
+              "statusContexts": [],
+              "boundary": "GitHub Actions列表只返回pull_request触发的首个页面；statusContexts为connector返回的快照，不由缺失结果推断通过。",
+              "jobsObservedAt": "2026-10-02T13:05:59Z",
+              "totalJobs": 27,
+              "jobs": [
+                {
+                  "id": 110784776247,
+                  "name": "Check reshard manifest types",
+                  "head_sha": "fbaa115bba675ff32afda7ae4748bd718212b571",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T09:32:05Z",
+                  "completed_at": "2026-10-02T09:32:23Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36990327028/job/110784776247"
+                },
+                {
+                  "id": 110784776381,
+                  "name": "Spell Check with Typos",
+                  "head_sha": "fbaa115bba675ff32afda7ae4748bd718212b571",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T09:32:05Z",
+                  "completed_at": "2026-10-02T09:32:14Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36990327028/job/110784776381"
+                },
+                {
+                  "id": 110784776416,
+                  "name": "check-paths",
+                  "head_sha": "fbaa115bba675ff32afda7ae4748bd718212b571",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T09:32:06Z",
+                  "completed_at": "2026-10-02T09:32:14Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36990327028/job/110784776416"
+                },
+                {
+                  "id": 110784776429,
+                  "name": "Check code format",
+                  "head_sha": "fbaa115bba675ff32afda7ae4748bd718212b571",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T09:32:06Z",
+                  "completed_at": "2026-10-02T09:32:44Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36990327028/job/110784776429"
+                },
+                {
+                  "id": 110784776474,
+                  "name": "Test external CI lifecycle helpers",
+                  "head_sha": "fbaa115bba675ff32afda7ae4748bd718212b571",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T09:32:05Z",
+                  "completed_at": "2026-10-02T09:32:11Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36990327028/job/110784776474"
+                },
+                {
+                  "id": 110784776547,
+                  "name": "Test CI scripts",
+                  "head_sha": "fbaa115bba675ff32afda7ae4748bd718212b571",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T09:32:06Z",
+                  "completed_at": "2026-10-02T09:32:19Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36990327028/job/110784776547"
+                },
+                {
+                  "id": 110784776673,
+                  "name": "Check Python with Ruff",
+                  "head_sha": "fbaa115bba675ff32afda7ae4748bd718212b571",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T09:32:06Z",
+                  "completed_at": "2026-10-02T09:32:18Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36990327028/job/110784776673"
+                },
+                {
+                  "id": 110784829697,
+                  "name": "CTest unit tests (Python 3.12)",
+                  "head_sha": "fbaa115bba675ff32afda7ae4748bd718212b571",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T09:32:17Z",
+                  "completed_at": "2026-10-02T10:15:03Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36990327028/job/110784829697"
+                },
+                {
+                  "id": 110784829818,
+                  "name": "build-flags",
+                  "head_sha": "fbaa115bba675ff32afda7ae4748bd718212b571",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T09:32:16Z",
+                  "completed_at": "2026-10-02T09:38:05Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36990327028/job/110784829818"
+                },
+                {
+                  "id": 110784831244,
+                  "name": "Check Sphinx docs build",
+                  "head_sha": "fbaa115bba675ff32afda7ae4748bd718212b571",
+                  "status": "completed",
+                  "conclusion": "skipped",
+                  "started_at": "2026-10-02T09:32:15Z",
+                  "completed_at": "2026-10-02T09:32:14Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36990327028/job/110784831244"
+                },
+                {
+                  "id": 110784981252,
+                  "name": "tent-ci (cuda-off-metrics-on)",
+                  "head_sha": "fbaa115bba675ff32afda7ae4748bd718212b571",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T09:32:46Z",
+                  "completed_at": "2026-10-02T10:00:16Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36990327028/job/110784981252"
+                },
+                {
+                  "id": 110784981325,
+                  "name": "tent-ci (cuda-on)",
+                  "head_sha": "fbaa115bba675ff32afda7ae4748bd718212b571",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T09:32:46Z",
+                  "completed_at": "2026-10-02T10:01:57Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36990327028/job/110784981325"
+                },
+                {
+                  "id": 110784981351,
+                  "name": "tent-ci (cuda-off)",
+                  "head_sha": "fbaa115bba675ff32afda7ae4748bd718212b571",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T09:32:46Z",
+                  "completed_at": "2026-10-02T10:00:50Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36990327028/job/110784981351"
+                },
+                {
+                  "id": 110784981404,
+                  "name": "tent-ci (ub-mock)",
+                  "head_sha": "fbaa115bba675ff32afda7ae4748bd718212b571",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T09:32:46Z",
+                  "completed_at": "2026-10-02T10:03:20Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36990327028/job/110784981404"
+                },
+                {
+                  "id": 110784981419,
+                  "name": "build-wheel-cu13 / build (3.12)",
+                  "head_sha": "fbaa115bba675ff32afda7ae4748bd718212b571",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T09:32:46Z",
+                  "completed_at": "2026-10-02T09:57:36Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36990327028/job/110784981419"
+                },
+                {
+                  "id": 110784981448,
+                  "name": "build-wheel-rocm / build-wheel-rocm (3.12)",
+                  "head_sha": "fbaa115bba675ff32afda7ae4748bd718212b571",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T09:32:46Z",
+                  "completed_at": "2026-10-02T09:52:46Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36990327028/job/110784981448"
+                },
+                {
+                  "id": 110784981485,
+                  "name": "build-wheel / build (3.10)",
+                  "head_sha": "fbaa115bba675ff32afda7ae4748bd718212b571",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T09:32:46Z",
+                  "completed_at": "2026-10-02T09:51:38Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36990327028/job/110784981485"
+                },
+                {
+                  "id": 110784981517,
+                  "name": "build-wheel-rocm / build-wheel-rocm (3.10)",
+                  "head_sha": "fbaa115bba675ff32afda7ae4748bd718212b571",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T09:32:46Z",
+                  "completed_at": "2026-10-02T09:52:29Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36990327028/job/110784981517"
+                },
+                {
+                  "id": 110784981539,
+                  "name": "build-wheel / build (3.12)",
+                  "head_sha": "fbaa115bba675ff32afda7ae4748bd718212b571",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T09:32:46Z",
+                  "completed_at": "2026-10-02T09:53:39Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36990327028/job/110784981539"
+                },
+                {
+                  "id": 110784981851,
+                  "name": "build-wheel-efa / build-wheel-efa (cuda, 3.12) / build (3.12)",
+                  "head_sha": "fbaa115bba675ff32afda7ae4748bd718212b571",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T09:32:47Z",
+                  "completed_at": "2026-10-02T09:45:19Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36990327028/job/110784981851"
+                },
+                {
+                  "id": 110784981862,
+                  "name": "build-wheel-efa / build-wheel-efa (cuda13, 3.12, arm64) / build (3.12)",
+                  "head_sha": "fbaa115bba675ff32afda7ae4748bd718212b571",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T09:32:48Z",
+                  "completed_at": "2026-10-02T09:41:46Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36990327028/job/110784981862"
+                },
+                {
+                  "id": 110784981975,
+                  "name": "build-wheel-efa / build-wheel-efa (cuda13, 3.12) / build (3.12)",
+                  "head_sha": "fbaa115bba675ff32afda7ae4748bd718212b571",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T09:32:46Z",
+                  "completed_at": "2026-10-02T09:44:40Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36990327028/job/110784981975"
+                },
+                {
+                  "id": 110784981979,
+                  "name": "build-wheel-efa / build-wheel-efa (non-cuda, 3.10, arm64) / build (3.10)",
+                  "head_sha": "fbaa115bba675ff32afda7ae4748bd718212b571",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T09:32:49Z",
+                  "completed_at": "2026-10-02T09:39:40Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36990327028/job/110784981979"
+                },
+                {
+                  "id": 110784981996,
+                  "name": "build-wheel-efa / build-wheel-efa (non-cuda, 3.10) / build (3.10)",
+                  "head_sha": "fbaa115bba675ff32afda7ae4748bd718212b571",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T09:32:46Z",
+                  "completed_at": "2026-10-02T09:44:19Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36990327028/job/110784981996"
+                },
+                {
+                  "id": 110791361633,
+                  "name": "test-wheel-ubuntu (ubuntu-24.04, 3.10, mooncake-wheel-ci-py310)",
+                  "head_sha": "fbaa115bba675ff32afda7ae4748bd718212b571",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T09:53:41Z",
+                  "completed_at": "2026-10-02T10:01:02Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36990327028/job/110791361633"
+                },
+                {
+                  "id": 110791361663,
+                  "name": "test-wheel-ubuntu (ubuntu-22.04, 3.12, mooncake-wheel-ci-py312)",
+                  "head_sha": "fbaa115bba675ff32afda7ae4748bd718212b571",
+                  "status": "completed",
+                  "conclusion": "failure",
+                  "started_at": "2026-10-02T09:53:42Z",
+                  "completed_at": "2026-10-02T10:02:12Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36990327028/job/110791361663"
+                },
+                {
+                  "id": 110797756920,
+                  "name": "CI Gate",
+                  "head_sha": "fbaa115bba675ff32afda7ae4748bd718212b571",
+                  "status": "completed",
+                  "conclusion": "failure",
+                  "started_at": "2026-10-02T10:15:07Z",
+                  "completed_at": "2026-10-02T10:15:10Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36990327028/job/110797756920"
+                }
+              ],
+              "allJobPagesRead": true,
+              "qualification": "CTest success；CI Gate failure；Python3.12 wheel日志缺少PG对应torch2.14.1模块，不把这项失败归因于发送超时逻辑。"
+            }
+          },
+          "supportingSources": [
+            {
+              "title": "超时短写返回",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/fbaa115bba675ff32afda7ae4748bd718212b571/mooncake-transfer-engine/include/common.h#L434-L453"
+            },
+            {
+              "title": "accepted socket 发送超时",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/fbaa115bba675ff32afda7ae4748bd718212b571/mooncake-transfer-engine/src/transfer_metadata_plugin.cpp#L912-L930"
+            },
+            {
+              "title": "silent peer 回归",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/fbaa115bba675ff32afda7ae4748bd718212b571/mooncake-transfer-engine/tests/transfer_metadata_test.cpp#L1060-L1087"
+            },
+            {
+              "title": "当前head CTest成功",
+              "url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36990327028/job/110784829697"
+            },
+            {
+              "title": "Python3.12 wheel失败：PG/Torch模块缺失",
+              "url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36990327028/job/110791361663"
+            }
+          ],
+          "revisions": [
+            {
+              "revisedAt": "2026-10-02T13:11:41Z",
+              "reason": "09:31格式化head更新，生产行为未变；补入当前head CTest成功及整体CI Gate失败的分离证据。",
+              "record": {
+                "id": "mooncake-handshake-stalled-send-timeout",
+                "category": "MOONCAKE · CONTROL PLANE",
+                "title": "Handshake 单线程被不读响应的 Peer 卡住：提案补齐发送超时与短写失败",
+                "summary": "10 月 2 日 05:24 UTC 新开的 #4451，为经典 Transfer Engine 的 accepted handshake socket 配置5秒 SO_SNDTIMEO，并让 writeFully 遇到 EAGAIN／EWOULDBLOCK 返回已写字节数，避免超时后继续重试。固定 head 70b5581，open、未合并；此前只有接收超时，peer 请求大Metadata后不读响应可堵住单listener线程。",
+                "why": "只添加socket超时不够，writeFully若持续重试仍不会释放控制面；两处修改共同让上层把短写转成ERR_SOCKET并关闭连接。作者hardware-free socketpair回归使用1秒timeout、4KB发送缓冲和8MB响应，补丁约2秒失败，旧实现15秒仍未结束；这不是实测所有握手都在5秒内完成。它没有引入并行listener或整个frame的绝对deadline，持续小步进展的慢peer与真实RDMA集成仍需另测。作者报告22项无硬件测试通过，本次只核固定代码和回归定义，未独立复现。",
+                "reading": "6 min",
+                "columns": [
+                  "mooncake",
+                  "network"
+                ],
+                "source": "https://github.com/kvcache-ai/Mooncake/pull/4451",
+                "signal": "high",
+                "sourceLabel": "kvcache-ai/Mooncake #4451 · open 70b5581",
+                "sourceVersion": {
+                  "created_at": "2026-10-02T05:24:18Z",
+                  "updated_at": "2026-10-02T05:24:28Z",
+                  "head": "70b55810c5b590a281fcc02050c3248eda8f20ad",
+                  "state": "open",
+                  "draft": false,
+                  "merged_at": null,
+                  "verifiedAt": "2026-10-02T08:03:00Z",
+                  "observationWindowEnd": "2026-10-02T08:00:00Z"
+                },
+                "supportingSources": [
+                  {
+                    "title": "超时短写返回",
+                    "url": "https://github.com/kvcache-ai/Mooncake/blob/70b55810c5b590a281fcc02050c3248eda8f20ad/mooncake-transfer-engine/include/common.h#L434-L453"
+                  },
+                  {
+                    "title": "accepted socket 发送超时",
+                    "url": "https://github.com/kvcache-ai/Mooncake/blob/70b55810c5b590a281fcc02050c3248eda8f20ad/mooncake-transfer-engine/src/transfer_metadata_plugin.cpp#L912-L930"
+                  },
+                  {
+                    "title": "silent peer 回归",
+                    "url": "https://github.com/kvcache-ai/Mooncake/blob/70b55810c5b590a281fcc02050c3248eda8f20ad/mooncake-transfer-engine/tests/transfer_metadata_test.cpp#L1060-L1088"
+                  }
+                ]
+              }
+            }
+          ],
+          "rank": "27"
+        },
+        {
+          "id": "sglang-dsv4-logical-host-storage-format",
+          "category": "SGLANG · HICACHE STORAGE",
+          "title": "DeepSeek-V4 的逻辑 Host 池补齐格式声明，修复挂接 L3 时的初始化崩溃",
+          "summary": "10 月 2 日 09:00 UTC 新开的 #42215 修补 token-major 统一内存系列合并后的接口缺口：storage_model_name 会读取 storage_format_tag，DeepSeek-V4 用作存储锚点的 LogicalHostPool 却未声明它。固定 head e218513 为该类补上 None，并扩宽类型标注；无独立格式标签时仍沿用原 model name，不改变 V4 的外存键。open、未合并。",
+          "why": "关键是让所有合法存储锚点满足同一接口，而非一律给旧数据加新格式后缀。已核官方定向 CI 的实际日志和 checkout SHA：该 head 的格式单测 4 项通过；4×H100 的 DSV4 HiCache／文件 L3 模块报告 32 项中 4 项跳过，其余通过，源码覆盖 Python／Rust tree 及 EAGLE／DSpark L3 命中。定向结果不等于全套 CI 通过，也不证明其他存储后端和配置全面可用。本次仅核固定源码与公开 CI，没有独立运行 GPU。",
+          "source": "https://github.com/sgl-project/sglang/pull/42215",
+          "sourceLabel": "SGLang PR #42215 · open e218513",
+          "reading": "6 min",
+          "signal": "high",
+          "columns": [
+            "sglang",
+            "kv-cache"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-10-02T09:00:02Z",
+            "updated_at": "2026-10-02T11:11:47Z",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "merge_commit_sha": null,
+            "head": "e218513a248e3bf9111d6a548c668a4af04b0d45",
+            "base": "41bd213c5f2d7d13b77bd2bd3b370e46022139b3",
+            "head_committed_at": "2026-10-02T08:59:12Z",
+            "verifiedAt": "2026-10-02T13:02:46Z",
+            "observationWindowStart": "2026-10-02T08:00:00Z",
+            "observationWindowEnd": "2026-10-02T12:00:00Z",
+            "closed_at": null,
+            "head_authored_at": "2026-10-02T08:51:31Z",
+            "metadataVerifiedAt": "2026-10-02T13:02:46Z",
+            "commitMetadataVerifiedAt": "2026-10-02T13:04:20Z",
+            "fixedCodeReadingVerifiedAt": "2026-10-02T12:10:00Z",
+            "merge_test_sha": "9130dc62ba421968715374561d2a515ca309fe86",
+            "merge_test_sha_note": "PR remains open and unmerged. GitHub merge_commit_sha is the temporary test-merge SHA, not a merged commit."
+          },
+          "supportingSources": [
+            {
+              "title": "固定 head：LogicalHostPool 声明默认格式标签",
+              "url": "https://github.com/sgl-project/sglang/blob/e218513a248e3bf9111d6a548c668a4af04b0d45/python/sglang/srt/mem_cache/memory_pool_host.py#L59-L68"
+            },
+            {
+              "title": "固定 head：无标签时保持 model name",
+              "url": "https://github.com/sgl-project/sglang/blob/e218513a248e3bf9111d6a548c668a4af04b0d45/python/sglang/srt/managers/cache_controller.py#L54-L62"
+            },
+            {
+              "title": "固定 head：默认池、逻辑池、统一池与文件键隔离测试",
+              "url": "https://github.com/sgl-project/sglang/blob/e218513a248e3bf9111d6a548c668a4af04b0d45/test/registered/unit/mem_cache/test_hicache_storage_format_tag.py#L44-L79"
+            },
+            {
+              "title": "定向 CPU CI 日志：固定 e218513，4 项通过",
+              "url": "https://github.com/sgl-project/sglang/actions/runs/36990781183/job/110786359322"
+            },
+            {
+              "title": "定向 4×H100 CI 日志：32 项中 4 项 skipped，模块成功",
+              "url": "https://github.com/sgl-project/sglang/actions/runs/36988047388/job/110777793370"
+            },
+            {
+              "title": "固定 head：文件 L3、EAGLE／DSpark 与 Python／Rust 组",
+              "url": "https://github.com/sgl-project/sglang/blob/e218513a248e3bf9111d6a548c668a4af04b0d45/test/registered/radix_cache/unified_radix_tree/test_unified_radix_cache_kl_dsv4.py#L130-L438"
+            }
+          ],
+          "rank": "28"
+        },
+        {
+          "id": "sglang-pd-rebootstrap-weight-attribution",
+          "category": "SGLANG · PD / WEIGHT METADATA",
+          "title": "PD 重引导保留已输出 Token 的旧权重版本，避免暂停换权重后归属被抹平",
+          "summary": "10 月 2 日 10:16 UTC 新开的 #42220 在 Decode 的 pause_generation(retract) 移走最后一个已输出 token 前，先记录当前权重版本边界。否则请求暂离 live 队列后换权重，再回放该 token，旧输出可能全部被归到新版本。固定 head 778e745 保留 v1 的 [0,3) 与 v2 的 [3,4)；未换权重时仍合并为单一 span。open、未合并。",
+          "why": "这是 token 来源元数据的修复，未改变模型执行、采样或输出 token。新增回归明确覆盖“暂停期间换版本”和“不换版本”两条路径；作者报告 3 个 CPU 模块 81 passed、5 subtests passed，未跑 GPU E2E，本次只核源码。测试以手动追加 token 模拟真实 replay，不能替代跨 P／D 的在线换权重验证。固定代码还保留 Prefill 中途暂停的 stale-weight prefix KV 待办，因此不能据此宣称整个 PD 系统已实现跨版本一致性或缓存隔离。",
+          "source": "https://github.com/sgl-project/sglang/pull/42220",
+          "sourceLabel": "SGLang PR #42220 · open 778e745",
+          "reading": "7 min",
+          "signal": "medium",
+          "columns": [
+            "sglang",
+            "network",
+            "models"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-10-02T10:16:03Z",
+            "updated_at": "2026-10-02T10:17:00Z",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "merge_commit_sha": null,
+            "head": "778e745c01a3806b99d58228c3b357b94be2dd3a",
+            "base": "1db33bc367e89fd7f429c989ba04d38c8a34128d",
+            "head_committed_at": "2026-10-02T10:13:32Z",
+            "verifiedAt": "2026-10-02T13:02:46Z",
+            "observationWindowStart": "2026-10-02T08:00:00Z",
+            "observationWindowEnd": "2026-10-02T12:00:00Z",
+            "closed_at": null,
+            "head_authored_at": "2026-10-02T10:07:53Z",
+            "metadataVerifiedAt": "2026-10-02T13:02:46Z",
+            "commitMetadataVerifiedAt": "2026-10-02T13:04:20Z",
+            "fixedCodeReadingVerifiedAt": "2026-10-02T12:10:00Z",
+            "merge_test_sha": "6bf3029989abf359e89ef114d569c338c7cb6b8e",
+            "merge_test_sha_note": "PR remains open and unmerged. GitHub merge_commit_sha is the temporary test-merge SHA, not a merged commit."
+          },
+          "supportingSources": [
+            {
+              "title": "固定 head：先记版本，再 pop replay 边界 token；Prefill 待办仍在",
+              "url": "https://github.com/sgl-project/sglang/blob/778e745c01a3806b99d58228c3b357b94be2dd3a/python/sglang/srt/managers/scheduler.py#L5495-L5520"
+            },
+            {
+              "title": "固定 head：常规换版本只扫描 live／waiting／chunked 等队列",
+              "url": "https://github.com/sgl-project/sglang/blob/778e745c01a3806b99d58228c3b357b94be2dd3a/python/sglang/srt/managers/scheduler.py#L5259-L5278"
+            },
+            {
+              "title": "固定 head：两条版本回归与手动模拟 replay 的边界",
+              "url": "https://github.com/sgl-project/sglang/blob/778e745c01a3806b99d58228c3b357b94be2dd3a/test/registered/unit/managers/test_scheduler_pause_generation.py#L617-L679"
+            }
+          ],
+          "rank": "29"
+        },
+        {
+          "id": "sglang-umbp-v41-packed-draft-restore",
+          "category": "SGLANG · UMBP / STATE RECOVERY",
+          "title": "UMBP 补齐 V4.1 的 C1／C2 状态与打包草稿层，恢复完整性先于吞吐比较",
+          "summary": "#42197 于 10 月 2 日 05:56 UTC 提出，最新固定 head ff4fa01 提交于 10:36 UTC。Direct linker 仅在存在相应层时构建 C4／C128，并复用 HiCache 的 C1／C2 KV 与 indexer 区域；逻辑层可映射 target＋draft 多个 buffer，回载时一起搬运，packed object 的范围按实际 offset 排序。此前 V4.1 的空 C4／C128 或打包草稿层会阻止启动，漏掉低压缩比池还会导致恢复状态不完整。open、未合并。",
+          "why": "固定源码与两类 CPU 测试定义分别核对池集合／页行和 target＋draft 范围，不能把“通过启动”当作完整恢复。作者在 MI355X TP4、V4.1-Flash＋DSpark 报告重启后从同一 UMBP 服务恢复 110K-token needle，greedy 输出与冷启动相同；移除 C1／C2 的对照答错。400 题 GSM8K cold／flush 后为 0.910／0.900，无 offload 为 0.900，只是该配置的正确性观察，AgentX 性能尚待补充。本次未跑 GPU；该 head 的早期 Base CI 被当时 draft gate 拦住，不能把流程 failure 写成代码测试失败。现为非 draft。",
+          "source": "https://github.com/sgl-project/sglang/pull/42197",
+          "sourceLabel": "SGLang PR #42197 · open ff4fa01",
+          "reading": "8 min",
+          "signal": "high",
+          "columns": [
+            "sglang",
+            "kv-cache",
+            "models"
+          ],
+          "sourceVersion": {
+            "created_at": "2026-10-02T05:56:30Z",
+            "updated_at": "2026-10-02T10:40:34Z",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "merge_commit_sha": null,
+            "head": "ff4fa016647e122a4bcd01b6edbcb2eb23d17a3f",
+            "base": "1db33bc367e89fd7f429c989ba04d38c8a34128d",
+            "head_committed_at": "2026-10-02T10:36:00Z",
+            "verifiedAt": "2026-10-02T13:02:46Z",
+            "observationWindowStart": "2026-10-02T08:00:00Z",
+            "observationWindowEnd": "2026-10-02T12:00:00Z",
+            "timingNote": "PR 初始创建早于08:00窗口；10:36固定head位于本窗。作者硬件报告按当前正文读取，未证明是在该修订后重新执行。",
+            "closed_at": null,
+            "head_authored_at": "2026-10-02T05:55:31Z",
+            "metadataVerifiedAt": "2026-10-02T13:02:46Z",
+            "commitMetadataVerifiedAt": "2026-10-02T13:04:20Z",
+            "fixedCodeReadingVerifiedAt": "2026-10-02T12:10:00Z",
+            "merge_test_sha": "272d57cbb0f603c9d034e81afd2c645674533b8e",
+            "merge_test_sha_note": "PR remains open and unmerged. GitHub merge_commit_sha is the temporary test-merge SHA, not a merged commit."
+          },
+          "supportingSources": [
+            {
+              "title": "固定 head：C1／C2 KV 与 indexer 转为 FULL 页区域",
+              "url": "https://github.com/sgl-project/sglang/blob/ff4fa016647e122a4bcd01b6edbcb2eb23d17a3f/python/sglang/srt/mem_cache/hybrid_cache/hybrid_pool_assembler.py#L685-L768"
+            },
+            {
+              "title": "固定 head：按实际层构造 C4／C128，并登记 C1／C2",
+              "url": "https://github.com/sgl-project/sglang/blob/ff4fa016647e122a4bcd01b6edbcb2eb23d17a3f/python/sglang/srt/mem_cache/hybrid_cache/linker_pool_assembler.py#L324-L355"
+            },
+            {
+              "title": "固定 head：多 buffer 映射与连续双射检查",
+              "url": "https://github.com/sgl-project/sglang/blob/ff4fa016647e122a4bcd01b6edbcb2eb23d17a3f/python/sglang/srt/mem_cache/storage/umbp/umbp_direct_linker.py#L59-L81"
+            },
+            {
+              "title": "固定 head：target／draft 范围及 packed offset 顺序",
+              "url": "https://github.com/sgl-project/sglang/blob/ff4fa016647e122a4bcd01b6edbcb2eb23d17a3f/python/sglang/srt/mem_cache/storage/umbp/umbp_direct_linker.py#L752-L826"
+            },
+            {
+              "title": "固定 head：无 C4／C128 的 V4.1 池集合测试",
+              "url": "https://github.com/sgl-project/sglang/blob/ff4fa016647e122a4bcd01b6edbcb2eb23d17a3f/test/registered/unit/mem_cache/test_linker_pool_assembler.py#L262-L318"
+            },
+            {
+              "title": "固定 head：target＋draft 全量及逐层恢复范围测试",
+              "url": "https://github.com/sgl-project/sglang/blob/ff4fa016647e122a4bcd01b6edbcb2eb23d17a3f/test/registered/unit/mem_cache/test_umbp_direct_linker_rank_keys.py#L95-L132"
+            },
+            {
+              "title": "该 head 早期 Base CI：draft gate 阻止执行后续测试",
+              "url": "https://github.com/sgl-project/sglang/actions/runs/36996371950/job/110804051601"
+            }
+          ],
+          "rank": "30"
+        },
+        {
+          "id": "mooncake-handshake-notify-retention-bound",
+          "category": "MOONCAKE · CONTROL PLANE",
+          "title": "Handshake 通知队列提议按条数封顶，测试补齐完整回包读取后仍待当前 CTest 结果",
+          "summary": "10 月 2 日 09:57 UTC 提出的#4453，在 receivePeerNotify 读取 MC_HANDSHAKE_MAX_NOTIFY_ENTRIES，默认 1024 条、合法范围 1 至 1048576；满时移除最旧未消费项再加新通知，每千次驱逐记录一次告警。12:31:36 UTC 新 head 74f04e7 只修订 socket 回归：关闭连接前由单次 read 改为 readString 读完整帧，并检查 Notify 类型与非空 payload；生产队列限制不变，仍 open、未合并。",
+          "why": "限制按条数而非总字节计费，另一个 pushNotify 入口仍直接追加；驱逐后仍回复 success，所以接收确认不保证通知最终被应用消费。vector 首部删除保留锁内线性搬移成本，尚无持续洪泛 CPU 或端到端完成测试。旧 head 28aaa0e 的 CTest 曾在新回归进入后以 SIGPIPE 退出；作者 12:31 提交将原因解释为单次 read 只读到帧头便关闭 socket，新代码改为完整 drain，该解释未独立复现。13:12 UTC 当前 head CTest 仍运行，不能把旧失败标成当前 head 已失败，也不能称修复已通过；另一个 Python3.12 wheel 构建已因 runner shutdown／exit137 失败，原因不能推断为内存不足或队列逻辑缺陷。本次未独立运行回归。",
+          "source": "https://github.com/kvcache-ai/Mooncake/pull/4453",
+          "sourceLabel": "Mooncake #4453 · open 74f04e7 · CTest运行中",
+          "reading": "7 min",
+          "signal": "high",
+          "columns": [
+            "mooncake",
+            "network"
+          ],
+          "sourceVersion": {
+            "repository": "kvcache-ai/Mooncake",
+            "pullRequest": 4453,
+            "created_at": "2026-10-02T09:57:26Z",
+            "updated_at": "2026-10-02T12:31:39Z",
+            "head": "74f04e7a6b53d0b90df21df854f61dbc74ca2e4d",
+            "base": "0d1a8040faebb7c127c8901840a38c2ff57e80c5",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "merge_commit_sha": null,
+            "head_committed_at": "2026-10-02T12:31:36Z",
+            "verifiedAt": "2026-10-02T13:12:09Z",
+            "observationWindowStart": "2026-10-02T08:00:00Z",
+            "observationWindowEnd": "2026-10-02T12:00:00Z",
+            "evidenceBoundary": "只读GitHub元数据、固定源码与提交差异、上游CI状态/日志；作者报告与CI证据分开；本次未独立运行CPU/GPU、RDMA、模型评测或服务实验",
+            "ciEvidence": {
+              "observedAt": "2026-10-02T13:04:56Z",
+              "workflowRuns": [
+                {
+                  "id": 37007213752,
+                  "name": "Build & Test (Linux)",
+                  "status": "in_progress",
+                  "conclusion": null,
+                  "run_number": 14775,
+                  "jobs_url": "https://api.github.com/repos/kvcache-ai/Mooncake/actions/runs/37007213752/jobs",
+                  "logs_url": "https://api.github.com/repos/kvcache-ai/Mooncake/actions/runs/37007213752/logs",
+                  "workflow_id": 151607469
+                }
+              ],
+              "statusContexts": [],
+              "boundary": "GitHub Actions列表只返回pull_request触发的首个页面；statusContexts为connector返回的快照，不由缺失结果推断通过。",
+              "jobsObservedAt": "2026-10-02T13:12:09Z",
+              "totalJobs": 25,
+              "jobs": [
+                {
+                  "id": 110838204741,
+                  "name": "Check Python with Ruff",
+                  "head_sha": "74f04e7a6b53d0b90df21df854f61dbc74ca2e4d",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:31:46Z",
+                  "completed_at": "2026-10-02T12:31:58Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37007213752/job/110838204741"
+                },
+                {
+                  "id": 110838204889,
+                  "name": "Test CI scripts",
+                  "head_sha": "74f04e7a6b53d0b90df21df854f61dbc74ca2e4d",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:31:46Z",
+                  "completed_at": "2026-10-02T12:31:59Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37007213752/job/110838204889"
+                },
+                {
+                  "id": 110838204901,
+                  "name": "Check reshard manifest types",
+                  "head_sha": "74f04e7a6b53d0b90df21df854f61dbc74ca2e4d",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:31:46Z",
+                  "completed_at": "2026-10-02T12:32:03Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37007213752/job/110838204901"
+                },
+                {
+                  "id": 110838204943,
+                  "name": "Spell Check with Typos",
+                  "head_sha": "74f04e7a6b53d0b90df21df854f61dbc74ca2e4d",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:31:46Z",
+                  "completed_at": "2026-10-02T12:31:55Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37007213752/job/110838204943"
+                },
+                {
+                  "id": 110838204968,
+                  "name": "Check code format",
+                  "head_sha": "74f04e7a6b53d0b90df21df854f61dbc74ca2e4d",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:31:47Z",
+                  "completed_at": "2026-10-02T12:32:29Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37007213752/job/110838204968"
+                },
+                {
+                  "id": 110838205160,
+                  "name": "Test external CI lifecycle helpers",
+                  "head_sha": "74f04e7a6b53d0b90df21df854f61dbc74ca2e4d",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:31:46Z",
+                  "completed_at": "2026-10-02T12:31:53Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37007213752/job/110838205160"
+                },
+                {
+                  "id": 110838205456,
+                  "name": "check-paths",
+                  "head_sha": "74f04e7a6b53d0b90df21df854f61dbc74ca2e4d",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:31:47Z",
+                  "completed_at": "2026-10-02T12:31:53Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37007213752/job/110838205456"
+                },
+                {
+                  "id": 110838253820,
+                  "name": "CTest unit tests (Python 3.12)",
+                  "head_sha": "74f04e7a6b53d0b90df21df854f61dbc74ca2e4d",
+                  "status": "in_progress",
+                  "conclusion": null,
+                  "started_at": "2026-10-02T12:31:56Z",
+                  "completed_at": null,
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37007213752/job/110838253820"
+                },
+                {
+                  "id": 110838253916,
+                  "name": "build-flags",
+                  "head_sha": "74f04e7a6b53d0b90df21df854f61dbc74ca2e4d",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:31:55Z",
+                  "completed_at": "2026-10-02T12:38:11Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37007213752/job/110838253916"
+                },
+                {
+                  "id": 110838256770,
+                  "name": "Check Sphinx docs build",
+                  "head_sha": "74f04e7a6b53d0b90df21df854f61dbc74ca2e4d",
+                  "status": "completed",
+                  "conclusion": "skipped",
+                  "started_at": "2026-10-02T12:31:54Z",
+                  "completed_at": "2026-10-02T12:31:54Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37007213752/job/110838256770"
+                },
+                {
+                  "id": 110838442877,
+                  "name": "tent-ci (ub-mock)",
+                  "head_sha": "74f04e7a6b53d0b90df21df854f61dbc74ca2e4d",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:32:32Z",
+                  "completed_at": "2026-10-02T13:04:36Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37007213752/job/110838442877"
+                },
+                {
+                  "id": 110838442898,
+                  "name": "tent-ci (cuda-on)",
+                  "head_sha": "74f04e7a6b53d0b90df21df854f61dbc74ca2e4d",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:32:31Z",
+                  "completed_at": "2026-10-02T12:52:05Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37007213752/job/110838442898"
+                },
+                {
+                  "id": 110838442970,
+                  "name": "tent-ci (cuda-off)",
+                  "head_sha": "74f04e7a6b53d0b90df21df854f61dbc74ca2e4d",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:32:32Z",
+                  "completed_at": "2026-10-02T13:01:24Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37007213752/job/110838442970"
+                },
+                {
+                  "id": 110838443017,
+                  "name": "tent-ci (cuda-off-metrics-on)",
+                  "head_sha": "74f04e7a6b53d0b90df21df854f61dbc74ca2e4d",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:32:31Z",
+                  "completed_at": "2026-10-02T12:57:41Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37007213752/job/110838443017"
+                },
+                {
+                  "id": 110838443123,
+                  "name": "build-wheel-cu13 / build (3.12)",
+                  "head_sha": "74f04e7a6b53d0b90df21df854f61dbc74ca2e4d",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:32:31Z",
+                  "completed_at": "2026-10-02T12:49:58Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37007213752/job/110838443123"
+                },
+                {
+                  "id": 110838443132,
+                  "name": "build-wheel-rocm / build-wheel-rocm (3.10)",
+                  "head_sha": "74f04e7a6b53d0b90df21df854f61dbc74ca2e4d",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:32:31Z",
+                  "completed_at": "2026-10-02T12:51:41Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37007213752/job/110838443132"
+                },
+                {
+                  "id": 110838443181,
+                  "name": "build-wheel / build (3.12)",
+                  "head_sha": "74f04e7a6b53d0b90df21df854f61dbc74ca2e4d",
+                  "status": "completed",
+                  "conclusion": "failure",
+                  "started_at": "2026-10-02T12:32:31Z",
+                  "completed_at": "2026-10-02T12:48:27Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37007213752/job/110838443181"
+                },
+                {
+                  "id": 110838443403,
+                  "name": "build-wheel-rocm / build-wheel-rocm (3.12)",
+                  "head_sha": "74f04e7a6b53d0b90df21df854f61dbc74ca2e4d",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:32:31Z",
+                  "completed_at": "2026-10-02T12:50:20Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37007213752/job/110838443403"
+                },
+                {
+                  "id": 110838443493,
+                  "name": "build-wheel / build (3.10)",
+                  "head_sha": "74f04e7a6b53d0b90df21df854f61dbc74ca2e4d",
+                  "status": "completed",
+                  "conclusion": "cancelled",
+                  "started_at": "2026-10-02T12:32:32Z",
+                  "completed_at": "2026-10-02T12:49:22Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37007213752/job/110838443493"
+                },
+                {
+                  "id": 110838443978,
+                  "name": "build-wheel-efa / build-wheel-efa (cuda13, 3.12) / build (3.12)",
+                  "head_sha": "74f04e7a6b53d0b90df21df854f61dbc74ca2e4d",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:32:31Z",
+                  "completed_at": "2026-10-02T12:45:01Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37007213752/job/110838443978"
+                },
+                {
+                  "id": 110838444216,
+                  "name": "build-wheel-efa / build-wheel-efa (cuda13, 3.12, arm64) / build (3.12)",
+                  "head_sha": "74f04e7a6b53d0b90df21df854f61dbc74ca2e4d",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:32:33Z",
+                  "completed_at": "2026-10-02T12:42:07Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37007213752/job/110838444216"
+                },
+                {
+                  "id": 110838444247,
+                  "name": "build-wheel-efa / build-wheel-efa (cuda, 3.12) / build (3.12)",
+                  "head_sha": "74f04e7a6b53d0b90df21df854f61dbc74ca2e4d",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:32:31Z",
+                  "completed_at": "2026-10-02T12:44:45Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37007213752/job/110838444247"
+                },
+                {
+                  "id": 110838444278,
+                  "name": "build-wheel-efa / build-wheel-efa (non-cuda, 3.10, arm64) / build (3.10)",
+                  "head_sha": "74f04e7a6b53d0b90df21df854f61dbc74ca2e4d",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:32:37Z",
+                  "completed_at": "2026-10-02T12:40:15Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37007213752/job/110838444278"
+                },
+                {
+                  "id": 110838444336,
+                  "name": "build-wheel-efa / build-wheel-efa (non-cuda, 3.10) / build (3.10)",
+                  "head_sha": "74f04e7a6b53d0b90df21df854f61dbc74ca2e4d",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:32:32Z",
+                  "completed_at": "2026-10-02T12:39:42Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37007213752/job/110838444336"
+                },
+                {
+                  "id": 110844026983,
+                  "name": "test-wheel-ubuntu",
+                  "head_sha": "74f04e7a6b53d0b90df21df854f61dbc74ca2e4d",
+                  "status": "completed",
+                  "conclusion": "skipped",
+                  "started_at": "2026-10-02T12:49:23Z",
+                  "completed_at": "2026-10-02T12:49:23Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37007213752/job/110844026983"
+                }
+              ],
+              "allJobPagesRead": true,
+              "priorHeadFailure": {
+                "head": "28aaa0e114c1d1928d529a1aa6ab67226daab59a",
+                "runId": 36992754039,
+                "jobId": 110792558574,
+                "conclusion": "failure",
+                "observedFailure": "transfer_metadata_test SIGPIPE after new notify case RUN; 1/247 CTest targets failed",
+                "source": "https://github.com/kvcache-ai/Mooncake/actions/runs/36992754039/job/110792558574"
+              },
+              "currentRun": {
+                "id": 37007213752,
+                "name": "Build & Test (Linux)",
+                "node_id": "WFR_kwLOMNwitc8AAAAInc1EuA",
+                "head_branch": "fix/notify-bounded-queue",
+                "head_sha": "74f04e7a6b53d0b90df21df854f61dbc74ca2e4d",
+                "path": ".github/workflows/ci.yml",
+                "display_title": "[Bugfix][TransferEngine] Bound the handshake daemon's pending-notify queue",
+                "run_number": 14775,
+                "event": "pull_request",
+                "status": "in_progress",
+                "conclusion": null,
+                "workflow_id": 151607469,
+                "check_suite_id": 100238489582,
+                "check_suite_node_id": "CS_kwDOMNwitc8AAAAXVq337g",
+                "url": "https://api.github.com/repos/kvcache-ai/Mooncake/actions/runs/37007213752",
+                "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37007213752",
+                "pull_requests": [],
+                "created_at": "2026-10-02T12:31:44Z",
+                "updated_at": "2026-10-02T12:32:38Z",
+                "actor": {
+                  "login": "he-yufeng",
+                  "id": 40085740,
+                  "node_id": "MDQ6VXNlcjQwMDg1NzQw",
+                  "avatar_url": "https://avatars.githubusercontent.com/u/40085740?v=4",
+                  "gravatar_id": "",
+                  "url": "https://api.github.com/users/he-yufeng",
+                  "html_url": "https://github.com/he-yufeng",
+                  "followers_url": "https://api.github.com/users/he-yufeng/followers",
+                  "following_url": "https://api.github.com/users/he-yufeng/following{/other_user}",
+                  "gists_url": "https://api.github.com/users/he-yufeng/gists{/gist_id}",
+                  "starred_url": "https://api.github.com/users/he-yufeng/starred{/owner}{/repo}",
+                  "subscriptions_url": "https://api.github.com/users/he-yufeng/subscriptions",
+                  "organizations_url": "https://api.github.com/users/he-yufeng/orgs",
+                  "repos_url": "https://api.github.com/users/he-yufeng/repos",
+                  "events_url": "https://api.github.com/users/he-yufeng/events{/privacy}",
+                  "received_events_url": "https://api.github.com/users/he-yufeng/received_events",
+                  "type": "User",
+                  "user_view_type": "public",
+                  "site_admin": false
+                },
+                "run_attempt": 1,
+                "referenced_workflows": [
+                  {
+                    "path": "kvcache-ai/Mooncake/.github/workflows/_build-wheel.yaml@19eee407938e557f416ea304473fadc7832fe09d",
+                    "sha": "19eee407938e557f416ea304473fadc7832fe09d",
+                    "ref": "refs/pull/4453/merge"
+                  },
+                  {
+                    "path": "kvcache-ai/Mooncake/.github/workflows/ci_efa.yml@19eee407938e557f416ea304473fadc7832fe09d",
+                    "sha": "19eee407938e557f416ea304473fadc7832fe09d",
+                    "ref": "refs/pull/4453/merge"
+                  },
+                  {
+                    "path": "kvcache-ai/Mooncake/.github/workflows/_build-efa-wheel.yaml@19eee407938e557f416ea304473fadc7832fe09d",
+                    "sha": "19eee407938e557f416ea304473fadc7832fe09d",
+                    "ref": "refs/pull/4453/merge"
+                  },
+                  {
+                    "path": "kvcache-ai/Mooncake/.github/workflows/ci_rocm.yml@19eee407938e557f416ea304473fadc7832fe09d",
+                    "sha": "19eee407938e557f416ea304473fadc7832fe09d",
+                    "ref": "refs/pull/4453/merge"
+                  }
+                ],
+                "run_started_at": "2026-10-02T12:31:44Z",
+                "triggering_actor": {
+                  "login": "he-yufeng",
+                  "id": 40085740,
+                  "node_id": "MDQ6VXNlcjQwMDg1NzQw",
+                  "avatar_url": "https://avatars.githubusercontent.com/u/40085740?v=4",
+                  "gravatar_id": "",
+                  "url": "https://api.github.com/users/he-yufeng",
+                  "html_url": "https://github.com/he-yufeng",
+                  "followers_url": "https://api.github.com/users/he-yufeng/followers",
+                  "following_url": "https://api.github.com/users/he-yufeng/following{/other_user}",
+                  "gists_url": "https://api.github.com/users/he-yufeng/gists{/gist_id}",
+                  "starred_url": "https://api.github.com/users/he-yufeng/starred{/owner}{/repo}",
+                  "subscriptions_url": "https://api.github.com/users/he-yufeng/subscriptions",
+                  "organizations_url": "https://api.github.com/users/he-yufeng/orgs",
+                  "repos_url": "https://api.github.com/users/he-yufeng/repos",
+                  "events_url": "https://api.github.com/users/he-yufeng/events{/privacy}",
+                  "received_events_url": "https://api.github.com/users/he-yufeng/received_events",
+                  "type": "User",
+                  "user_view_type": "public",
+                  "site_admin": false
+                },
+                "jobs_url": "https://api.github.com/repos/kvcache-ai/Mooncake/actions/runs/37007213752/jobs",
+                "logs_url": "https://api.github.com/repos/kvcache-ai/Mooncake/actions/runs/37007213752/logs",
+                "check_suite_url": "https://api.github.com/repos/kvcache-ai/Mooncake/check-suites/100238489582",
+                "artifacts_url": "https://api.github.com/repos/kvcache-ai/Mooncake/actions/runs/37007213752/artifacts",
+                "cancel_url": "https://api.github.com/repos/kvcache-ai/Mooncake/actions/runs/37007213752/cancel",
+                "rerun_url": "https://api.github.com/repos/kvcache-ai/Mooncake/actions/runs/37007213752/rerun",
+                "previous_attempt_url": null,
+                "workflow_url": "https://api.github.com/repos/kvcache-ai/Mooncake/actions/workflows/151607469",
+                "head_commit": {
+                  "id": "74f04e7a6b53d0b90df21df854f61dbc74ca2e4d",
+                  "tree_id": "4ed170722297c962f853257d2935bacaafeb154e",
+                  "message": "test: read the full notify reply frame before closing\n\nThe flood loop's bare read() can return after the frame header alone.\nClosing then resets the socket while the daemon is still writing the\npayload, and its next write() kills the test process with SIGPIPE, as\nseen on the CTest leg. Drain the frame with readString instead, which\nalso asserts the daemon answered with a Notify reply.\n\nSigned-off-by: Yufeng He <40085740+he-yufeng@users.noreply.github.com>",
+                  "timestamp": "2026-10-02T12:31:36Z",
+                  "author": {
+                    "name": "Yufeng He",
+                    "email": "40085740+he-yufeng@users.noreply.github.com"
+                  },
+                  "committer": {
+                    "name": "Yufeng He",
+                    "email": "40085740+he-yufeng@users.noreply.github.com"
+                  }
+                },
+                "repository": {
+                  "id": 819733173,
+                  "node_id": "R_kgDOMNwitQ",
+                  "name": "Mooncake",
+                  "full_name": "kvcache-ai/Mooncake",
+                  "private": false,
+                  "owner": {
+                    "login": "kvcache-ai",
+                    "id": 170996193,
+                    "node_id": "O_kgDOCjEx4Q",
+                    "avatar_url": "https://avatars.githubusercontent.com/u/170996193?v=4",
+                    "gravatar_id": "",
+                    "url": "https://api.github.com/users/kvcache-ai",
+                    "html_url": "https://github.com/kvcache-ai",
+                    "followers_url": "https://api.github.com/users/kvcache-ai/followers",
+                    "following_url": "https://api.github.com/users/kvcache-ai/following{/other_user}",
+                    "gists_url": "https://api.github.com/users/kvcache-ai/gists{/gist_id}",
+                    "starred_url": "https://api.github.com/users/kvcache-ai/starred{/owner}{/repo}",
+                    "subscriptions_url": "https://api.github.com/users/kvcache-ai/subscriptions",
+                    "organizations_url": "https://api.github.com/users/kvcache-ai/orgs",
+                    "repos_url": "https://api.github.com/users/kvcache-ai/repos",
+                    "events_url": "https://api.github.com/users/kvcache-ai/events{/privacy}",
+                    "received_events_url": "https://api.github.com/users/kvcache-ai/received_events",
+                    "type": "Organization",
+                    "user_view_type": "public",
+                    "site_admin": false
+                  },
+                  "html_url": "https://github.com/kvcache-ai/Mooncake",
+                  "description": "Mooncake is the serving platform for Kimi, a leading LLM service provided by Moonshot AI.",
+                  "fork": false,
+                  "url": "https://api.github.com/repos/kvcache-ai/Mooncake",
+                  "forks_url": "https://api.github.com/repos/kvcache-ai/Mooncake/forks",
+                  "keys_url": "https://api.github.com/repos/kvcache-ai/Mooncake/keys{/key_id}",
+                  "collaborators_url": "https://api.github.com/repos/kvcache-ai/Mooncake/collaborators{/collaborator}",
+                  "teams_url": "https://api.github.com/repos/kvcache-ai/Mooncake/teams",
+                  "hooks_url": "https://api.github.com/repos/kvcache-ai/Mooncake/hooks",
+                  "issue_events_url": "https://api.github.com/repos/kvcache-ai/Mooncake/issues/events{/number}",
+                  "events_url": "https://api.github.com/repos/kvcache-ai/Mooncake/events",
+                  "assignees_url": "https://api.github.com/repos/kvcache-ai/Mooncake/assignees{/user}",
+                  "branches_url": "https://api.github.com/repos/kvcache-ai/Mooncake/branches{/branch}",
+                  "tags_url": "https://api.github.com/repos/kvcache-ai/Mooncake/tags",
+                  "blobs_url": "https://api.github.com/repos/kvcache-ai/Mooncake/git/blobs{/sha}",
+                  "git_tags_url": "https://api.github.com/repos/kvcache-ai/Mooncake/git/tags{/sha}",
+                  "git_refs_url": "https://api.github.com/repos/kvcache-ai/Mooncake/git/refs{/sha}",
+                  "trees_url": "https://api.github.com/repos/kvcache-ai/Mooncake/git/trees{/sha}",
+                  "statuses_url": "https://api.github.com/repos/kvcache-ai/Mooncake/statuses/{sha}",
+                  "languages_url": "https://api.github.com/repos/kvcache-ai/Mooncake/languages",
+                  "stargazers_url": "https://api.github.com/repos/kvcache-ai/Mooncake/stargazers",
+                  "contributors_url": "https://api.github.com/repos/kvcache-ai/Mooncake/contributors",
+                  "subscribers_url": "https://api.github.com/repos/kvcache-ai/Mooncake/subscribers",
+                  "subscription_url": "https://api.github.com/repos/kvcache-ai/Mooncake/subscription",
+                  "commits_url": "https://api.github.com/repos/kvcache-ai/Mooncake/commits{/sha}",
+                  "git_commits_url": "https://api.github.com/repos/kvcache-ai/Mooncake/git/commits{/sha}",
+                  "comments_url": "https://api.github.com/repos/kvcache-ai/Mooncake/comments{/number}",
+                  "issue_comment_url": "https://api.github.com/repos/kvcache-ai/Mooncake/issues/comments{/number}",
+                  "contents_url": "https://api.github.com/repos/kvcache-ai/Mooncake/contents/{+path}",
+                  "compare_url": "https://api.github.com/repos/kvcache-ai/Mooncake/compare/{base}...{head}",
+                  "merges_url": "https://api.github.com/repos/kvcache-ai/Mooncake/merges",
+                  "archive_url": "https://api.github.com/repos/kvcache-ai/Mooncake/{archive_format}{/ref}",
+                  "downloads_url": "https://api.github.com/repos/kvcache-ai/Mooncake/downloads",
+                  "issues_url": "https://api.github.com/repos/kvcache-ai/Mooncake/issues{/number}",
+                  "pulls_url": "https://api.github.com/repos/kvcache-ai/Mooncake/pulls{/number}",
+                  "milestones_url": "https://api.github.com/repos/kvcache-ai/Mooncake/milestones{/number}",
+                  "notifications_url": "https://api.github.com/repos/kvcache-ai/Mooncake/notifications{?since,all,participating}",
+                  "labels_url": "https://api.github.com/repos/kvcache-ai/Mooncake/labels{/name}",
+                  "releases_url": "https://api.github.com/repos/kvcache-ai/Mooncake/releases{/id}",
+                  "deployments_url": "https://api.github.com/repos/kvcache-ai/Mooncake/deployments"
+                },
+                "head_repository": {
+                  "id": 1174747634,
+                  "node_id": "R_kgDORgU58g",
+                  "name": "Mooncake",
+                  "full_name": "he-yufeng/Mooncake",
+                  "private": false,
+                  "owner": {
+                    "login": "he-yufeng",
+                    "id": 40085740,
+                    "node_id": "MDQ6VXNlcjQwMDg1NzQw",
+                    "avatar_url": "https://avatars.githubusercontent.com/u/40085740?v=4",
+                    "gravatar_id": "",
+                    "url": "https://api.github.com/users/he-yufeng",
+                    "html_url": "https://github.com/he-yufeng",
+                    "followers_url": "https://api.github.com/users/he-yufeng/followers",
+                    "following_url": "https://api.github.com/users/he-yufeng/following{/other_user}",
+                    "gists_url": "https://api.github.com/users/he-yufeng/gists{/gist_id}",
+                    "starred_url": "https://api.github.com/users/he-yufeng/starred{/owner}{/repo}",
+                    "subscriptions_url": "https://api.github.com/users/he-yufeng/subscriptions",
+                    "organizations_url": "https://api.github.com/users/he-yufeng/orgs",
+                    "repos_url": "https://api.github.com/users/he-yufeng/repos",
+                    "events_url": "https://api.github.com/users/he-yufeng/events{/privacy}",
+                    "received_events_url": "https://api.github.com/users/he-yufeng/received_events",
+                    "type": "User",
+                    "user_view_type": "public",
+                    "site_admin": false
+                  },
+                  "html_url": "https://github.com/he-yufeng/Mooncake",
+                  "description": "Mooncake is the serving platform for Kimi, a leading LLM service provided by Moonshot AI.",
+                  "fork": true,
+                  "url": "https://api.github.com/repos/he-yufeng/Mooncake",
+                  "forks_url": "https://api.github.com/repos/he-yufeng/Mooncake/forks",
+                  "keys_url": "https://api.github.com/repos/he-yufeng/Mooncake/keys{/key_id}",
+                  "collaborators_url": "https://api.github.com/repos/he-yufeng/Mooncake/collaborators{/collaborator}",
+                  "teams_url": "https://api.github.com/repos/he-yufeng/Mooncake/teams",
+                  "hooks_url": "https://api.github.com/repos/he-yufeng/Mooncake/hooks",
+                  "issue_events_url": "https://api.github.com/repos/he-yufeng/Mooncake/issues/events{/number}",
+                  "events_url": "https://api.github.com/repos/he-yufeng/Mooncake/events",
+                  "assignees_url": "https://api.github.com/repos/he-yufeng/Mooncake/assignees{/user}",
+                  "branches_url": "https://api.github.com/repos/he-yufeng/Mooncake/branches{/branch}",
+                  "tags_url": "https://api.github.com/repos/he-yufeng/Mooncake/tags",
+                  "blobs_url": "https://api.github.com/repos/he-yufeng/Mooncake/git/blobs{/sha}",
+                  "git_tags_url": "https://api.github.com/repos/he-yufeng/Mooncake/git/tags{/sha}",
+                  "git_refs_url": "https://api.github.com/repos/he-yufeng/Mooncake/git/refs{/sha}",
+                  "trees_url": "https://api.github.com/repos/he-yufeng/Mooncake/git/trees{/sha}",
+                  "statuses_url": "https://api.github.com/repos/he-yufeng/Mooncake/statuses/{sha}",
+                  "languages_url": "https://api.github.com/repos/he-yufeng/Mooncake/languages",
+                  "stargazers_url": "https://api.github.com/repos/he-yufeng/Mooncake/stargazers",
+                  "contributors_url": "https://api.github.com/repos/he-yufeng/Mooncake/contributors",
+                  "subscribers_url": "https://api.github.com/repos/he-yufeng/Mooncake/subscribers",
+                  "subscription_url": "https://api.github.com/repos/he-yufeng/Mooncake/subscription",
+                  "commits_url": "https://api.github.com/repos/he-yufeng/Mooncake/commits{/sha}",
+                  "git_commits_url": "https://api.github.com/repos/he-yufeng/Mooncake/git/commits{/sha}",
+                  "comments_url": "https://api.github.com/repos/he-yufeng/Mooncake/comments{/number}",
+                  "issue_comment_url": "https://api.github.com/repos/he-yufeng/Mooncake/issues/comments{/number}",
+                  "contents_url": "https://api.github.com/repos/he-yufeng/Mooncake/contents/{+path}",
+                  "compare_url": "https://api.github.com/repos/he-yufeng/Mooncake/compare/{base}...{head}",
+                  "merges_url": "https://api.github.com/repos/he-yufeng/Mooncake/merges",
+                  "archive_url": "https://api.github.com/repos/he-yufeng/Mooncake/{archive_format}{/ref}",
+                  "downloads_url": "https://api.github.com/repos/he-yufeng/Mooncake/downloads",
+                  "issues_url": "https://api.github.com/repos/he-yufeng/Mooncake/issues{/number}",
+                  "pulls_url": "https://api.github.com/repos/he-yufeng/Mooncake/pulls{/number}",
+                  "milestones_url": "https://api.github.com/repos/he-yufeng/Mooncake/milestones{/number}",
+                  "notifications_url": "https://api.github.com/repos/he-yufeng/Mooncake/notifications{?since,all,participating}",
+                  "labels_url": "https://api.github.com/repos/he-yufeng/Mooncake/labels{/name}",
+                  "releases_url": "https://api.github.com/repos/he-yufeng/Mooncake/releases{/id}",
+                  "deployments_url": "https://api.github.com/repos/he-yufeng/Mooncake/deployments"
+                }
+              },
+              "qualification": "13:12:09 UTC CTest仍in_progress；wheel构建已失败，日志runner shutdown/exit137；没有当前head CTest终态，不能断言SIGPIPE问题已解决。"
+            },
+            "closed_at": null,
+            "merged": false,
+            "metadataVerifiedAt": "2026-10-02T13:12:09Z",
+            "sourceReview": {
+              "retainedFixedSourceHead": "28aaa0e114c1d1928d529a1aa6ab67226daab59a",
+              "retainedSourceReviewedAt": "2026-10-02T12:15:38Z",
+              "metadataRefreshDoesNotReexecuteTests": true,
+              "deltaReviewedAt": "2026-10-02T13:04:31Z",
+              "currentHead": "74f04e7a6b53d0b90df21df854f61dbc74ca2e4d",
+              "basis": "保留28aaa0e生产源码审读；compare确认仅test文件1个commit，重读74f04e7完整patch；不将作者SIGPIPE解释写为已复现根因"
+            },
+            "postCutoffUpdate": true,
+            "dateBoundary": "PR在08:00–12:00窗内提出；12:31:36测试实质修订为窗后后续核验，旧head失败保留在revision。"
+          },
+          "supportingSources": [
+            {
+              "title": "握手入口驱逐、成功回复与另一路pushNotify边界",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/74f04e7a6b53d0b90df21df854f61dbc74ca2e4d/mooncake-transfer-engine/src/transfer_metadata.cpp#L400-L444"
+            },
+            {
+              "title": "默认条数与独立frame字节限制",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/74f04e7a6b53d0b90df21df854f61dbc74ca2e4d/mooncake-transfer-engine/include/common.h#L510-L589"
+            },
+            {
+              "title": "新增真实socket回归定义",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/74f04e7a6b53d0b90df21df854f61dbc74ca2e4d/mooncake-transfer-engine/tests/transfer_metadata_test.cpp#L1060-L1112"
+            },
+            {
+              "title": "12:31测试修订与作者SIGPIPE解释",
+              "url": "https://github.com/kvcache-ai/Mooncake/commit/74f04e7a6b53d0b90df21df854f61dbc74ca2e4d"
+            },
+            {
+              "title": "当前head CTest仍运行",
+              "url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37007213752/job/110838253820"
+            },
+            {
+              "title": "当前head wheel失败：runner shutdown／exit137",
+              "url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37007213752/job/110838443181"
+            },
+            {
+              "title": "历史head 28aaa0e的SIGPIPE失败",
+              "url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36992754039/job/110792558574"
+            }
+          ],
+          "revisions": [
+            {
+              "revisedAt": "2026-10-02T13:11:41Z",
+              "reason": "12:31新head修订socket测试读取完整响应；历史SIGPIPE失败不能继续作为当前head失败，当前CTest仍运行且另一wheel构建因runner shutdown失败。",
+              "record": {
+                "id": "mooncake-handshake-notify-retention-bound",
+                "category": "MOONCAKE · CONTROL PLANE",
+                "title": "Handshake 通知队列提议按条数封顶，丢旧保新仍须核验完成语义与失败回归",
+                "summary": "10月2日09:57 UTC新开的#4453，在经典Transfer Engine的receivePeerNotify入口读取MC_HANDSHAKE_MAX_NOTIFY_ENTRIES，默认1024条、合法范围1至1048576；队列满时移除最旧未消费项再加入新通知，每千次驱逐才记录一次告警。固定head 28aaa0e，仍open、未合并。它针对可达握手端口的通知洪泛，为pending retention增加显式容量边界。",
+                "why": "此限制按条数而非总字节计费，另一个pushNotify入口仍直接追加；驱逐后仍回复success，因此接收确认不能解释为通知最终被应用消费。vector首部删除还保留锁内线性搬移成本，尚无持续洪泛下的CPU与端到端完成测试。作者仅报告本地语法、格式和pre-commit检查；本次核到该head的CI run36992754039中transfer_metadata_test在进入新BoundedQueueEvictsOldestUnderFlood测试后以SIGPIPE退出，247个CTest目标中1个失败，不能沿用PR勾选框称单测全过；日志不足以判定SIGPIPE根因。本次未独立运行回归。",
+                "source": "https://github.com/kvcache-ai/Mooncake/pull/4453",
+                "sourceLabel": "Mooncake #4453 · open 28aaa0e · CTest失败",
+                "reading": "7 min",
+                "signal": "high",
+                "columns": [
+                  "mooncake",
+                  "network"
+                ],
+                "sourceVersion": {
+                  "repository": "kvcache-ai/Mooncake",
+                  "pullRequest": 4453,
+                  "created_at": "2026-10-02T09:57:26Z",
+                  "updated_at": "2026-10-02T09:57:36Z",
+                  "head": "28aaa0e114c1d1928d529a1aa6ab67226daab59a",
+                  "base": "0d1a8040faebb7c127c8901840a38c2ff57e80c5",
+                  "state": "open",
+                  "draft": false,
+                  "merged_at": null,
+                  "merge_commit_sha": null,
+                  "head_committed_at": "2026-10-02T09:55:51Z",
+                  "verifiedAt": "2026-10-02T12:15:38Z",
+                  "observationWindowStart": "2026-10-02T08:00:00Z",
+                  "observationWindowEnd": "2026-10-02T12:00:00Z",
+                  "evidenceBoundary": "固定源码、上游作者报告与CI读取；本次未运行GPU、RDMA、模型评测或服务实验",
+                  "ciEvidence": {
+                    "runId": 36992754039,
+                    "head": "28aaa0e114c1d1928d529a1aa6ab67226daab59a",
+                    "ctestJobId": 110792558574,
+                    "ctestConclusion": "failure",
+                    "ctestCompletedAt": "2026-10-02T10:40:53Z",
+                    "observedFailure": "transfer_metadata_test SIGPIPE; new notify-test RUN was the last gtest case printed; no stack trace or root-cause claim",
+                    "ctestTargets": 247,
+                    "failedCtestTargets": 1
+                  }
+                },
+                "supportingSources": [
+                  {
+                    "title": "握手入口驱逐、成功回复与另一路pushNotify边界",
+                    "url": "https://github.com/kvcache-ai/Mooncake/blob/28aaa0e114c1d1928d529a1aa6ab67226daab59a/mooncake-transfer-engine/src/transfer_metadata.cpp#L400-L444"
+                  },
+                  {
+                    "title": "默认条数与独立frame字节限制",
+                    "url": "https://github.com/kvcache-ai/Mooncake/blob/28aaa0e114c1d1928d529a1aa6ab67226daab59a/mooncake-transfer-engine/include/common.h#L510-L589"
+                  },
+                  {
+                    "title": "新增真实socket回归定义",
+                    "url": "https://github.com/kvcache-ai/Mooncake/blob/28aaa0e114c1d1928d529a1aa6ab67226daab59a/mooncake-transfer-engine/tests/transfer_metadata_test.cpp#L1060-L1108"
+                  },
+                  {
+                    "title": "固定head的CTest失败日志：SIGPIPE，非全绿",
+                    "url": "https://github.com/kvcache-ai/Mooncake/actions/runs/36992754039/job/110792558574"
+                  }
+                ]
+              }
+            }
+          ],
+          "rank": "31"
+        },
+        {
+          "id": "mooncake-keep-paused-rail-fail-in-place",
+          "category": "MOONCAKE · RDMA FAILURE PATH",
+          "title": "Mooncake 暂停 Rail 时改为原路径失败，避免只换一端 NIC 越过隔离拓扑",
+          "summary": "#4307 在 10 月 2 日 11:58:33 UTC 的固定 head 5c8de549 重新收窄方案：新增默认关闭的 MC_ENABLE_KEEP_PAUSED_RAIL。submitPostSend 与 redispatch 发现选定 peer rail 暂停时直接把 slice 标为 FAILED，并阻止本地 NIC 故障后的 local-only handoff；同名 peer 偏好仍由既有 MC_ENABLE_DEST_DEVICE_AFFINITY 控制。核验时 open、未合并。",
+          "why": "隔离 rail 网络需要把本地与远端 NIC 当成可达配对；只换一端可能转到不存在的物理路径。当前代码选择暴露失败，未实现自动配对重选、等待 rail 恢复或端到端容错。PR 标题/正文仍写旧 STRICT_DEST_DEVICE_AFFINITY、每 slice 选本地 NIC 和硬性同名匹配，与最新固定 diff 不一致，本条以源码与评审要求为准。新增两个 mock RDMA 测试对照首次提交和 redispatch 的开关行为；它们不覆盖真实 NIC 故障切换全部分支。同一 head 的 CTest 已于 12:25:51 UTC 成功，整体 CI Gate 于 13:01:30 失败：Python3.12 wheel 日志缺少 PG 对应 torch2.14.1 模块，CUDA13 wheel 构建也失败但日志返回 404，根因未核验。不能把整体红灯直接归因于 rail 逻辑，也不能以 mock/CTest 成功外推真实 NIC 故障切换；未见该新版本真实硬件结果，本次未独立运行。",
+          "source": "https://github.com/kvcache-ai/Mooncake/pull/4307",
+          "sourceLabel": "Mooncake #4307 · open 5c8de54 · CTest成功／整体CI失败",
+          "reading": "7 min",
+          "signal": "high",
+          "columns": [
+            "mooncake",
+            "network"
+          ],
+          "sourceVersion": {
+            "repository": "kvcache-ai/Mooncake",
+            "pullRequest": 4307,
+            "created_at": "2026-09-24T06:02:25Z",
+            "updated_at": "2026-10-02T12:00:14Z",
+            "head": "5c8de5492bc168ce639ec53614e787656e8fc81f",
+            "base": "d5a2d6dc8ba567faa6b5f28dfe35365d70e52261",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "merge_commit_sha": null,
+            "head_committed_at": "2026-10-02T11:58:33Z",
+            "verifiedAt": "2026-10-02T13:12:09Z",
+            "observationWindowStart": "2026-10-02T08:00:00Z",
+            "observationWindowEnd": "2026-10-02T12:00:00Z",
+            "evidenceBoundary": "只读GitHub元数据、固定源码与提交差异、上游CI状态/日志；作者报告与CI证据分开；本次未独立运行CPU/GPU、RDMA、模型评测或服务实验",
+            "dateBoundary": "实现commit在12:00观察窗内；PR updated_at为12:00:14，状态与CI在窗后核验，不冒充窗内完成",
+            "descriptionMismatch": "PR title/body describe removed strict-affinity design; current fixed code implements MC_ENABLE_KEEP_PAUSED_RAIL only",
+            "closed_at": null,
+            "merged": false,
+            "metadataVerifiedAt": "2026-10-02T13:12:09Z",
+            "sourceReview": {
+              "retainedFixedSourceHead": "5c8de5492bc168ce639ec53614e787656e8fc81f",
+              "retainedSourceReviewedAt": "2026-10-02T12:15:38Z",
+              "metadataRefreshDoesNotReexecuteTests": true,
+              "basis": "11:58:33固定head与12:00阶段完全相同；保留原固定源码审读，本轮只更新元数据和CI证据。"
+            },
+            "ciEvidence": {
+              "observedAt": "2026-10-02T13:04:56Z",
+              "workflowRuns": [
+                {
+                  "id": 37004129757,
+                  "name": "Build & Test (Linux)",
+                  "status": "completed",
+                  "conclusion": "failure",
+                  "run_number": 14774,
+                  "jobs_url": "https://api.github.com/repos/kvcache-ai/Mooncake/actions/runs/37004129757/jobs",
+                  "logs_url": "https://api.github.com/repos/kvcache-ai/Mooncake/actions/runs/37004129757/logs",
+                  "workflow_id": 151607469
+                }
+              ],
+              "statusContexts": [],
+              "boundary": "GitHub Actions列表只返回pull_request触发的首个页面；statusContexts为connector返回的快照，不由缺失结果推断通过。",
+              "jobsObservedAt": "2026-10-02T13:05:59Z",
+              "totalJobs": 27,
+              "jobs": [
+                {
+                  "id": 110828332609,
+                  "name": "Spell Check with Typos",
+                  "head_sha": "5c8de5492bc168ce639ec53614e787656e8fc81f",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:00:12Z",
+                  "completed_at": "2026-10-02T12:00:24Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37004129757/job/110828332609"
+                },
+                {
+                  "id": 110828332756,
+                  "name": "Test external CI lifecycle helpers",
+                  "head_sha": "5c8de5492bc168ce639ec53614e787656e8fc81f",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:00:12Z",
+                  "completed_at": "2026-10-02T12:00:20Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37004129757/job/110828332756"
+                },
+                {
+                  "id": 110828332785,
+                  "name": "Check Python with Ruff",
+                  "head_sha": "5c8de5492bc168ce639ec53614e787656e8fc81f",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:00:11Z",
+                  "completed_at": "2026-10-02T12:00:24Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37004129757/job/110828332785"
+                },
+                {
+                  "id": 110828332903,
+                  "name": "check-paths",
+                  "head_sha": "5c8de5492bc168ce639ec53614e787656e8fc81f",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:00:11Z",
+                  "completed_at": "2026-10-02T12:00:19Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37004129757/job/110828332903"
+                },
+                {
+                  "id": 110828332939,
+                  "name": "Check reshard manifest types",
+                  "head_sha": "5c8de5492bc168ce639ec53614e787656e8fc81f",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:00:12Z",
+                  "completed_at": "2026-10-02T12:00:30Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37004129757/job/110828332939"
+                },
+                {
+                  "id": 110828332999,
+                  "name": "Test CI scripts",
+                  "head_sha": "5c8de5492bc168ce639ec53614e787656e8fc81f",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:00:11Z",
+                  "completed_at": "2026-10-02T12:00:34Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37004129757/job/110828332999"
+                },
+                {
+                  "id": 110828333089,
+                  "name": "Check code format",
+                  "head_sha": "5c8de5492bc168ce639ec53614e787656e8fc81f",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:00:11Z",
+                  "completed_at": "2026-10-02T12:00:47Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37004129757/job/110828333089"
+                },
+                {
+                  "id": 110828384040,
+                  "name": "CTest unit tests (Python 3.12)",
+                  "head_sha": "5c8de5492bc168ce639ec53614e787656e8fc81f",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:00:21Z",
+                  "completed_at": "2026-10-02T12:25:51Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37004129757/job/110828384040"
+                },
+                {
+                  "id": 110828384050,
+                  "name": "build-flags",
+                  "head_sha": "5c8de5492bc168ce639ec53614e787656e8fc81f",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:00:21Z",
+                  "completed_at": "2026-10-02T12:06:26Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37004129757/job/110828384050"
+                },
+                {
+                  "id": 110828384212,
+                  "name": "Check Sphinx docs build",
+                  "head_sha": "5c8de5492bc168ce639ec53614e787656e8fc81f",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:00:21Z",
+                  "completed_at": "2026-10-02T12:02:00Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37004129757/job/110828384212"
+                },
+                {
+                  "id": 110828534311,
+                  "name": "tent-ci (cuda-off-metrics-on)",
+                  "head_sha": "5c8de5492bc168ce639ec53614e787656e8fc81f",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:00:49Z",
+                  "completed_at": "2026-10-02T12:17:58Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37004129757/job/110828534311"
+                },
+                {
+                  "id": 110828534452,
+                  "name": "tent-ci (cuda-off)",
+                  "head_sha": "5c8de5492bc168ce639ec53614e787656e8fc81f",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:00:49Z",
+                  "completed_at": "2026-10-02T12:18:17Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37004129757/job/110828534452"
+                },
+                {
+                  "id": 110828534481,
+                  "name": "tent-ci (ub-mock)",
+                  "head_sha": "5c8de5492bc168ce639ec53614e787656e8fc81f",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:00:50Z",
+                  "completed_at": "2026-10-02T12:25:44Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37004129757/job/110828534481"
+                },
+                {
+                  "id": 110828534547,
+                  "name": "build-wheel-rocm / build-wheel-rocm (3.10)",
+                  "head_sha": "5c8de5492bc168ce639ec53614e787656e8fc81f",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:00:49Z",
+                  "completed_at": "2026-10-02T12:16:51Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37004129757/job/110828534547"
+                },
+                {
+                  "id": 110828534610,
+                  "name": "build-wheel / build (3.10)",
+                  "head_sha": "5c8de5492bc168ce639ec53614e787656e8fc81f",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:00:49Z",
+                  "completed_at": "2026-10-02T12:22:58Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37004129757/job/110828534610"
+                },
+                {
+                  "id": 110828534644,
+                  "name": "build-wheel / build (3.12)",
+                  "head_sha": "5c8de5492bc168ce639ec53614e787656e8fc81f",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:00:51Z",
+                  "completed_at": "2026-10-02T12:20:16Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37004129757/job/110828534644"
+                },
+                {
+                  "id": 110828534661,
+                  "name": "build-wheel-rocm / build-wheel-rocm (3.12)",
+                  "head_sha": "5c8de5492bc168ce639ec53614e787656e8fc81f",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:00:50Z",
+                  "completed_at": "2026-10-02T12:18:19Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37004129757/job/110828534661"
+                },
+                {
+                  "id": 110828534664,
+                  "name": "tent-ci (cuda-on)",
+                  "head_sha": "5c8de5492bc168ce639ec53614e787656e8fc81f",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:00:50Z",
+                  "completed_at": "2026-10-02T12:15:19Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37004129757/job/110828534664"
+                },
+                {
+                  "id": 110828534813,
+                  "name": "build-wheel-cu13 / build (3.12)",
+                  "head_sha": "5c8de5492bc168ce639ec53614e787656e8fc81f",
+                  "status": "completed",
+                  "conclusion": "failure",
+                  "started_at": "2026-10-02T12:00:50Z",
+                  "completed_at": "2026-10-02T13:00:57Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37004129757/job/110828534813"
+                },
+                {
+                  "id": 110828535083,
+                  "name": "build-wheel-efa / build-wheel-efa (cuda13, 3.12, arm64) / build (3.12)",
+                  "head_sha": "5c8de5492bc168ce639ec53614e787656e8fc81f",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:01:01Z",
+                  "completed_at": "2026-10-02T12:09:22Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37004129757/job/110828535083"
+                },
+                {
+                  "id": 110828535095,
+                  "name": "build-wheel-efa / build-wheel-efa (non-cuda, 3.10, arm64) / build (3.10)",
+                  "head_sha": "5c8de5492bc168ce639ec53614e787656e8fc81f",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:00:55Z",
+                  "completed_at": "2026-10-02T12:07:47Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37004129757/job/110828535095"
+                },
+                {
+                  "id": 110828535165,
+                  "name": "build-wheel-efa / build-wheel-efa (cuda, 3.12) / build (3.12)",
+                  "head_sha": "5c8de5492bc168ce639ec53614e787656e8fc81f",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:00:50Z",
+                  "completed_at": "2026-10-02T12:10:32Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37004129757/job/110828535165"
+                },
+                {
+                  "id": 110828535244,
+                  "name": "build-wheel-efa / build-wheel-efa (cuda13, 3.12) / build (3.12)",
+                  "head_sha": "5c8de5492bc168ce639ec53614e787656e8fc81f",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:00:50Z",
+                  "completed_at": "2026-10-02T12:10:00Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37004129757/job/110828535244"
+                },
+                {
+                  "id": 110828535252,
+                  "name": "build-wheel-efa / build-wheel-efa (non-cuda, 3.10) / build (3.10)",
+                  "head_sha": "5c8de5492bc168ce639ec53614e787656e8fc81f",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:00:50Z",
+                  "completed_at": "2026-10-02T12:11:12Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37004129757/job/110828535252"
+                },
+                {
+                  "id": 110835406425,
+                  "name": "test-wheel-ubuntu (ubuntu-24.04, 3.10, mooncake-wheel-ci-py310)",
+                  "head_sha": "5c8de5492bc168ce639ec53614e787656e8fc81f",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "started_at": "2026-10-02T12:23:01Z",
+                  "completed_at": "2026-10-02T12:30:17Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37004129757/job/110835406425"
+                },
+                {
+                  "id": 110835406521,
+                  "name": "test-wheel-ubuntu (ubuntu-22.04, 3.12, mooncake-wheel-ci-py312)",
+                  "head_sha": "5c8de5492bc168ce639ec53614e787656e8fc81f",
+                  "status": "completed",
+                  "conclusion": "failure",
+                  "started_at": "2026-10-02T12:23:01Z",
+                  "completed_at": "2026-10-02T12:30:18Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37004129757/job/110835406521"
+                },
+                {
+                  "id": 110847902506,
+                  "name": "CI Gate",
+                  "head_sha": "5c8de5492bc168ce639ec53614e787656e8fc81f",
+                  "status": "completed",
+                  "conclusion": "failure",
+                  "started_at": "2026-10-02T13:01:26Z",
+                  "completed_at": "2026-10-02T13:01:30Z",
+                  "html_url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37004129757/job/110847902506"
+                }
+              ],
+              "allJobPagesRead": true,
+              "qualification": "CTest success 12:25:51；CI Gate failure 13:01:30；Python3.12 wheel为PG/Torch模块错误；CUDA13 wheel失败日志404，不推断根因。"
+            }
+          },
+          "supportingSources": [
+            {
+              "title": "首次提交保留选定rail并失败",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/5c8de5492bc168ce639ec53614e787656e8fc81f/mooncake-transfer-engine/src/transport/rdma_transport/worker_pool.cpp#L396-L423"
+            },
+            {
+              "title": "失败后的local-only handoff与redispatch边界",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/5c8de5492bc168ce639ec53614e787656e8fc81f/mooncake-transfer-engine/src/transport/rdma_transport/worker_pool.cpp#L1008-L1082"
+            },
+            {
+              "title": "新开关的实际文档语义",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/5c8de5492bc168ce639ec53614e787656e8fc81f/docs/source/design/transfer-engine/index.md#L495-L503"
+            },
+            {
+              "title": "mock首次提交/redispatch两项对照",
+              "url": "https://github.com/kvcache-ai/Mooncake/blob/5c8de5492bc168ce639ec53614e787656e8fc81f/mooncake-transfer-engine/tests/rdma_endpoint_state_test.cpp#L625-L772"
+            },
+            {
+              "title": "评审要求移除旧strict设计，定位paused-rail hop",
+              "url": "https://github.com/kvcache-ai/Mooncake/pull/4307#pullrequestreview-5344150108"
+            },
+            {
+              "title": "当前head CTest成功",
+              "url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37004129757/job/110828384040"
+            },
+            {
+              "title": "Python3.12 wheel失败日志",
+              "url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37004129757/job/110835406521"
+            },
+            {
+              "title": "CUDA13 wheel失败，日志未能取得",
+              "url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37004129757/job/110828534813"
+            }
+          ],
+          "revisions": [
+            {
+              "revisedAt": "2026-10-02T13:11:41Z",
+              "reason": "同一固定head的CTest从运行中转为成功，整体CI Gate终态为失败；保留午间完整版本与代码审读时间。",
+              "record": {
+                "id": "mooncake-keep-paused-rail-fail-in-place",
+                "category": "MOONCAKE · RDMA FAILURE PATH",
+                "title": "Mooncake 暂停Rail时改为原路径失败，避免只换一端NIC越过隔离拓扑",
+                "summary": "#4307在10月2日11:58:33 UTC的固定head 5c8de549重新收窄方案：新增默认关闭的MC_ENABLE_KEEP_PAUSED_RAIL。submitPostSend与redispatch发现选定peer rail暂停时直接把slice标为FAILED，并阻止本地NIC故障后的local-only handoff；同名peer偏好仍由既有MC_ENABLE_DEST_DEVICE_AFFINITY控制。核验时open、未合并。",
+                "why": "隔离rail网络需要把本地与远端NIC当成可达配对；只换一端可能转到不存在的物理路径。当前代码选择暴露失败，未实现自动配对重选、等待rail恢复或端到端容错。PR标题/正文仍写旧STRICT_DEST_DEVICE_AFFINITY、每slice选本地NIC和硬性同名匹配，与最新固定diff不一致，本条以源码与评审要求为准。新增两个mock RDMA测试对照首次提交和redispatch的开关行为；它们不覆盖真实NIC故障切换全部分支。截至12:08 UTC该head格式检查成功，CTest仍运行，未见新版本真实硬件结果。本次只做源码核验。",
+                "source": "https://github.com/kvcache-ai/Mooncake/pull/4307",
+                "sourceLabel": "Mooncake #4307 · revision 5c8de54 · 固定代码优先",
+                "reading": "7 min",
+                "signal": "high",
+                "columns": [
+                  "mooncake",
+                  "network"
+                ],
+                "sourceVersion": {
+                  "repository": "kvcache-ai/Mooncake",
+                  "pullRequest": 4307,
+                  "created_at": "2026-09-24T06:02:25Z",
+                  "updated_at": "2026-10-02T12:00:14Z",
+                  "head": "5c8de5492bc168ce639ec53614e787656e8fc81f",
+                  "base": "d5a2d6dc8ba567faa6b5f28dfe35365d70e52261",
+                  "state": "open",
+                  "draft": false,
+                  "merged_at": null,
+                  "merge_commit_sha": null,
+                  "head_committed_at": "2026-10-02T11:58:33Z",
+                  "verifiedAt": "2026-10-02T12:15:38Z",
+                  "observationWindowStart": "2026-10-02T08:00:00Z",
+                  "observationWindowEnd": "2026-10-02T12:00:00Z",
+                  "evidenceBoundary": "固定源码、上游作者报告与CI读取；本次未运行GPU、RDMA、模型评测或服务实验",
+                  "dateBoundary": "实现commit在12:00观察窗内；PR updated_at为12:00:14，状态与CI在窗后核验，不冒充窗内完成",
+                  "descriptionMismatch": "PR title/body describe removed strict-affinity design; current fixed code implements MC_ENABLE_KEEP_PAUSED_RAIL only"
+                },
+                "supportingSources": [
+                  {
+                    "title": "首次提交保留选定rail并失败",
+                    "url": "https://github.com/kvcache-ai/Mooncake/blob/5c8de5492bc168ce639ec53614e787656e8fc81f/mooncake-transfer-engine/src/transport/rdma_transport/worker_pool.cpp#L396-L423"
+                  },
+                  {
+                    "title": "失败后的local-only handoff与redispatch边界",
+                    "url": "https://github.com/kvcache-ai/Mooncake/blob/5c8de5492bc168ce639ec53614e787656e8fc81f/mooncake-transfer-engine/src/transport/rdma_transport/worker_pool.cpp#L1008-L1082"
+                  },
+                  {
+                    "title": "新开关的实际文档语义",
+                    "url": "https://github.com/kvcache-ai/Mooncake/blob/5c8de5492bc168ce639ec53614e787656e8fc81f/docs/source/design/transfer-engine/index.md#L495-L503"
+                  },
+                  {
+                    "title": "mock首次提交/redispatch两项对照",
+                    "url": "https://github.com/kvcache-ai/Mooncake/blob/5c8de5492bc168ce639ec53614e787656e8fc81f/mooncake-transfer-engine/tests/rdma_endpoint_state_test.cpp#L625-L772"
+                  },
+                  {
+                    "title": "评审要求移除旧strict设计，定位paused-rail hop",
+                    "url": "https://github.com/kvcache-ai/Mooncake/pull/4307#pullrequestreview-5344150108"
+                  },
+                  {
+                    "title": "固定head CI仍在执行",
+                    "url": "https://github.com/kvcache-ai/Mooncake/actions/runs/37004129757"
+                  }
+                ]
+              }
+            }
+          ],
+          "rank": "32"
+        },
+        {
+          "id": "vllm-kimi-k3-prefix-cache-deployment-tests",
+          "category": "VLLM · HYBRID CACHE VALIDATION",
+          "title": "Kimi-K3 缓存回归补入 TP2→DEP2，但跨 TP 用例只检查命中，不验证输出等价",
+          "summary": "9 月 29 日提出的#59229 在 10 月 2 日 08:10–08:18 UTC 修订测试矩阵：增加 Prefill TP2→Decode DP2+EP（各 rank TP1），CI 先安装 NIXL，并移除当前无法启动的 P/D+DCP2。固定 head 774cf86。七种部署分别覆盖 block、partial 及两种 DSpark 模式，共 28 种参数组合；八层 dummy 模型连续三轮追加 prompt，offload 用例每轮清 GPU prefix cache 以强制 CPU 恢复。12:58:36 UTC 已合并，head 仍为 774cf86，merge commit 为 d648847。",
+          "why": "同 TP 用例要求 cached_tokens 不低于前轮 checkpoint、新 cache_salt 重算命中为 0，并比较生成 tokens/logprobs；不同 TP 的 P/D 用例因 dummy 权重不同而跳过数值比较，TP2→DEP2 也只在 P 端启用 prefix caching。作者早期 32 项运行报告与单独 4 项 TP2→DEP2 报告仍有版本边界；本轮另核到当前 head 在 Buildkite 92584 的两项 4×B200 Prefix Cache Shard 状态于 09:28:26／09:28:59 UTC 均 success，补强当前测试矩阵 CI 证据。但只读取到 job 状态，不能报成 28 项全 pass：DCP+DSpark 四项仍 strict xfail，跨 TP 数值比较仍跳过，P/D+DCP 仍因 interleave 约束未覆盖。合并的是测试/CI 覆盖，未修复这些限制；无独立 GPU 执行、模型质量或吞吐结论。",
+          "source": "https://github.com/vllm-project/vllm/pull/59229",
+          "sourceLabel": "vLLM #59229 · merged d648847 · 两项Prefix Cache CI成功",
+          "reading": "9 min",
+          "signal": "high",
+          "columns": [
+            "vllm",
+            "kv-cache",
+            "models"
+          ],
+          "sourceVersion": {
+            "repository": "vllm-project/vllm",
+            "pullRequest": 59229,
+            "created_at": "2026-09-29T14:03:53Z",
+            "updated_at": "2026-10-02T12:58:36Z",
+            "head": "774cf86a7f917305a3b010007363d6b186315945",
+            "base": "b558f160a2c0abcb5902acc3c91a14c38a4af173",
+            "state": "closed",
+            "draft": false,
+            "merged_at": "2026-10-02T12:58:36Z",
+            "merge_commit_sha": "d648847fe451a6a0366f8dd0e1ae96804a49a299",
+            "head_committed_at": "2026-10-02T08:18:06Z",
+            "verifiedAt": "2026-10-02T13:12:09Z",
+            "observationWindowStart": "2026-10-02T08:00:00Z",
+            "observationWindowEnd": "2026-10-02T12:00:00Z",
+            "evidenceBoundary": "只读GitHub元数据、固定源码与提交差异、上游CI状态/日志；作者报告与CI证据分开；本次未独立运行CPU/GPU、RDMA、模型评测或服务实验",
+            "authorReportVersionBoundary": "Full 32-case report predates replacement/removal; four TP2→DEP2 cases separately reported at c2a0aaaf9cfae6770a23765b531aaa02f0a1b1b1; current source has 28 cases, four strict xfails. No independently executed tests.",
+            "closed_at": "2026-10-02T12:58:36Z",
+            "merged": true,
+            "metadataVerifiedAt": "2026-10-02T13:12:09Z",
+            "sourceReview": {
+              "retainedFixedSourceHead": "774cf86a7f917305a3b010007363d6b186315945",
+              "retainedSourceReviewedAt": "2026-10-02T12:15:38Z",
+              "metadataRefreshDoesNotReexecuteTests": true,
+              "basis": "head 774cf86与12:00阶段相同，保留原固定测试源码审读；本輪读取合并metadata、merge commit及精准head的Buildkite status，不冒充独立测试复现。"
+            },
+            "ciEvidence": {
+              "observedAt": "2026-10-02T13:04:56Z",
+              "workflowRuns": [
+                {
+                  "id": 36984992096,
+                  "name": "PR title",
+                  "status": "completed",
+                  "conclusion": "skipped",
+                  "run_number": 38001,
+                  "jobs_url": "https://api.github.com/repos/vllm-project/vllm/actions/runs/36984992096/jobs",
+                  "logs_url": "https://api.github.com/repos/vllm-project/vllm/actions/runs/36984992096/logs",
+                  "workflow_id": 344893698
+                },
+                {
+                  "id": 36984981454,
+                  "name": "PR title",
+                  "status": "completed",
+                  "conclusion": "skipped",
+                  "run_number": 38000,
+                  "jobs_url": "https://api.github.com/repos/vllm-project/vllm/actions/runs/36984981454/jobs",
+                  "logs_url": "https://api.github.com/repos/vllm-project/vllm/actions/runs/36984981454/logs",
+                  "workflow_id": 344893698
+                },
+                {
+                  "id": 36984012700,
+                  "name": "PR title",
+                  "status": "completed",
+                  "conclusion": "skipped",
+                  "run_number": 37993,
+                  "jobs_url": "https://api.github.com/repos/vllm-project/vllm/actions/runs/36984012700/jobs",
+                  "logs_url": "https://api.github.com/repos/vllm-project/vllm/actions/runs/36984012700/logs",
+                  "workflow_id": 344893698
+                },
+                {
+                  "id": 36983668244,
+                  "name": "PR title",
+                  "status": "completed",
+                  "conclusion": "skipped",
+                  "run_number": 37990,
+                  "jobs_url": "https://api.github.com/repos/vllm-project/vllm/actions/runs/36983668244/jobs",
+                  "logs_url": "https://api.github.com/repos/vllm-project/vllm/actions/runs/36983668244/logs",
+                  "workflow_id": 344893698
+                },
+                {
+                  "id": 36983534474,
+                  "name": "PR title",
+                  "status": "completed",
+                  "conclusion": "skipped",
+                  "run_number": 37982,
+                  "jobs_url": "https://api.github.com/repos/vllm-project/vllm/actions/runs/36983534474/jobs",
+                  "logs_url": "https://api.github.com/repos/vllm-project/vllm/actions/runs/36983534474/logs",
+                  "workflow_id": 344893698
+                },
+                {
+                  "id": 36983350801,
+                  "name": "PR title",
+                  "status": "completed",
+                  "conclusion": "cancelled",
+                  "run_number": 37981,
+                  "jobs_url": "https://api.github.com/repos/vllm-project/vllm/actions/runs/36983350801/jobs",
+                  "logs_url": "https://api.github.com/repos/vllm-project/vllm/actions/runs/36983350801/logs",
+                  "workflow_id": 344893698
+                },
+                {
+                  "id": 36983350985,
+                  "name": "pre-commit",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "run_number": 234834,
+                  "jobs_url": "https://api.github.com/repos/vllm-project/vllm/actions/runs/36983350985/jobs",
+                  "logs_url": "https://api.github.com/repos/vllm-project/vllm/actions/runs/36983350985/logs",
+                  "workflow_id": 137737330
+                }
+              ],
+              "statusContexts": [
+                {
+                  "context": "CodeRabbit",
+                  "state": "success",
+                  "target_url": null
+                },
+                {
+                  "context": "docs/readthedocs.org:vllm",
+                  "state": "success",
+                  "target_url": "https://app.readthedocs.org/projects/vllm/builds/34894263/"
+                },
+                {
+                  "context": "buildkite/ci/pr/bootstrap",
+                  "state": "success",
+                  "target_url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbc6-8158-43d3-bcc9-560a3a2c17b9"
+                },
+                {
+                  "context": "buildkite/ci/pr/amd-docker-refresh-rocm-base",
+                  "state": "success",
+                  "target_url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbca-79d6-47d3-aeb8-5f47fb9a8131"
+                },
+                {
+                  "context": "buildkite/ci/pr/amd-docker-ensure-ci-base",
+                  "state": "success",
+                  "target_url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbca-79d6-4793-88ef-615d409fd2dc"
+                },
+                {
+                  "context": "buildkite/ci/pr/github-github-pre-commit-check",
+                  "state": "success",
+                  "target_url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbca-793f-4553-a36c-0ea4be4626c7"
+                },
+                {
+                  "context": "buildkite/ci/pr/docker-build-hpu-image",
+                  "state": "success",
+                  "target_url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbca-7967-49ea-be82-506033acd0b8"
+                },
+                {
+                  "context": "buildkite/ci/pr/docker-build-cpu-image",
+                  "state": "success",
+                  "target_url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbca-7967-4da6-967b-413f4305a0ab"
+                },
+                {
+                  "context": "buildkite/ci/pr/docker-build-image",
+                  "state": "success",
+                  "target_url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbca-7968-4d31-9b98-2011abb53dba"
+                },
+                {
+                  "context": "buildkite/ci/pr/nvidia-h200-glm5next",
+                  "state": "success",
+                  "target_url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbca-7b44-4ff1-9e0d-a7fcf7d1a04f"
+                },
+                {
+                  "context": "buildkite/ci/pr/computer-cpu-qwen4-exp",
+                  "state": "success",
+                  "target_url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbca-7b2f-4d1b-887c-f8ee3b31ac6e"
+                },
+                {
+                  "context": "buildkite/ci/pr/computer-cpu-basic-models-other",
+                  "state": "success",
+                  "target_url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbca-7b2e-4396-a709-82af8c7f340f"
+                },
+                {
+                  "context": "buildkite/ci/pr/amd-docker-build-test-image-and-artifacts",
+                  "state": "success",
+                  "target_url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbca-79d3-4264-afcb-5e526f0416f5"
+                },
+                {
+                  "context": "buildkite/ci/pr/nvidia-h200-qwen4-exp",
+                  "state": "success",
+                  "target_url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbca-7b46-4a86-ac7b-0376d50e82d4"
+                },
+                {
+                  "context": "buildkite/ci/pr/docker-build-xpu-image",
+                  "state": "success",
+                  "target_url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbca-7a6b-4084-998a-bfa5c6e0bd11"
+                },
+                {
+                  "context": "buildkite/ci/pr/amd-mi355-dpx-glm5next",
+                  "state": "success",
+                  "target_url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbca-7a68-4825-9297-aa5fa4d6e5e1"
+                },
+                {
+                  "context": "buildkite/ci/pr/amd-mi355-inkling",
+                  "state": "success",
+                  "target_url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbca-7a65-45d0-8e41-3a6d167e9c85"
+                },
+                {
+                  "context": "buildkite/ci/pr/amd-mi355-dpx-qwen4-exp",
+                  "state": "success",
+                  "target_url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbca-7a68-4894-9380-bb5d3c9e2510"
+                },
+                {
+                  "context": "buildkite/ci/pr/docker-smoking-non-root-smoke-tests",
+                  "state": "success",
+                  "target_url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbca-794c-479e-9adc-0ae5c65b1097"
+                },
+                {
+                  "context": "buildkite/ci/pr/nvidia-l4-distributed-models-shard-2",
+                  "state": "success",
+                  "target_url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbca-7b4f-4378-80f2-76c24b026377"
+                },
+                {
+                  "context": "buildkite/ci/pr/nvidia-h200-mig-18gb-basic-models-initializatio",
+                  "state": "success",
+                  "target_url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbca-7b36-4bed-ac89-8c33350dc943"
+                },
+                {
+                  "context": "buildkite/ci/pr/nvidia-b200-kimi-k3",
+                  "state": "success",
+                  "target_url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbca-7b35-47da-acea-aab117a4302f"
+                },
+                {
+                  "context": "buildkite/ci/pr/nvidia-b200-inkling",
+                  "state": "success",
+                  "target_url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbca-7b33-4dce-b703-f74fc9d66aad"
+                },
+                {
+                  "context": "buildkite/ci/pr/amd-mi355-dpx-basic-models-initialization",
+                  "state": "success",
+                  "target_url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbca-7a66-496b-ae23-ee74e5c93e45"
+                },
+                {
+                  "context": "buildkite/ci/pr/amd-mi355-kimi-k3",
+                  "state": "success",
+                  "target_url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbca-7a65-4480-9e0e-e18092767170"
+                },
+                {
+                  "context": "buildkite/ci/pr/nvidia-l4-distributed-models-shard-3",
+                  "state": "success",
+                  "target_url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbca-7b51-48dc-965d-dcd969a657c9"
+                },
+                {
+                  "context": "buildkite/ci/pr/amd-mi300-distributed-models-shard-2",
+                  "state": "success",
+                  "target_url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbca-7a42-4d02-8e8b-2fb64240616e"
+                },
+                {
+                  "context": "buildkite/ci/pr/nvidia-l4-distributed-models-shard-1",
+                  "state": "success",
+                  "target_url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbca-7b4f-4241-ad62-d6ec9c5314c0"
+                },
+                {
+                  "context": "buildkite/ci/pr/nvidia-h200-mig-35gb-basic-models-extra-initial",
+                  "state": "success",
+                  "target_url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbca-7b40-4ac1-8c8e-b03a23230688"
+                },
+                {
+                  "context": "buildkite/ci/pr/amd-mi300-distributed-models-shard-3",
+                  "state": "success",
+                  "target_url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbca-7a42-40b4-9ad9-2b709527cec4"
+                }
+              ],
+              "boundary": "GitHub Actions列表只返回pull_request触发的首个页面；statusContexts为connector返回的快照，不由缺失结果推断通过。",
+              "prefixCacheShards": [
+                {
+                  "id": 55437651995,
+                  "context": "buildkite/ci/pr/nvidia-4xb200-kimi-k3-prefix-cache-shard-2",
+                  "state": "success",
+                  "description": "Passed (28 minutes, 4 seconds)",
+                  "target_url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbca-7b31-4b27-b483-5c5a32509787",
+                  "created_at": "2026-10-02T09:28:59Z",
+                  "updated_at": "2026-10-02T09:28:59Z"
+                },
+                {
+                  "id": 55437622292,
+                  "context": "buildkite/ci/pr/nvidia-4xb200-kimi-k3-prefix-cache-shard-1",
+                  "state": "success",
+                  "description": "Passed (28 minutes, 51 seconds)",
+                  "target_url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbca-7b31-4919-81c0-dd89f6717edc",
+                  "created_at": "2026-10-02T09:28:26Z",
+                  "updated_at": "2026-10-02T09:28:26Z"
+                }
+              ],
+              "qualification": "精确head的两个4xB200 prefix-cache shard均success，状态时间09:28:26/09:28:59；未读取Buildkite完整pytest日志，不将success翻译成28项pass或解除strict xfail。"
+            },
+            "merge_committed_at": "2026-10-02T12:58:35Z",
+            "dateBoundary": "08:10–08:18测试实现修订在午间观察窗内；12:58:36合并为窗后后续核验。"
+          },
+          "supportingSources": [
+            {
+              "title": "部署矩阵、异构TP关闭D端缓存及严格xfail",
+              "url": "https://github.com/vllm-project/vllm/blob/774cf86a7f917305a3b010007363d6b186315945/tests/models/kimi_k3/test_prefix_cache.py#L137-L191"
+            },
+            {
+              "title": "逐轮GPU清缓存和独立salt重算",
+              "url": "https://github.com/vllm-project/vllm/blob/774cf86a7f917305a3b010007363d6b186315945/tests/models/kimi_k3/test_prefix_cache.py#L305-L343"
+            },
+            {
+              "title": "缓存断言和不同TP跳过数值比较",
+              "url": "https://github.com/vllm-project/vllm/blob/774cf86a7f917305a3b010007363d6b186315945/tests/models/kimi_k3/test_prefix_cache.py#L355-L375"
+            },
+            {
+              "title": "4xB200两分片CI及连接器安装",
+              "url": "https://github.com/vllm-project/vllm/blob/774cf86a7f917305a3b010007363d6b186315945/.buildkite/test_areas/models_basic.yaml#L149-L169"
+            },
+            {
+              "title": "08:10新增TP2→DEP2与NIXL安装",
+              "url": "https://github.com/vllm-project/vllm/commit/b573a631d494410707cfeb9b03895ac7ba1364dd"
+            },
+            {
+              "title": "08:18移除无法启动的PD+DCP2",
+              "url": "https://github.com/vllm-project/vllm/commit/774cf86a7f917305a3b010007363d6b186315945"
+            },
+            {
+              "title": "已合并commit",
+              "url": "https://github.com/vllm-project/vllm/commit/d648847fe451a6a0366f8dd0e1ae96804a49a299"
+            },
+            {
+              "title": "nvidia-4xb200-kimi-k3-prefix-cache-shard-2 · success",
+              "url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbca-7b31-4b27-b483-5c5a32509787"
+            },
+            {
+              "title": "nvidia-4xb200-kimi-k3-prefix-cache-shard-1 · success",
+              "url": "https://buildkite.com/vllm/ci/builds/92584#01a0fbca-7b31-4919-81c0-dd89f6717edc"
+            }
+          ],
+          "revisions": [
+            {
+              "revisedAt": "2026-10-02T13:11:41Z",
+              "reason": "12:58:36已合并；精确head两项Prefix Cache CI shard均success，替换午间缺少当前矩阵CI的说法，同时保留strict xfail及跨TP不比输出的边界。",
+              "record": {
+                "id": "vllm-kimi-k3-prefix-cache-deployment-tests",
+                "category": "VLLM · HYBRID CACHE VALIDATION",
+                "title": "Kimi-K3缓存回归补入TP2→DEP2，但跨TP用例只检查命中，不验证输出等价",
+                "summary": "9月29日提出的#59229在10月2日08:10–08:18 UTC修订测试矩阵：增加Prefill TP2→Decode DP2+EP（各rank TP1），CI先安装NIXL，并移除当前无法启动的P/D+DCP2。固定head 774cf86。七种部署分别覆盖block、partial及两种DSpark模式，共28种参数组合；八层dummy模型连续三轮追加prompt，offload用例每轮清GPU prefix cache以强制CPU恢复。仍open、未合并。",
+                "why": "同TP用例同时要求实际cached_tokens不低于前轮checkpoint、新cache_salt重算命中为0，并比较生成tokens/logprobs；固定源码明确在P/D两端TP不同、dummy权重不同的情况下跳过最后的数值比较。因此作者单独报告TP2→DEP2的4项通过，不能证明跨TP恢复状态与全量重算等价，且该配置只在P端启用prefix caching。较早32项整套运行含24通过、4失败、4xfail，早于矩阵调整，不能称当前28项全绿。DCP+DSpark仍strict xfail，P/D+DCP因interleave约束未覆盖；这是测试/CI提案，未修复这些限制。作者GB200运行与本次静态核验分开，无质量或吞吐结论。",
+                "source": "https://github.com/vllm-project/vllm/pull/59229",
+                "sourceLabel": "vLLM #59229 · open 774cf86 · 测试矩阵修订",
+                "reading": "9 min",
+                "signal": "high",
+                "columns": [
+                  "vllm",
+                  "kv-cache",
+                  "models"
+                ],
+                "sourceVersion": {
+                  "repository": "vllm-project/vllm",
+                  "pullRequest": 59229,
+                  "created_at": "2026-09-29T14:03:53Z",
+                  "updated_at": "2026-10-02T11:59:08Z",
+                  "head": "774cf86a7f917305a3b010007363d6b186315945",
+                  "base": "b558f160a2c0abcb5902acc3c91a14c38a4af173",
+                  "state": "open",
+                  "draft": false,
+                  "merged_at": null,
+                  "merge_commit_sha": null,
+                  "head_committed_at": "2026-10-02T08:18:06Z",
+                  "verifiedAt": "2026-10-02T12:15:38Z",
+                  "observationWindowStart": "2026-10-02T08:00:00Z",
+                  "observationWindowEnd": "2026-10-02T12:00:00Z",
+                  "evidenceBoundary": "固定源码、上游作者报告与CI读取；本次未运行GPU、RDMA、模型评测或服务实验",
+                  "authorReportVersionBoundary": "Full 32-case report predates replacement/removal; four TP2→DEP2 cases separately reported at c2a0aaaf9cfae6770a23765b531aaa02f0a1b1b1; current source has 28 cases, four strict xfails. No independently executed tests."
+                },
+                "supportingSources": [
+                  {
+                    "title": "部署矩阵、异构TP关闭D端缓存及严格xfail",
+                    "url": "https://github.com/vllm-project/vllm/blob/774cf86a7f917305a3b010007363d6b186315945/tests/models/kimi_k3/test_prefix_cache.py#L137-L191"
+                  },
+                  {
+                    "title": "逐轮GPU清缓存和独立salt重算",
+                    "url": "https://github.com/vllm-project/vllm/blob/774cf86a7f917305a3b010007363d6b186315945/tests/models/kimi_k3/test_prefix_cache.py#L305-L343"
+                  },
+                  {
+                    "title": "缓存断言和不同TP跳过数值比较",
+                    "url": "https://github.com/vllm-project/vllm/blob/774cf86a7f917305a3b010007363d6b186315945/tests/models/kimi_k3/test_prefix_cache.py#L355-L375"
+                  },
+                  {
+                    "title": "4xB200两分片CI及连接器安装",
+                    "url": "https://github.com/vllm-project/vllm/blob/774cf86a7f917305a3b010007363d6b186315945/.buildkite/test_areas/models_basic.yaml#L149-L169"
+                  },
+                  {
+                    "title": "08:10新增TP2→DEP2与NIXL安装",
+                    "url": "https://github.com/vllm-project/vllm/commit/b573a631d494410707cfeb9b03895ac7ba1364dd"
+                  },
+                  {
+                    "title": "08:18移除无法启动的PD+DCP2",
+                    "url": "https://github.com/vllm-project/vllm/commit/774cf86a7f917305a3b010007363d6b186315945"
+                  }
+                ]
+              }
+            }
+          ],
+          "rank": "33"
+        },
+        {
+          "id": "vllm-aiter-bias-free-swiglu-layout-alignment",
+          "category": "VLLM · ROCM MXFP4 CORRECTNESS",
+          "title": "AITER MXFP4 无 Bias SwiGLU 需同时匹配 Gate 布局、Split-K 填充与 Padding 语义",
+          "summary": "10 月 2 日 10:43 UTC 新开的#59766，为 AITER_MXFP4_BF16 的无 bias SwiGLU-OAI 改用 SEPARATED gate/up，并同步权重 shuffle；hidden 维补齐 512，同时给 AITER 传 hidden_pad=0，避免每个 split-K 分区都跳过真实数据。另将 SiLU/SiTU 的 hidden 对齐保持 256、intermediate 仍可 128，保留 Kimi-K3 TP8 的原生 384 中间维。这里核读的是 12:02:07 UTC 窗后实质修订 head 2fbee4c，仍 open、未合并；11:05 版 78c6edd 保留为前一版本。",
+          "why": "只修布局仍可能在 H=256/768 失真；补齐后再把真实 hidden_pad 传入又会错误裁掉各分区数据，因此 layout、物理尺寸与 kernel 对 padding 参数的解释必须一起对齐。作者 MI350 oracle 报告 65 通过、12 跳过，SwiGLU 阈值为 95%元素 rtol=0.1 且 99.5%同号；SiLU 测试因路径仍使用 FP8 activation，阈值较宽，为 90%元素 rtol=0.5 且 98%同号。不能把 backend 名称当作所有分支都用 BF16 activation，也不能把 oracle 容差通过视为 bitwise、完整模型质量或服务加速。12:02 提交还恢复全局 AITER_BF16_FP8_MOE_BOUND=0 并扩展测试，本次未独立运行 GPU，作者总数不等于已核验当前 head CI 全绿。 13:03 UTC 同一 head 的 GitHub pre-commit 与文档状态为 success；这不等于 MI350 oracle 已由当前 CI 独立复验。",
+          "source": "https://github.com/vllm-project/vllm/pull/59766",
+          "sourceLabel": "vLLM #59766 · open 2fbee4c · 12:02窗后核验",
+          "reading": "10 min",
+          "signal": "high",
+          "columns": [
+            "vllm",
+            "models"
+          ],
+          "sourceVersion": {
+            "repository": "vllm-project/vllm",
+            "pullRequest": 59766,
+            "created_at": "2026-10-02T10:43:11Z",
+            "updated_at": "2026-10-02T13:10:21Z",
+            "head": "2fbee4c149242722033d5c280ec601dacddabd28",
+            "base": "fa212b8dc5de5f0cd7b3171e7c7f584bb5a69c53",
+            "state": "open",
+            "draft": false,
+            "merged_at": null,
+            "merge_commit_sha": null,
+            "head_committed_at": "2026-10-02T12:02:07Z",
+            "verifiedAt": "2026-10-02T13:12:09Z",
+            "observationWindowStart": "2026-10-02T08:00:00Z",
+            "observationWindowEnd": "2026-10-02T12:00:00Z",
+            "evidenceBoundary": "只读GitHub元数据、固定源码与提交差异、上游CI状态/日志；作者报告与CI证据分开；本次未独立运行CPU/GPU、RDMA、模型评测或服务实验",
+            "postCutoffUpdate": true,
+            "dateBoundary": "PR在08:00–12:00窗内提出；最终纳入代码含12:02:07实质修订，明确作为窗后核验补充",
+            "versionTimeline": [
+              {
+                "head": "78c6edd38dd0dbe4643e7b1094b6b1b277278d49",
+                "committed_at": "2026-10-02T11:05:51Z",
+                "role": "pre-cutoff implementation; includes temporary diagnostic activation bound"
+              },
+              {
+                "head": "2fbee4c149242722033d5c280ec601dacddabd28",
+                "committed_at": "2026-10-02T12:02:07Z",
+                "role": "post-cutoff substantive alignment/test/global-bound revision; current fixed source"
+              }
+            ],
+            "authorTests": "MI350, author reports 65 passed/12 skipped; not independently run and not asserted as verified current-head CI",
+            "closed_at": null,
+            "merged": false,
+            "metadataVerifiedAt": "2026-10-02T13:12:09Z",
+            "sourceReview": {
+              "retainedFixedSourceHead": "2fbee4c149242722033d5c280ec601dacddabd28",
+              "retainedSourceReviewedAt": "2026-10-02T12:15:38Z",
+              "metadataRefreshDoesNotReexecuteTests": true,
+              "basis": "head 2fbee4c与午间窗后审读完全相同；保留12:15:38固定源码审读与11:05→12:02时间线，本轮只刷新元数据和可见CI，不新称运行GPU。"
+            },
+            "ciEvidence": {
+              "observedAt": "2026-10-02T13:04:56Z",
+              "workflowRuns": [
+                {
+                  "id": 37004342397,
+                  "name": "PR title",
+                  "status": "completed",
+                  "conclusion": "skipped",
+                  "run_number": 38117,
+                  "jobs_url": "https://api.github.com/repos/vllm-project/vllm/actions/runs/37004342397/jobs",
+                  "logs_url": "https://api.github.com/repos/vllm-project/vllm/actions/runs/37004342397/logs",
+                  "workflow_id": 344893698
+                },
+                {
+                  "id": 37004342300,
+                  "name": "pre-commit",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "run_number": 234948,
+                  "jobs_url": "https://api.github.com/repos/vllm-project/vllm/actions/runs/37004342300/jobs",
+                  "logs_url": "https://api.github.com/repos/vllm-project/vllm/actions/runs/37004342300/logs",
+                  "workflow_id": 137737330
+                }
+              ],
+              "statusContexts": [
+                {
+                  "context": "CodeRabbit",
+                  "state": "success",
+                  "target_url": null
+                },
+                {
+                  "context": "docs/readthedocs.org:vllm",
+                  "state": "success",
+                  "target_url": "https://vllm--59766.org.readthedocs.build/en/59766/"
+                }
+              ],
+              "boundary": "GitHub Actions列表只返回pull_request触发的首个页面；statusContexts为connector返回的快照，不由缺失结果推断通过。",
+              "qualification": "GitHub pre-commit success、docs success；未见可核当前head MI350 GPU oracle CI结果，作者65 passed/12 skipped保持作者报告标签。"
+            }
+          },
+          "supportingSources": [
+            {
+              "title": "GateMode与hidden_pad共同修正",
+              "url": "https://github.com/vllm-project/vllm/blob/2fbee4c149242722033d5c280ec601dacddabd28/vllm/model_executor/layers/fused_moe/experts/rocm_aiter_moe.py#L378-L445"
+            },
+            {
+              "title": "hidden/intermediate分离对齐与SwiGLU512边界",
+              "url": "https://github.com/vllm-project/vllm/blob/2fbee4c149242722033d5c280ec601dacddabd28/vllm/model_executor/layers/fused_moe/oracle/mxfp4.py#L768-L806"
+            },
+            {
+              "title": "全局activation阈值和对应权重shuffle",
+              "url": "https://github.com/vllm-project/vllm/blob/2fbee4c149242722033d5c280ec601dacddabd28/vllm/model_executor/layers/fused_moe/oracle/mxfp4.py#L1633-L1688"
+            },
+            {
+              "title": "oracle容差、形状与skip边界",
+              "url": "https://github.com/vllm-project/vllm/blob/2fbee4c149242722033d5c280ec601dacddabd28/tests/kernels/moe/test_ocp_mx_moe.py#L1538-L1682"
+            },
+            {
+              "title": "11:05前一实现版本，非当前完整修正",
+              "url": "https://github.com/vllm-project/vllm/commit/78c6edd38dd0dbe4643e7b1094b6b1b277278d49"
+            },
+            {
+              "title": "12:02实质修订，不能仅按cleaning标题判断",
+              "url": "https://github.com/vllm-project/vllm/commit/2fbee4c149242722033d5c280ec601dacddabd28"
+            },
+            {
+              "title": "当前head pre-commit成功，非GPU测试证据",
+              "url": "https://github.com/vllm-project/vllm/actions/runs/37004342300"
+            }
+          ],
+          "revisions": [
+            {
+              "revisedAt": "2026-10-02T13:11:41Z",
+              "reason": "固定head未变；补入同head pre-commit及docs成功快照，保持作者MI350报告与独立复现分离。",
+              "record": {
+                "id": "vllm-aiter-bias-free-swiglu-layout-alignment",
+                "category": "VLLM · ROCM MXFP4 CORRECTNESS",
+                "title": "AITER MXFP4无Bias SwiGLU需同时匹配Gate布局、Split-K填充与Padding语义",
+                "summary": "10月2日10:43 UTC新开的#59766，为AITER_MXFP4_BF16的无bias SwiGLU-OAI改用SEPARATED gate/up，并同步权重shuffle；hidden维补齐512，同时给AITER传hidden_pad=0，避免每个split-K分区都跳过真实数据。另将SiLU/SiTU的hidden对齐保持256、intermediate仍可128，保留Kimi-K3 TP8的原生384中间维。这里核读的是12:02:07 UTC窗后实质修订head 2fbee4c，仍open、未合并；11:05版78c6edd保留为前一版本。",
+                "why": "只修布局仍可能在H=256/768失真；补齐后再把真实hidden_pad传入又会错误裁掉各分区数据，因此layout、物理尺寸与kernel对padding参数的解释必须一起对齐。作者MI350 oracle报告65通过、12跳过，SwiGLU阈值为95%元素rtol=0.1且99.5%同号；SiLU测试因路径仍使用FP8 activation，阈值较宽，为90%元素rtol=0.5且98%同号。不能把backend名称当作所有分支都用BF16 activation，也不能把oracle容差通过视为bitwise、完整模型质量或服务加速。12:02提交还恢复全局AITER_BF16_FP8_MOE_BOUND=0并扩展测试，本次未独立运行GPU，作者总数不等于已核验当前head CI全绿。",
+                "source": "https://github.com/vllm-project/vllm/pull/59766",
+                "sourceLabel": "vLLM #59766 · open 2fbee4c · 12:02窗后核验",
+                "reading": "10 min",
+                "signal": "high",
+                "columns": [
+                  "vllm",
+                  "models"
+                ],
+                "sourceVersion": {
+                  "repository": "vllm-project/vllm",
+                  "pullRequest": 59766,
+                  "created_at": "2026-10-02T10:43:11Z",
+                  "updated_at": "2026-10-02T12:02:13Z",
+                  "head": "2fbee4c149242722033d5c280ec601dacddabd28",
+                  "base": "fa212b8dc5de5f0cd7b3171e7c7f584bb5a69c53",
+                  "state": "open",
+                  "draft": false,
+                  "merged_at": null,
+                  "merge_commit_sha": null,
+                  "head_committed_at": "2026-10-02T12:02:07Z",
+                  "verifiedAt": "2026-10-02T12:15:38Z",
+                  "observationWindowStart": "2026-10-02T08:00:00Z",
+                  "observationWindowEnd": "2026-10-02T12:00:00Z",
+                  "evidenceBoundary": "固定源码、上游作者报告与CI读取；本次未运行GPU、RDMA、模型评测或服务实验",
+                  "postCutoffUpdate": true,
+                  "dateBoundary": "PR在08:00–12:00窗内提出；最终纳入代码含12:02:07实质修订，明确作为窗后核验补充",
+                  "versionTimeline": [
+                    {
+                      "head": "78c6edd38dd0dbe4643e7b1094b6b1b277278d49",
+                      "committed_at": "2026-10-02T11:05:51Z",
+                      "role": "pre-cutoff implementation; includes temporary diagnostic activation bound"
+                    },
+                    {
+                      "head": "2fbee4c149242722033d5c280ec601dacddabd28",
+                      "committed_at": "2026-10-02T12:02:07Z",
+                      "role": "post-cutoff substantive alignment/test/global-bound revision; current fixed source"
+                    }
+                  ],
+                  "authorTests": "MI350, author reports 65 passed/12 skipped; not independently run and not asserted as verified current-head CI"
+                },
+                "supportingSources": [
+                  {
+                    "title": "GateMode与hidden_pad共同修正",
+                    "url": "https://github.com/vllm-project/vllm/blob/2fbee4c149242722033d5c280ec601dacddabd28/vllm/model_executor/layers/fused_moe/experts/rocm_aiter_moe.py#L378-L445"
+                  },
+                  {
+                    "title": "hidden/intermediate分离对齐与SwiGLU512边界",
+                    "url": "https://github.com/vllm-project/vllm/blob/2fbee4c149242722033d5c280ec601dacddabd28/vllm/model_executor/layers/fused_moe/oracle/mxfp4.py#L768-L806"
+                  },
+                  {
+                    "title": "全局activation阈值和对应权重shuffle",
+                    "url": "https://github.com/vllm-project/vllm/blob/2fbee4c149242722033d5c280ec601dacddabd28/vllm/model_executor/layers/fused_moe/oracle/mxfp4.py#L1633-L1688"
+                  },
+                  {
+                    "title": "oracle容差、形状与skip边界",
+                    "url": "https://github.com/vllm-project/vllm/blob/2fbee4c149242722033d5c280ec601dacddabd28/tests/kernels/moe/test_ocp_mx_moe.py#L1538-L1682"
+                  },
+                  {
+                    "title": "11:05前一实现版本，非当前完整修正",
+                    "url": "https://github.com/vllm-project/vllm/commit/78c6edd38dd0dbe4643e7b1094b6b1b277278d49"
+                  },
+                  {
+                    "title": "12:02实质修订，不能仅按cleaning标题判断",
+                    "url": "https://github.com/vllm-project/vllm/commit/2fbee4c149242722033d5c280ec601dacddabd28"
+                  }
+                ]
+              }
+            }
+          ],
+          "rank": "34"
+        },
+        {
+          "id": "rapidmoe-selective-residual-offload",
+          "category": "PAPER · HETEROGENEOUS MOE",
+          "title": "RapidMoE 将 Gate／Up 量化残差交给 CPU，收益要与近似精度和低并发边界一起读",
+          "summary": "补读 10 月 2 日列表中的 RapidMoE v1（10 月 1 日提交）。GPU 保存低比特路径，CPU 仅补算选中专家的 Gate／Up 残差；Down 因非线性依赖保留双量化。它改变精度与计算分工，不能视为原模型的无损搬运优化。",
+          "why": "作者在 2×A800、512GB DRAM、DeepSeek-R1、1K 序列的 batch1 对照报告 21.8 对 8.0 tok/s；1000 条 ShareGPT、0.2rps、并发 4 时，5s TTFT 与 100ms TPOT 联合达标 87.4%。精度参照是 Q4 而非 FP16，逐任务有升有降；未证明高并发或其他硬件同样受益。本次核论文机制及表格，未运行 GPU。",
+          "reading": "13 min",
+          "columns": [
+            "models",
+            "network"
+          ],
+          "source": "https://arxiv.org/html/2610.01265v1",
+          "signal": "high",
+          "sourceLabel": "RapidMoE · arXiv v1 · 补读",
+          "sourceVersion": {
+            "submittedAt": "2026-10-01T08:02:24Z",
+            "version": "2610.01265v1",
+            "listingDate": "2026-10-02",
+            "verifiedAt": "2026-10-02T13:05:31Z",
+            "observationWindowEnd": "2026-10-02T12:00:00Z",
+            "status": "paper_read_only_not_reproduced",
+            "refreshBoundary": "13:05 UTC 再核验：原始来源日期与固定版本未变；补读，不冒充本窗口新发布；未执行实验。",
+            "latestVersionAtRefresh": "2610.01265v1",
+            "fixedHtmlSha256": "b0705d299844f8487beed13ce27f00d9cf3b1575c26848b6cb6ee84c1c53f7bb"
+          },
+          "supportingSources": [
+            {
+              "title": "GLU 下 Gate/Up 残差分解与 Down 双量化",
+              "url": "https://arxiv.org/html/2610.01265v1#S4.SS4"
+            },
+            {
+              "title": "硬件、模型和不同量化对照",
+              "url": "https://arxiv.org/html/2610.01265v1#S6.SS1"
+            },
+            {
+              "title": "Serving联合SLO与部署范围",
+              "url": "https://arxiv.org/html/2610.01265v1#S6.SS3.SSS3"
+            }
+          ],
+          "rank": "35"
+        },
+        {
+          "id": "sglang-score-contract-pointwise-mis",
+          "category": "BLOG · SCORING / SHARED PREFILL",
+          "title": "SGLang Score API 把标签输出契约与共享 Query 执行分开，MIS 仍保持候选隔离",
+          "summary": "补读 9 月 25 日官方 JEV-like serving 博客：/v1/score 显式选标签分数，MIS 复用同请求 query 并隔离候选；它不把 pointwise 变成 setwise，也不省掉词表投影和全分布归一化。生产官网已公开正文，并由首页直接链接。",
+          "why": "作者单 H200 的 Qwen 三模型结果比较不同服务配置，不证明决策等价；MIS 示例关闭 radix 与 chunked prefill。固定客户端 1a5972c 将延迟从计划到达计到完成，含客户端排队；实际 QPS 是成功数/完整 wall time，p95 仅统计成功请求。需同时检查错误率、实际吞吐和服务时间，不能把 offered-QPS 下的尾延迟倍数当作 GPU 容量倍数。本次核博客和计时源码，未复现。",
+          "reading": "11 min",
+          "columns": [
+            "sglang",
+            "kv-cache",
+            "models"
+          ],
+          "source": "https://www.lmsys.org/blog/2026-09-25-sglang-decision-models",
+          "signal": "high",
+          "sourceLabel": "LMSYS 官方博客 · 2026-09-25 · 补读",
+          "sourceVersion": {
+            "publishedDate": "2026-09-25",
+            "verifiedAt": "2026-10-02T13:05:31Z",
+            "observationWindowEnd": "2026-10-02T12:00:00Z",
+            "benchmarkClientHead": "1a5972c601d0d6bae33a651c7bd951538c7b0ddc",
+            "status": "official_production_page_and_fixed_client_read_not_reproduced",
+            "engineVersionBoundary": "博客未固定原始 SGLang build；客户端 SHA 不等于引擎版本",
+            "refreshBoundary": "13:05 UTC 再核验：原始来源日期与固定版本未变；补读，不冒充本窗口新发布；未执行实验。",
+            "productionHtmlSha256": "38fafe27a8a536cc71594d734cba1ca77183462212674930d4ee5c913a4bfd81"
+          },
+          "supportingSources": [
+            {
+              "title": "生产官网首页直接链接",
+              "url": "https://www.lmsys.org/"
+            },
+            {
+              "title": "固定客户端：计划／发出／完成三个时间点",
+              "url": "https://github.com/chuanrui/sglang-benchmark/blob/1a5972c601d0d6bae33a651c7bd951538c7b0ddc/lmsys_blog/jev_bench/openloop_common.py#L163-L187"
+            },
+            {
+              "title": "固定客户端：成功样本与 achieved QPS",
+              "url": "https://github.com/chuanrui/sglang-benchmark/blob/1a5972c601d0d6bae33a651c7bd951538c7b0ddc/lmsys_blog/jev_bench/openloop_common.py#L227-L274"
+            }
+          ],
+          "rank": "36"
         }
       ]
     },
@@ -8498,9 +11682,21 @@
       },
       "09.27": {
         "headline": "今日值得关注的 AI Infra 信号",
-        "subtitle": "本期 5 条 · 约 40 分钟",
+        "subtitle": "本期 5 条 · 约 41 分钟",
         "threadTitle": "HiCache 尝试用 INT8 保存 Host KV，同容量可缓存 1.78× Tokens",
-        "threadSummary": "这首次让 HiCache L2 representation 与 L1 dtype 解耦，但代价是双向 staging buffer 和 encode/decode。真正值得跟进的是：更大命中窗口能否长期覆盖额外搬运与量化成本。"
+        "threadSummary": "这首次让 HiCache L2 representation 与 L1 dtype 解耦，但代价是双向 staging buffer 和 encode/decode。真正值得跟进的是：更大命中窗口能否长期覆盖额外搬运与量化成本。 10 月 2 日补核 Mooncake #4335 的 Ranked／FreeRatioFirst 主机反亲和路径，保留本条原日期、排名和完整旧记录；best-effort 副本放置不等于主机故障域保证。",
+        "revisions": [
+          {
+            "supersededAt": "2026-10-02T13:17:12Z",
+            "reason": "按现有条目重新计算本日实际条目数与阅读分钟；保留完整旧 issueMeta 及其嵌套历史。",
+            "record": {
+              "headline": "今日值得关注的 AI Infra 信号",
+              "subtitle": "本期 5 条 · 约 40 分钟",
+              "threadTitle": "HiCache 尝试用 INT8 保存 Host KV，同容量可缓存 1.78× Tokens",
+              "threadSummary": "这首次让 HiCache L2 representation 与 L1 dtype 解耦，但代价是双向 staging buffer 和 encode/decode。真正值得跟进的是：更大命中窗口能否长期覆盖额外搬运与量化成本。"
+            }
+          }
+        ]
       },
       "09.26": {
         "headline": "今日值得关注的 AI Infra 信号",
@@ -8594,7 +11790,7 @@
       },
       "10.01": {
         "headline": "今日值得关注的 AI Infra 信号",
-        "subtitle": "本期 51 条 · 约 452 分钟",
+        "subtitle": "本期 51 条 · 约 453 分钟",
         "threadTitle": "恢复不止要有数据：输入身份、槽位预算与故障完成语义",
         "threadSummary": "保留此前全部记录；12:00 批次增补 PD Prefill 输入轮询、CP／EP／KDA 栈、HiCache cgroup 预算、Mooncake state-stride 校验、逐步 MTP 输出头、MoRI MXFP4 dispatch，以及 TENT 元数据生命周期和取消队列活性。Purlin 与 CLM/SCR 按 9 月 29 日原始 v1 补读；SCR 的旧状态语义与额外显存单列，E-10 仅为未运行的质量／同 HBM 对照。另在 9 月 30 日原条目修订 NIXL 双向恢复边界，保留旧记录。 16:00 批次新增 producer-fused MXFP8、DeepEP v2 精度边界补读、Kimi-K3 权重分片、TENT fail-fast 通知寿命与 PackServe 调度口径；原位更正已撤回的 Tail Margin 和已合并且补充功能报告的 GDN regather。两篇既有全文深化 aligned／live endpoint 与 KVSET 容量目标，保留原日期和旧版本；十项实验均未执行。 20:00 批次补充 FP4 collective 身份、hybrid prefill 同步、Mamba 双槽恢复、容器内存预算、DSpark 草稿量化、NIXL sleep／pause 生命周期、TENT 通知重发、embedding dtype 身份及 ROCm 编译稳定性；Vosti、ThunderEP 与共享 KV provenance 按原论文版本补读。HiSparse RDMA 注册条目在原日修订；两篇既有全文连接资源、恢复与通知边界，新增 E-11 的隔离环境 provenance 对照，十一项实验均未执行。",
         "revisions": [
@@ -8629,14 +11825,58 @@
                 }
               ]
             }
+          },
+          {
+            "supersededAt": "2026-10-02T13:17:12Z",
+            "reason": "按现有条目重新计算本日实际条目数与阅读分钟；保留完整旧 issueMeta 及其嵌套历史。",
+            "record": {
+              "headline": "今日值得关注的 AI Infra 信号",
+              "subtitle": "本期 51 条 · 约 452 分钟",
+              "threadTitle": "恢复不止要有数据：输入身份、槽位预算与故障完成语义",
+              "threadSummary": "保留此前全部记录；12:00 批次增补 PD Prefill 输入轮询、CP／EP／KDA 栈、HiCache cgroup 预算、Mooncake state-stride 校验、逐步 MTP 输出头、MoRI MXFP4 dispatch，以及 TENT 元数据生命周期和取消队列活性。Purlin 与 CLM/SCR 按 9 月 29 日原始 v1 补读；SCR 的旧状态语义与额外显存单列，E-10 仅为未运行的质量／同 HBM 对照。另在 9 月 30 日原条目修订 NIXL 双向恢复边界，保留旧记录。 16:00 批次新增 producer-fused MXFP8、DeepEP v2 精度边界补读、Kimi-K3 权重分片、TENT fail-fast 通知寿命与 PackServe 调度口径；原位更正已撤回的 Tail Margin 和已合并且补充功能报告的 GDN regather。两篇既有全文深化 aligned／live endpoint 与 KVSET 容量目标，保留原日期和旧版本；十项实验均未执行。 20:00 批次补充 FP4 collective 身份、hybrid prefill 同步、Mamba 双槽恢复、容器内存预算、DSpark 草稿量化、NIXL sleep／pause 生命周期、TENT 通知重发、embedding dtype 身份及 ROCm 编译稳定性；Vosti、ThunderEP 与共享 KV provenance 按原论文版本补读。HiSparse RDMA 注册条目在原日修订；两篇既有全文连接资源、恢复与通知边界，新增 E-11 的隔离环境 provenance 对照，十一项实验均未执行。",
+              "revisions": [
+                {
+                  "supersededAt": "2026-10-01T16:11:00Z",
+                  "reason": "保留本日旧版栏目摘要与计数；新增五条、修订两条及深化两篇既有文章。",
+                  "record": {
+                    "headline": "今日值得关注的 AI Infra 信号",
+                    "subtitle": "本期 33 条 · 约 287 分钟",
+                    "threadTitle": "从传输就绪到上下文编辑：状态边界、调度活性与有效收益",
+                    "threadSummary": "保留此前全部记录；12:00 批次增补 PD Prefill 输入轮询、CP／EP／KDA 栈、HiCache cgroup 预算、Mooncake state-stride 校验、逐步 MTP 输出头、MoRI MXFP4 dispatch，以及 TENT 元数据生命周期和取消队列活性。Purlin 与 CLM/SCR 按 9 月 29 日原始 v1 补读；SCR 的旧状态语义与额外显存单列，E-10 仅为未运行的质量／同 HBM 对照。另在 9 月 30 日原条目修订 NIXL 双向恢复边界，保留旧记录。"
+                  }
+                },
+                {
+                  "supersededAt": "2026-10-01T20:13:00Z",
+                  "reason": "新增 13 项日报，修订 1 项既有日报并深化既有全文；保留原始日期与完整历史版本。",
+                  "record": {
+                    "headline": "今日值得关注的 AI Infra 信号",
+                    "subtitle": "本期 38 条 · 约 337 分钟",
+                    "threadTitle": "从状态身份到数值边界：用真实工作量、容量与 SLO 解释收益",
+                    "threadSummary": "保留此前全部记录；12:00 批次增补 PD Prefill 输入轮询、CP／EP／KDA 栈、HiCache cgroup 预算、Mooncake state-stride 校验、逐步 MTP 输出头、MoRI MXFP4 dispatch，以及 TENT 元数据生命周期和取消队列活性。Purlin 与 CLM/SCR 按 9 月 29 日原始 v1 补读；SCR 的旧状态语义与额外显存单列，E-10 仅为未运行的质量／同 HBM 对照。另在 9 月 30 日原条目修订 NIXL 双向恢复边界，保留旧记录。 16:00 批次新增 producer-fused MXFP8、DeepEP v2 精度边界补读、Kimi-K3 权重分片、TENT fail-fast 通知寿命与 PackServe 调度口径；原位更正已撤回的 Tail Margin 和已合并且补充功能报告的 GDN regather。两篇既有全文深化 aligned／live endpoint 与 KVSET 容量目标，保留原日期和旧版本；十项实验均未执行。",
+                    "revisions": [
+                      {
+                        "supersededAt": "2026-10-01T16:11:00Z",
+                        "reason": "保留本日旧版栏目摘要与计数；新增五条、修订两条及深化两篇既有文章。",
+                        "record": {
+                          "headline": "今日值得关注的 AI Infra 信号",
+                          "subtitle": "本期 33 条 · 约 287 分钟",
+                          "threadTitle": "从传输就绪到上下文编辑：状态边界、调度活性与有效收益",
+                          "threadSummary": "保留此前全部记录；12:00 批次增补 PD Prefill 输入轮询、CP／EP／KDA 栈、HiCache cgroup 预算、Mooncake state-stride 校验、逐步 MTP 输出头、MoRI MXFP4 dispatch，以及 TENT 元数据生命周期和取消队列活性。Purlin 与 CLM/SCR 按 9 月 29 日原始 v1 补读；SCR 的旧状态语义与额外显存单列，E-10 仅为未运行的质量／同 HBM 对照。另在 9 月 30 日原条目修订 NIXL 双向恢复边界，保留旧记录。"
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
           }
         ]
       },
       "10.02": {
         "headline": "今日值得关注的 AI Infra 信号",
-        "subtitle": "本期 23 条 · 约 212 分钟",
+        "subtitle": "本期 36 条 · 约 317 分钟",
         "threadTitle": "从页布局到生命周期：让缓存复用、图回放和通信边界一致",
-        "threadSummary": "本期保留凌晨条目，增补 SGLang 0.5.21 及主干页契约、HiCache／HiSparse、NIXL lease、PCP 和归约路径；补读 MegaFlux、GPU 发起通信与 Retire 三篇固定 v1。历史 PR 以原日期原位修订，发布 tag 与较晚主干变更分开；新增实验只提出可证伪对照，未执行 GPU 或 RDMA。",
+        "threadSummary": "本期保留凌晨条目，增补 SGLang 0.5.21 及主干页契约、HiCache／HiSparse、NIXL lease、PCP 和归约路径；补读 MegaFlux、GPU 发起通信与 Retire 三篇固定 v1。历史 PR 以原日期原位修订，发布 tag 与较晚主干变更分开；新增实验只提出可证伪对照，未执行 GPU 或 RDMA。 08:00 与 12:00 UTC 补充批次合并：GDN fold、TMA padding、UMBP 完整状态、权重归属、启动校验与控制面边界共 13 条；RapidMoE v1 与 JEV 博客为保留原来源日期的补读。发布前再核验合并状态与新 head，旧 CI 失败和新版本未完成验证分列；新增 E-13 仅是固定 batch／真实 prefix-hit 的待验证设计。",
         "revisions": [
           {
             "supersededAt": "2026-10-02T04:20:00Z",
@@ -8645,6 +11885,27 @@
               "subtitle": "本期 7 条 · 约 59 分钟",
               "threadTitle": "从布局正确性到调度公平性：优化之前先守住执行契约",
               "threadSummary": "本期聚焦已合并的 MegaMoE NVFP4 权重布局、DP-rank 路由、Mamba2 autotune 与 MiniMax-M3 NVFP4 MSA，以及尚未合并的 DeepEP SP 容量和前端事件循环公平性；补读官方 Render/Derender 部署指南，区分阶段隔离、CPU 解析和传输成本。原始来源日期及固定代码版本逐条保留；均为源码／文献阅读，作者报告不等于本站独立复现。"
+            }
+          },
+          {
+            "supersededAt": "2026-10-02T13:17:12Z",
+            "reason": "按现有条目重新计算本日实际条目数与阅读分钟；保留完整旧 issueMeta 及其嵌套历史。",
+            "record": {
+              "headline": "今日值得关注的 AI Infra 信号",
+              "subtitle": "本期 23 条 · 约 212 分钟",
+              "threadTitle": "从页布局到生命周期：让缓存复用、图回放和通信边界一致",
+              "threadSummary": "本期保留凌晨条目，增补 SGLang 0.5.21 及主干页契约、HiCache／HiSparse、NIXL lease、PCP 和归约路径；补读 MegaFlux、GPU 发起通信与 Retire 三篇固定 v1。历史 PR 以原日期原位修订，发布 tag 与较晚主干变更分开；新增实验只提出可证伪对照，未执行 GPU 或 RDMA。",
+              "revisions": [
+                {
+                  "supersededAt": "2026-10-02T04:20:00Z",
+                  "record": {
+                    "headline": "今日值得关注的 AI Infra 信号",
+                    "subtitle": "本期 7 条 · 约 59 分钟",
+                    "threadTitle": "从布局正确性到调度公平性：优化之前先守住执行契约",
+                    "threadSummary": "本期聚焦已合并的 MegaMoE NVFP4 权重布局、DP-rank 路由、Mamba2 autotune 与 MiniMax-M3 NVFP4 MSA，以及尚未合并的 DeepEP SP 容量和前端事件循环公平性；补读官方 Render/Derender 部署指南，区分阶段隔离、CPU 解析和传输成本。原始来源日期及固定代码版本逐条保留；均为源码／文献阅读，作者报告不等于本站独立复现。"
+                  }
+                }
+              ]
             }
           }
         ]
@@ -9017,6 +12278,43 @@
         {
           "title": "Retire v1：写入关闭和认证前缀的实现约束",
           "url": "https://arxiv.org/html/2610.01160v1#S6.SS1"
+        }
+      ]
+    },
+    {
+      "status": "unvalidated",
+      "title": "GDN Fold 的精确性和容量收益能否在固定 Batch 与真实 Prefix Hit 下同时成立？",
+      "hypothesis": "固定模型、精度与 batch 时，fold 应保持 stock 输出与状态一致；容量收益需在等容量和各自最大容量两组实验分开测量。",
+      "method": [
+        "未执行。固定 #42209 head adb36489df91a885a1f2e85680dd6c86f35c3feb、Qwen3.5-4B 修订与 FP32 state，在 stock、compact replay、fold 三臂使用同一组 batch、相同 running/mamba/KV 容量；比较逐 token/logprob 和已接受状态，不能用不同批组成解释精度差异。",
+        "加入共享长前缀并验证实际 prefix hits、radix checkpoint 恢复；原作者 cache-on 但无命中的对照不能覆盖此项。",
+        "性能先固定 KV 容量与并发，随后分别释放容量上限测长上下文压力；记录冷启动/稳态、TTFT/TPOT、输出 TPS、占用及 OOM，结果分列。"
+      ],
+      "metrics": [
+        "tokens/logprobs/accepted-state 一致性",
+        "实际 prefix adopted tokens 与恢复后差异",
+        "同容量 TPS 与 TTFT/TPOT",
+        "各自最大容量、OOM 率和长上下文 goodput"
+      ],
+      "falsifier": "固定执行条件仍出现 state 或输出差异否定精确性假设；仅扩大容量但同容量吞吐不增，应归因为容量收益；实际 prefix-hit 恢复失败则不能推广作者无命中结果。",
+      "related": [
+        "state-recovery"
+      ],
+      "source": "https://github.com/sgl-project/sglang/pull/42209",
+      "id": "E-13",
+      "createdAt": "2026-10-02",
+      "sourceVersion": {
+        "head": "adb36489df91a885a1f2e85680dd6c86f35c3feb",
+        "verifiedAt": "2026-10-02T13:02:46Z"
+      },
+      "sources": [
+        {
+          "title": "GDN Fold 固定实现与作者测试范围",
+          "url": "https://github.com/sgl-project/sglang/pull/42209"
+        },
+        {
+          "title": "固定 head：GDN commit 路由",
+          "url": "https://github.com/sgl-project/sglang/blob/adb36489df91a885a1f2e85680dd6c86f35c3feb/python/sglang/srt/layers/attention/hybrid_linear_attn_backend.py#L1534-L1632"
         }
       ]
     }
