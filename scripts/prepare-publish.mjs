@@ -49,7 +49,7 @@ const schedulePath = await publishAsset('update-schedule.js', ts.transpileModule
 const countdownSource = (await readFile(path.join(root, 'portfolio/countdown.mjs'), 'utf8')).replace("'./update-schedule.js'", `'./${path.basename(schedulePath)}'`);
 const assets = {
   '/assets/wechat-qr.png': await publishAsset('wechat-qr.png', await readFile(path.join(root, 'portfolio/contact/wechat-qr.png'))),
-  '/assets/resume-ng-template.pdf': await publishAsset('resume-ng-template.pdf', await readFile(path.join(root, 'portfolio/resume/resume-ng-template.pdf'))),
+  '/assets/ttaohe-resume.pdf': await publishAsset('ttaohe-resume.pdf', await readFile(path.join(root, 'portfolio/resume/ttaohe-resume.pdf'))),
   '/assets/xiaomi-logo.png': await publishAsset('xiaomi-logo.png', await readFile(path.join(root, 'portfolio/companies/xiaomi-logo.png'))),
   '/assets/ant-group-logo.png': await publishAsset('ant-group-logo.png', await readFile(path.join(root, 'portfolio/companies/ant-group-logo.png'))),
   '/assets/infinigence-ai-logo.ico': await publishAsset('infinigence-ai-logo.ico', await readFile(path.join(root, 'portfolio/companies/infinigence-ai-logo.ico'))),

@@ -1,16 +1,26 @@
-# LaTeX template PDF preview
+# Personal LaTeX resume
 
-This is the existing example PDF from [ttaohe/resume-ng](https://github.com/ttaohe/resume-ng), not TaoHe's personal résumé. The section heading explicitly labels it as a résumé template; personal LaTeX content is pending. The owner requested the example preview with ordinary PDF zoom and text selection on 2026-09-30.
+`ttaohe-resume.pdf` is the reference-style personal resume revision compiled for ttaohe on 2026-10-02. It replaces the upstream example PDF. The name is ttaohe; the education and employment entries use confirmed information. Contact details, skills, projects and the personal summary are intentionally blank. Overlapping employment dates are retained as supplied.
 
-- Repository commit: `8fb52d64342171d0e3c3ec166495e31fc25271c2`
-- [Original main.pdf](https://github.com/ttaohe/resume-ng/blob/8fb52d64342171d0e3c3ec166495e31fc25271c2/main.pdf)
-- Exact PDF Git blob: `0e2f3224a7288370cc640952df29f99b213249b7`
-- Size: 214434 bytes; one A4 page, unencrypted, no PDF JavaScript
-- Original producer: xdvipdfmx (20220710); PDF metadata dates the existing artifact to 2024-03-14
-- The example name, education, contact details and achievements belong to the template's sample content. They must not be copied into personal profile facts.
+## Sources and license
 
-Drive searches for `resume-ng`, `简历` and `latex` did not locate a template archive. The explicitly named GitHub repository was used instead. The upstream repository provides the original `main.tex`, `resume.cls`, `latexmkrc` and README. Only the unchanged PDF and necessary LPPL-1.3c license are redistributed here; use the upstream link for template sources.
+- [Editable LaTeX source project and build instructions](https://drive.google.com/drive/folders/1xvs4yirNncQ1rcIww8q-Y3rKCl13seY4)
+- [Complete source archive, including the license](https://drive.google.com/file/d/1AdorL06IeRT-8l4KtIaQ8udoiwCLiuFE/view)
+- Template: [ttaohe/resume-ng at 8fb52d64342171d0e3c3ec166495e31fc25271c2](https://github.com/ttaohe/resume-ng/tree/8fb52d64342171d0e3c3ec166495e31fc25271c2)
+- Original project: [fky2015/resume-ng](https://github.com/fky2015/resume-ng)
+- LPPL 1.3c; the original license remains in `LICENSE`
 
-A safe local XeLaTeX compilation was attempted with shell escape disabled. It failed before producing a PDF because the environment lacked the XeLaTeX format and Chinese TeX dependencies. The published PDF is therefore the repository's original, byte-verified PDF, not a newly compiled artifact. It was rendered and visually inspected, and its text extraction was checked.
+This is a derived personal document. The sample resume contents were replaced, PDF metadata was set, the reference Fandol font family restored, and the added section spacing reduced in `main.tex`. The upstream `resume.cls` and `latexmkrc` are unchanged. The editable source and compiled document are available together in the linked source archive.
 
-The embedded same-origin PDF uses the browser's native PDF viewer. The section heading has a small direct-open filename link; downloading remains in the native PDF toolbar. The user requested removal of the extra explanatory heading and duplicate custom toolbar on 2026-09-30. PDF toolbar availability varies by browser, especially on mobile. The PDF remains white in all site themes. Replacing it later requires the user's actual LaTeX/PDF and an updated provenance record; do not replace sample text with guessed personal content.
+## Verified build
+
+- Compiler: XeTeX 0.999996, TeX Live 2025/dev/Debian, LaTeX2e 2024-11-01 patch level 2
+- Build driver: latexmk 4.86; PDF converter: xdvipdfmx 20240305
+- PDF: 31,061 bytes, one A4 page, unencrypted, no JavaScript
+- SHA256: `f4f631e10ba7887372e24d953406cfd0504748852ca9e65e57cba02ad90747fc`
+- Rendered at 150 dpi and visually checked; extracted text matches the source
+- All seven used fonts embedded; Chinese and Latin text extraction verified; no missing-glyph or layout-overflow warnings
+
+The same-origin iframe preserves the browser's native PDF controls for zoom, selection and download. Toolbar availability varies by browser, especially on mobile. The direct-open link is retained and the PDF stays white in all site themes. Published asset filenames use a content hash so new HTML requests the correct version.
+
+Reference typography: FandolHei headings, FandolSong body, FandolKai secondary information, and Latin Modern Latin text. The Latin name uses bold sans-serif to preserve the reference title hierarchy. A4 margins, base type sizes and 1.15 line spacing follow the template. Blank sections are not filled with invented content.

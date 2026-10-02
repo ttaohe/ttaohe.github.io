@@ -58,8 +58,8 @@ if (latestFocusDate) {
   }
 }
 assert(!landing.includes('冯开宇') && !landing.includes('北京理工大学') && !landing.includes('GPA:'), 'Upstream sample resume content must never appear on the personal homepage');
-assert(landing.includes('id="resume-title">简历模板') && landing.includes('resume-ng 示例模板 PDF，非个人简历'), 'Example PDF must be explicitly identified as a template, never a personal resume');
-assert(/<iframe class="resume-pdf" src="\/assets\/resume-ng-template\.[a-f0-9]{16}\.pdf#toolbar=1/.test(landing), 'Template must have a real fingerprinted interactive PDF embed');
+assert(landing.includes('id="resume-title">简历') && landing.includes('ttaohe 个人简历 PDF'), 'The verified personal PDF must be identified as ttaohe resume');
+assert(/<iframe class="resume-pdf" src="\/assets\/ttaohe-resume\.[a-f0-9]{16}\.pdf#toolbar=1/.test(landing), 'Resume must have a real fingerprinted interactive PDF embed');
 assert(landing.includes(content.updatedAt), 'Homepage countdown must use the authoritative content timestamp');
 assert(landing.includes('data-visit-counter') && landing.includes('统计首页加载次数，不是独立访客人数'), 'Homepage counter must disclose its pageview scope');
 assert(/src="\/assets\/portfolio-visits\.[a-f0-9]{16}\.js"/.test(landing), 'Homepage counter must use a fingerprinted asset');
