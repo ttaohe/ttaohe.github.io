@@ -21,8 +21,8 @@ test('resume preview clearly identifies the personal resume and provides native 
 
 test('personal PDF matches the reviewed LaTeX build and sample identity stays absent', async () => {
   const pdf = await readFile(new URL('../portfolio/resume/ttaohe-resume.pdf', import.meta.url));
-  assert.equal(pdf.length, 31061);
-  assert.equal(createHash('sha256').update(pdf).digest('hex'), 'f4f631e10ba7887372e24d953406cfd0504748852ca9e65e57cba02ad90747fc');
+  assert.equal(pdf.length, 72721);
+  assert.equal(createHash('sha256').update(pdf).digest('hex'), 'd456ea705a824366fc17c92ea7df1951da023fd143624603e2b5ed09749dc9b4');
   assert(!section.includes('template'));
   assert(!html.includes('冯开宇'));
   assert(!html.includes('北京理工大学'));
