@@ -52,16 +52,17 @@ test('company strip responds to its own available width and stacks with the mobi
 });
 
 
-test('company dates and internship labels preserve the user-provided overlapping periods', () => {
+test('company dates and employment labels preserve the user-provided overlapping periods', () => {
   const items = [...experience.matchAll(/<li>([^]*?)<\/li>/g)].map(match => match[1]);
   const expected = [
     '<time datetime="2025-12">2025.12</time>–<time datetime="2026-03">2026.03</time> · Intern',
     '<time datetime="2026-05">2026.05</time>–<time datetime="2026-09">2026.09</time> · Intern',
-    '<time datetime="2026-06">2026.06</time>–Present',
+    '<time datetime="2026-06">2026.06</time>–Present · Full-time',
   ];
   for (const [index, dates] of expected.entries()) assert(items[index].includes(`class="company-dates">${dates}</span>`));
   assert.equal([...experience.matchAll(/ · Intern/g)].length, 2);
   assert.doesNotMatch(items[2], /Intern/);
+  assert.equal([...experience.matchAll(/ · Full-time/g)].length, 1);
   assert(css.includes('.company-heading{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px .6em;font:14px/1.5 var(--sans)}'));
   for (const item of items) assert.match(item, /class="company-heading"><span class="company-name">[^]*?<span class="company-dates">[^]*?<\/span><\/div><span class="company-direction">/);
   assert(css.includes('.company-dates{font:11px/1.6 var(--sans);color:var(--dim);white-space:nowrap}'));
