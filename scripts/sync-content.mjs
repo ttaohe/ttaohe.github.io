@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { blogSchema } from '../lib/blog/schema.ts';
 
-export const MAX_FEED_BYTES = 5_000_000;
+export const MAX_FEED_BYTES = 15_000_000;
 const root = fileURLToPath(new URL('../', import.meta.url));
 
 export function validateContent(value) {

@@ -14,6 +14,99 @@ async function withProject(fn) {
   try { await fn(projectRoot); } finally { await rm(projectRoot, { recursive: true, force: true }); }
 }
 
+// Keep byte-boundary fixtures independent of growth in the published archive.
+const sizeTestContent = {
+  schemaVersion: fixture.schemaVersion,
+  updatedAt: fixture.updatedAt,
+  posts: [{ ...fixture.posts[0], relatedSlugs: [] }],
+};
+
+function feedWithByteLength(size) {
+  const content = { ...sizeTestContent, futureHistory: '修订记录' };
+  const paddingBytes = size - Buffer.byteLength(JSON.stringify(content));
+  assert.ok(paddingBytes >= 0, 'Test feed must fit within the requested byte length');
+  content.futureHistory += 'x'.repeat(paddingBytes);
+  const raw = JSON.stringify(content);
+  assert.equal(Buffer.byteLength(raw), size);
+  return raw;
+}
+
+function streamedResponse(raw, headers = {}) {
+  const bytes = Buffer.from(raw);
+  let offset = 0;
+  return new Response(new ReadableStream({
+    pull(controller) {
+      if (offset >= bytes.length) return controller.close();
+      // Split UTF-8 sequences across chunks as a real network stream can do.
+      const end = Math.min(offset + 65_536, bytes.length);
+      controller.enqueue(bytes.subarray(offset, end));
+      offset = end;
+    },
+  }), { headers });
+}
+
+test('feed limit is 15 MB in bytes', () => {
+  assert.equal(MAX_FEED_BYTES, 15_000_000);
+});
+
+test('a valid 7.85 MB feed refreshes and is mirrored byte-for-byte', () => withProject(async projectRoot => {
+  const raw = feedWithByteLength(7_850_000);
+  await writeFile(path.join(projectRoot, 'lib/blog/content.json'), JSON.stringify(sizeTestContent));
+  const result = await syncContent({
+    projectRoot,
+    fetchImpl: async () => streamedResponse(raw, { 'content-length': String(Buffer.byteLength(raw)) }),
+  });
+  assert.equal(result.status.stale, false);
+  assert.deepEqual(result.content.posts, sizeTestContent.posts);
+  assert.equal(await readFile(path.join(projectRoot, 'lib/blog/content.json'), 'utf8'), raw);
+}));
+
+test('a streamed UTF-8 response exactly at 15 MB is accepted', async t => {
+  const raw = '界'.repeat(MAX_FEED_BYTES / 3);
+  assert.equal(Buffer.byteLength(raw), MAX_FEED_BYTES);
+  for (const [name, headers] of [
+    ['declared content length', { 'content-length': String(MAX_FEED_BYTES) }],
+    ['unknown content length', {}],
+  ]) {
+    await t.test(name, async () => {
+      assert.equal(await readLimitedResponse(streamedResponse(raw, headers)), raw);
+    });
+  }
+});
+
+test('streamed UTF-8 overflow counts bytes even without a reliable content length', async t => {
+  const raw = `${'界'.repeat(MAX_FEED_BYTES / 3)}x`;
+  assert.equal(Buffer.byteLength(raw), MAX_FEED_BYTES + 1);
+  assert.ok(raw.length < MAX_FEED_BYTES);
+  for (const [name, headers] of [
+    ['unknown content length', {}],
+    ['understated content length', { 'content-length': '1' }],
+  ]) {
+    await t.test(name, async () => {
+      await assert.rejects(readLimitedResponse(streamedResponse(raw, headers)), /size limit/);
+    });
+  }
+});
+
+test('oversized feeds preserve the exact saved snapshot and stale-data notice', async t => {
+  const raw = feedWithByteLength(MAX_FEED_BYTES + 1);
+  for (const [name, headers] of [
+    ['declared overflow', { 'content-length': String(Buffer.byteLength(raw)) }],
+    ['streamed overflow', {}],
+  ]) {
+    await t.test(name, () => withProject(async projectRoot => {
+      const contentPath = path.join(projectRoot, 'lib/blog/content.json');
+      const before = await readFile(contentPath, 'utf8');
+      const result = await syncContent({ projectRoot, fetchImpl: async () => streamedResponse(raw, headers) });
+      assert.equal(result.status.stale, true);
+      assert.equal(result.status.contentUpdatedAt, fixture.updatedAt);
+      assert.deepEqual(result.content, fixture);
+      assert.equal(await readFile(contentPath, 'utf8'), before);
+      assert.deepEqual(JSON.parse(await readFile(path.join(projectRoot, 'lib/blog/feed-status.json'), 'utf8')), result.status);
+    }));
+  }
+});
+
 test('bundled snapshot is valid, with stable unique article routes', () => {
   assert.equal(validateContent(fixture).posts.length, fixture.posts.length);
   const invalid = structuredClone(fixture);
