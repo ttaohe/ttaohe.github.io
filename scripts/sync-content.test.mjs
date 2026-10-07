@@ -4,7 +4,8 @@ import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { syncContent, validateContent, readLimitedResponse, MAX_FEED_BYTES } from './sync-content.mjs';
-const fixture = JSON.parse(await readFile(new URL('../lib/blog/content.json', import.meta.url), 'utf8'));
+const rawFixture = await readFile(new URL('../lib/blog/content.json', import.meta.url), 'utf8');
+const fixture = JSON.parse(rawFixture);
 
 async function withProject(fn) {
   const projectRoot = await mkdtemp(path.join(os.tmpdir(), 'infra-feed-test-'));
@@ -186,8 +187,18 @@ test('unknown extension fields survive validation and mirroring', () => withProj
 }));
 
 test('complete Drive JSON is mirrored byte-for-byte', () => withProject(async projectRoot => {
-  const raw = JSON.stringify(fixture, null, 3) + '\n';
+  assert.ok(Buffer.byteLength(rawFixture) <= MAX_FEED_BYTES, 'Published fixture must fit the feed byte limit');
+  const result = await syncContent({ projectRoot, fetchImpl: async () => new Response(rawFixture) });
+  assert.equal(result.status.stale, false);
+  assert.equal(await readFile(path.join(projectRoot, 'lib/blog/content.json'), 'utf8'), rawFixture);
+}));
+
+test('formatted JSON and future fields are mirrored byte-for-byte', () => withProject(async projectRoot => {
+  const expanded = { ...sizeTestContent, futureSection: { revision: 2, title: 'Preserve formatting' } };
+  const raw = JSON.stringify(expanded, null, 3) + '\n\n';
+  await writeFile(path.join(projectRoot, 'lib/blog/content.json'), JSON.stringify(sizeTestContent));
   const result = await syncContent({ projectRoot, fetchImpl: async () => new Response(raw) });
   assert.equal(result.status.stale, false);
+  assert.deepEqual(result.content, expanded);
   assert.equal(await readFile(path.join(projectRoot, 'lib/blog/content.json'), 'utf8'), raw);
 }));
