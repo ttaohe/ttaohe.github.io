@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
+import { parseArticleHeading } from '../lib/blog/article-heading.ts';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const output = path.join(root, 'publish');
@@ -22,7 +23,17 @@ for (const route of routes) {
   if (route.startsWith('notes/')) {
     const post = content.posts.find(post => route.endsWith(post.slug));
     assert(text.includes(post.title), `Missing article title for ${post.slug}`);
-    assert(text.includes(post.sections[0].paragraphs[0]), `Missing full article content for ${post.slug}`);
+    const articleHtml = html.match(/<article\b[^>]*>([^]*?)<\/article>/)?.[1] ?? '';
+    const visibleText = decodeText(articleHtml.replace(/<[^>]*>/g, '')).replace(/\s/g, '');
+    for (const paragraph of post.sections.flatMap(section => section.paragraphs)) {
+      const heading = parseArticleHeading(post.slug, paragraph);
+      const expected = heading ? heading.title + heading.body : paragraph;
+      assert(visibleText.includes(expected.replace(/\s/g, '')), `Missing full article content for ${post.slug}`);
+      if (heading) {
+        const titles = [...articleHtml.matchAll(new RegExp(`<h${heading.level}\\b[^>]*>([^]*?)<\\/h${heading.level}>`, 'g'))].map(match => decodeText(match[1]));
+        assert(titles.includes(heading.title), `Missing semantic h${heading.level} for ${heading.title}`);
+      }
+    }
   }
   // Drive download endpoints can return valid SVG bytes but block browser image embedding.
   assert(!/<img[^>]+src="https:\/\/drive\.google\.com\/uc\?/.test(html), `Non-embeddable Drive image on ${route}; publish a static mirror first`);
