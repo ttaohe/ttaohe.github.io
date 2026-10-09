@@ -1,0 +1,194 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" version="24.7.17" type="device" compressed="false">
+  <diagram name="portable-publisher-restore" id="portable-publisher-restore">
+    <mxGraphModel dx="1440" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1440" pageHeight="1000" math="0" shadow="0" background="#F7F9FC">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="badge" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#EAF2FC;strokeColor=none;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="151" width="292" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="e35" value="" style="edgeStyle=none;rounded=0;html=0;endArrow=block;endFill=1;strokeColor=#2C64A3;strokeWidth=3;exitX=0.5;exitY=1.0;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5016949152542373;entryY=0.0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="code" target="version">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="245" y="472" />
+              <mxPoint x="198" y="472" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e36" value="" style="edgeStyle=none;rounded=0;html=0;endArrow=block;endFill=1;strokeColor=#2C64A3;strokeWidth=3;exitX=0.5;exitY=1.0;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.49830508474576274;entryY=0.0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="bundle" target="restore">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="735" y="472" />
+              <mxPoint x="545" y="472" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e37" value="" style="edgeStyle=none;rounded=0;html=0;endArrow=block;endFill=1;strokeColor=#A66918;strokeWidth=3;exitX=0.5;exitY=1.0;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.49830508474576274;entryY=0.0;entryDx=0;entryDy=0;entryPerimeter=0;dashed=1;dashPattern=9 7;" edge="1" parent="1" source="credentials" target="smoke">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1210" y="472" />
+              <mxPoint x="893" y="472" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e38" value="" style="edgeStyle=none;rounded=0;html=0;endArrow=block;endFill=1;strokeColor=#2C64A3;strokeWidth=3;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="version" target="restore">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e39" value="" style="edgeStyle=none;rounded=0;html=0;endArrow=block;endFill=1;strokeColor=#2C64A3;strokeWidth=3;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="restore" target="smoke">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e40" value="" style="edgeStyle=none;rounded=0;html=0;endArrow=block;endFill=1;strokeColor=#207761;strokeWidth=3;exitX=1.0;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="smoke" target="enable">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e45" value="" style="edgeStyle=none;rounded=0;html=0;endArrow=block;endFill=1;strokeColor=#AD5262;strokeWidth=3;exitX=0.5016949152542373;exitY=0.0;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5016949152542373;entryY=1.0;entryDx=0;entryDy=0;entryPerimeter=0;dashed=1;dashPattern=9 7;" edge="1" parent="1" source="previous" target="enable">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="t1" value="可迁移的关键，是恢复顺序与写入权" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=38;fontColor=#172B45;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="48" y="34" width="1344" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="t2" value="在干净目标环境中重建可信状态，再交接唯一写入权" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=21;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="50" y="95" width="1335" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="t3" value="目标架构 · 设计路径" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#2C64A3;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="64" y="151" width="266" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="t4" value="图 3 / 03" style="text;html=0;strokeColor=none;fillColor=none;align=right;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="1200" y="150" width="190" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="t5" value="概念设计，不表示相关能力已经实现或通过验证" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=16;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="50" y="964" width="1340" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t6" value="恢复所需输入" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=23;fontColor=#2C64A3;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="50" y="202" width="850" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="code" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#2C64A3;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="247" width="390" height="169" as="geometry" />
+        </mxCell>
+        <mxCell id="t7" value="输入 A · 可复现代码" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#2C64A3;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="72" y="263" width="346" height="29" as="geometry" />
+        </mxCell>
+        <mxCell id="t8" value="固定版本的源码" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=27;fontColor=#172B45;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="72" y="298" width="346" height="39" as="geometry" />
+        </mxCell>
+        <mxCell id="t9" value="锁定提交或版本" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="72" y="343" width="346" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="t10" value="依赖与数据库模式可追溯" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="72" y="375" width="346" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="bundle" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#2C64A3;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="525" y="247" width="420" height="169" as="geometry" />
+        </mxCell>
+        <mxCell id="t11" value="输入 B · 私有数据" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#2C64A3;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="547" y="263" width="376" height="29" as="geometry" />
+        </mxCell>
+        <mxCell id="t12" value="一致性恢复包" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=27;fontColor=#172B45;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="547" y="298" width="376" height="39" as="geometry" />
+        </mxCell>
+        <mxCell id="t13" value="数据库 + 素材 + 版本清单" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="547" y="343" width="376" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="t14" value="来自同一备份点，可校验" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="547" y="375" width="376" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="credentials" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFF4DD;strokeColor=#A66918;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1030" y="247" width="360" height="169" as="geometry" />
+        </mxCell>
+        <mxCell id="t15" value="输入 C · 分离配置" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#A66918;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="1052" y="263" width="316" height="29" as="geometry" />
+        </mxCell>
+        <mxCell id="t16" value="用户独立提供凭据" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=25;fontColor=#172B45;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="1052" y="298" width="316" height="39" as="geometry" />
+        </mxCell>
+        <mxCell id="t17" value="在私有目标环境配置" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="1052" y="343" width="316" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="t18" value="不进入公开内容或恢复包" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="1052" y="375" width="316" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="version" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#2C64A3;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="526" width="295" height="198" as="geometry" />
+        </mxCell>
+        <mxCell id="t19" value="01 · 先确定兼容性" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#2C64A3;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="72" y="542" width="251" height="29" as="geometry" />
+        </mxCell>
+        <mxCell id="t20" value="干净环境与版本检查" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=23;fontColor=#172B45;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="72" y="577" width="251" height="39" as="geometry" />
+        </mxCell>
+        <mxCell id="t21" value="确认源码、依赖版本" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="72" y="622" width="251" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="t22" value="核对数据模式兼容性" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="72" y="654" width="251" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="restore" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#2C64A3;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="398" y="526" width="295" height="198" as="geometry" />
+        </mxCell>
+        <mxCell id="t23" value="02 · 先恢复，暂不写入" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#2C64A3;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="420" y="542" width="251" height="29" as="geometry" />
+        </mxCell>
+        <mxCell id="t24" value="隔离恢复与完整性检查" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=21;fontColor=#172B45;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="420" y="577" width="251" height="39" as="geometry" />
+        </mxCell>
+        <mxCell id="t25" value="恢复数据库与素材" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="420" y="622" width="251" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="t26" value="核对清单、哈希与引用" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="420" y="654" width="251" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="smoke" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#207761;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="746" y="526" width="295" height="198" as="geometry" />
+        </mxCell>
+        <mxCell id="t27" value="03 · 在私有环境验证" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#207761;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="768" y="542" width="251" height="29" as="geometry" />
+        </mxCell>
+        <mxCell id="t28" value="回环地址冒烟测试" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=24;fontColor=#172B45;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="768" y="577" width="251" height="39" as="geometry" />
+        </mxCell>
+        <mxCell id="t29" value="验证读取与素材访问" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="768" y="622" width="251" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="t30" value="核对公开预览结果" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="768" y="654" width="251" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="enable" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#207761;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1095" y="526" width="295" height="198" as="geometry" />
+        </mxCell>
+        <mxCell id="t31" value="04 · 最后启用写入" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#207761;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="1117" y="542" width="251" height="29" as="geometry" />
+        </mxCell>
+        <mxCell id="t32" value="交接唯一写入权" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=25;fontColor=#172B45;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="1117" y="577" width="251" height="39" as="geometry" />
+        </mxCell>
+        <mxCell id="t33" value="确认旧实例已隔离" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="1117" y="622" width="251" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="t34" value="再允许定时写入与发布" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="1117" y="654" width="251" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="not_restore" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#D6E0EB;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="806" width="991" height="137" as="geometry" />
+        </mxCell>
+        <mxCell id="t41" value="只拉取代码，不等于恢复服务" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=28;fontColor=#172B45;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="76" y="823" width="930" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="t42" value="代码、数据、素材、清单与凭据必须共同就位，并通过验证" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=22;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="76" y="879" width="930" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="previous" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FCEEF0;strokeColor=#AD5262;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1095" y="829" width="295" height="114" as="geometry" />
+        </mxCell>
+        <mxCell id="t43" value="旧实例已禁止写入" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=24;fontColor=#172B45;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="1111" y="848" width="263" height="39" as="geometry" />
+        </mxCell>
+        <mxCell id="t44" value="只读、停用或隔离" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="1111" y="893" width="263" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="t46" value="必要前置条件" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#AD5262;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="1101" y="760" width="130" height="35" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

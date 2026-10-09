@@ -1,0 +1,196 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" version="24.7.17" type="device" compressed="false">
+  <diagram name="portable-publisher-boundaries" id="portable-publisher-boundaries">
+    <mxGraphModel dx="1440" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1440" pageHeight="1000" math="0" shadow="0" background="#F7F9FC">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="badge" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#EAF2FC;strokeColor=none;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="151" width="292" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="private_zone" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#F0F5FC;strokeColor=#D6E0EB;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="222" width="480" height="481" as="geometry" />
+        </mxCell>
+        <mxCell id="public_zone" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#F0F8F4;strokeColor=#D6E0EB;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="780" y="222" width="620" height="481" as="geometry" />
+        </mxCell>
+        <mxCell id="e36" value="" style="edgeStyle=none;rounded=0;html=0;endArrow=block;endFill=1;strokeColor=#2C64A3;strokeWidth=3;exitX=1.0;exitY=0.49107142857142855;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.4928571428571429;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="owner" target="backend">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e37" value="" style="edgeStyle=none;rounded=0;html=0;endArrow=block;endFill=1;strokeColor=#2C64A3;strokeWidth=3;exitX=0.5;exitY=1.0;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5;entryY=0.0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="backend" target="storage">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="381" y="482" />
+              <mxPoint x="281" y="482" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e38" value="" style="edgeStyle=none;rounded=0;html=0;endArrow=block;endFill=1;strokeColor=#A66918;strokeWidth=3;exitX=1.0;exitY=0.4928571428571429;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.29017857142857145;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="backend" target="gate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e39" value="" style="edgeStyle=none;rounded=0;html=0;endArrow=block;endFill=1;strokeColor=#207761;strokeWidth=3;exitX=1.0;exitY=0.35714285714285715;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.5096774193548387;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="gate" target="json">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e40" value="" style="edgeStyle=none;rounded=0;html=0;endArrow=block;endFill=1;strokeColor=#207761;strokeWidth=3;exitX=1.0;exitY=0.5096774193548387;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.0;entryY=0.5096774193548387;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="json" target="drive">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e41" value="" style="edgeStyle=none;rounded=0;html=0;endArrow=block;endFill=1;strokeColor=#207761;strokeWidth=3;exitX=0.34219269102990035;exitY=1.0;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5;entryY=0.0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="drive" target="github">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1176" y="523" />
+              <mxPoint x="932" y="523" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e42" value="" style="edgeStyle=none;rounded=0;html=0;endArrow=block;endFill=1;strokeColor=#207761;strokeWidth=3;exitX=0.5880398671096345;exitY=1.0;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5040322580645161;entryY=0.0;entryDx=0;entryDy=0;entryPerimeter=0;" edge="1" parent="1" source="drive" target="other_site">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e43" value="" style="edgeStyle=none;rounded=0;html=0;endArrow=block;endFill=1;strokeColor=#2C64A3;strokeWidth=3;exitX=0.5;exitY=1.0;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5;entryY=0.0;entryDx=0;entryDy=0;entryPerimeter=0;dashed=1;dashPattern=9 7;" edge="1" parent="1" source="storage" target="backup">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="281" y="730" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="t1" value="私有控制与公开发布的边界" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=38;fontColor=#172B45;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="48" y="34" width="1344" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="t2" value="只有显式选定、固定版本的内容，才能进入公开发布链路" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=21;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="50" y="95" width="1335" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="t3" value="目标架构 · 设计路径" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#2C64A3;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="64" y="151" width="266" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="t4" value="图 1 / 03" style="text;html=0;strokeColor=none;fillColor=none;align=right;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="1200" y="150" width="190" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="t5" value="概念设计，不表示相关能力已经实现或通过验证" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=16;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="50" y="964" width="1340" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="t6" value="私有控制面" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=24;fontColor=#2C64A3;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="64" y="240" width="432" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="t7" value="公开内容链路" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=24;fontColor=#207761;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="804" y="240" width="572" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="owner" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#2C64A3;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="67" y="315" width="162" height="112" as="geometry" />
+        </mxCell>
+        <mxCell id="t8" value="所有者 / Agent" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=19;fontColor=#172B45;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="83" y="334" width="130" height="39" as="geometry" />
+        </mxCell>
+        <mxCell id="t9" value="私有授权操作" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="76" y="376" width="144" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="backend" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#2C64A3;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="277" y="301" width="208" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="t10" value="Python 后台" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=25;fontColor=#172B45;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="293" y="320" width="176" height="39" as="geometry" />
+        </mxCell>
+        <mxCell id="t11" value="仅回环地址访问" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="293" y="365" width="176" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="t12" value="私有读写接口" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="293" y="397" width="176" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="storage" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#2C64A3;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="78" y="523" width="406" height="126" as="geometry" />
+        </mxCell>
+        <mxCell id="t13" value="本地持久化" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=26;fontColor=#172B45;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="94" y="542" width="374" height="39" as="geometry" />
+        </mxCell>
+        <mxCell id="t14" value="SQLite 数据 · 素材 · 修订记录" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="94" y="587" width="374" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="gate" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFF4DD;strokeColor=#A66918;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="548" y="305" width="204" height="224" as="geometry" />
+        </mxCell>
+        <mxCell id="t15" value="不可变选择" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#A66918;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="570" y="321" width="160" height="29" as="geometry" />
+        </mxCell>
+        <mxCell id="t16" value="显式发布闸门" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=25;fontColor=#172B45;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="564" y="356" width="172" height="39" as="geometry" />
+        </mxCell>
+        <mxCell id="t17" value="选定内容与修订" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="564" y="401" width="172" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="t18" value="固定素材引用" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="564" y="433" width="172" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="t19" value="冻结并校验快照" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="564" y="465" width="172" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="json" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#207761;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="804" y="306" width="212" height="155" as="geometry" />
+        </mxCell>
+        <mxCell id="t20" value="完整公开 JSON" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=24;fontColor=#172B45;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="820" y="325" width="180" height="39" as="geometry" />
+        </mxCell>
+        <mxCell id="t21" value="只含选定内容" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="820" y="370" width="180" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="t22" value="不泄露私有状态" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="820" y="402" width="180" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="drive" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#207761;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1073" y="306" width="301" height="155" as="geometry" />
+        </mxCell>
+        <mxCell id="t23" value="Drive 权威原文件" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=26;fontColor=#172B45;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="1089" y="325" width="269" height="39" as="geometry" />
+        </mxCell>
+        <mxCell id="t24" value="原位更新公开完整内容" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="1089" y="370" width="269" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="t25" value="持续保留同一个文件 ID" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="1089" y="402" width="269" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="github" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#207761;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="813" y="573" width="238" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="t26" value="GitHub 静态 Pages" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=22;fontColor=#172B45;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="829" y="592" width="206" height="39" as="geometry" />
+        </mxCell>
+        <mxCell id="t27" value="独立构建与验证" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="829" y="633" width="206" height="29" as="geometry" />
+        </mxCell>
+        <mxCell id="other_site" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#207761;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1125" y="573" width="248" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="t28" value="其他静态站点" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=24;fontColor=#172B45;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="1141" y="592" width="216" height="39" as="geometry" />
+        </mxCell>
+        <mxCell id="t29" value="独立构建与验证" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="1140" y="633" width="218" height="29" as="geometry" />
+        </mxCell>
+        <mxCell id="backup" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#EAF2FC;strokeColor=#2C64A3;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="78" y="802" width="406" height="123" as="geometry" />
+        </mxCell>
+        <mxCell id="t30" value="私有一致性备份" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=26;fontColor=#172B45;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="94" y="821" width="374" height="39" as="geometry" />
+        </mxCell>
+        <mxCell id="t31" value="数据库 · 素材 · 版本清单" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="94" y="866" width="374" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="t32" value="独立私有路径" style="text;html=0;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#2C64A3;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="79" y="738" width="182" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="boundary_note" value="" style="rounded=1;arcSize=12;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#D6E0EB;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="548" y="757" width="852" height="168" as="geometry" />
+        </mxCell>
+        <mxCell id="t33" value="边界约束" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=25;fontColor=#172B45;fontStyle=1;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="575" y="774" width="794" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="t34" value="公开发布包不携带凭据、后台状态或私有备份" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=22;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="575" y="822" width="794" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="t35" value="各站点分别验证、分别记录回执；备份不经过公开链路" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=22;fontColor=#53677E;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="575" y="866" width="794" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="t44" value="由权威公开内容同步" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=nowrap;overflow=visible;spacing=0;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#207761;fontStyle=0;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="805" y="480" width="290" height="29" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
