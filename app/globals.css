@@ -66,3 +66,9 @@ button { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
 }
+
+/* Article Markdown: retain the established reading palette and local overflow. */
+.article-markdown p code, .article-markdown li code, .article-markdown td code { background: #f0f5f3; border-radius: .25rem; padding: .12em .3em; font-size: .88em; overflow-wrap: anywhere; }
+.article-markdown pre code { background: transparent; padding: 0; overflow-wrap: normal; white-space: pre; }
+.article-markdown strong { color: #293d43; font-weight: 600; }
+.article-markdown li > p { margin-bottom: .35rem; }

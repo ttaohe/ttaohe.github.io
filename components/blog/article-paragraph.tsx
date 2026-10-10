@@ -1,6 +1,8 @@
+import { ArticleMarkdown } from "./article-markdown";
 import { parseArticleHeading } from "@/lib/blog/article-heading";
 
-export function ArticleParagraph({ slug, text }: { slug: string; text: string }) {
+export function ArticleParagraph({ slug, text, markdown = false, diagramDownloadUrl }: { slug: string; text: string; markdown?: boolean; diagramDownloadUrl?: string }) {
+  if (markdown) return <ArticleMarkdown text={text} diagramDownloadUrl={diagramDownloadUrl}/>;
   const heading = parseArticleHeading(slug, text);
   const paragraphClass = "mb-5 text-[17px] leading-[1.95] text-[#465d64]";
   if (!heading) return <p className={paragraphClass}>{text}</p>;

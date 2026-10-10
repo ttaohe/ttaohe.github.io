@@ -8,13 +8,7 @@ import { parseArticleHeading } from '../lib/blog/article-heading.ts';
 
 const slug = 'pcie-rdma-networking-foundations';
 const normalize = text => text.replace(/\s/g, '');
-const componentSource = readFileSync(new URL('../components/blog/article-paragraph.tsx', import.meta.url), 'utf8');
-const compiled = ts.transpileModule(componentSource, {
-  compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.ESNext },
-}).outputText
-  .replaceAll('"react/jsx-runtime"', JSON.stringify(import.meta.resolve('react/jsx-runtime')))
-  .replaceAll('"@/lib/blog/article-heading"', JSON.stringify(new URL('../lib/blog/article-heading.ts', import.meta.url).href));
-const { ArticleParagraph } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`);
+const { ArticleParagraph } = await import('./article-render-test-helpers.mjs');
 const render = (articleSlug, text) => renderToStaticMarkup(createElement(ArticleParagraph, { slug: articleSlug, text }));
 
 test('chapter and glossary prefixes become level-three headings', () => {

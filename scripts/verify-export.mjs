@@ -1,3 +1,4 @@
+import {verifyMarkdownSection} from "./article-markdown-verification.mjs";
 import { readFile, readdir, access } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -25,6 +26,10 @@ for (const route of routes) {
     assert(text.includes(post.title), `Missing article title for ${post.slug}`);
     const articleHtml = html.match(/<article\b[^>]*>([^]*?)<\/article>/)?.[1] ?? '';
     const visibleText = decodeText(articleHtml.replace(/<[^>]*>/g, '')).replace(/\s/g, '');
+    if (post.bodyFormat === 'markdown') {
+      post.sections.forEach((section,index)=>verifyMarkdownSection(articleHtml,section,index));
+      for (const source of post.sources) assert(decodeText(articleHtml).includes(`href="${source.url}"`), `Missing source URL for ${post.slug}`);
+    } else {
     for (const paragraph of post.sections.flatMap(section => section.paragraphs)) {
       const heading = parseArticleHeading(post.slug, paragraph);
       const expected = heading ? heading.title + heading.body : paragraph;
@@ -33,6 +38,7 @@ for (const route of routes) {
         const titles = [...articleHtml.matchAll(new RegExp(`<h${heading.level}\\b[^>]*>([^]*?)<\\/h${heading.level}>`, 'g'))].map(match => decodeText(match[1]));
         assert(titles.includes(heading.title), `Missing semantic h${heading.level} for ${heading.title}`);
       }
+    }
     }
   }
   // Drive download endpoints can return valid SVG bytes but block browser image embedding.
