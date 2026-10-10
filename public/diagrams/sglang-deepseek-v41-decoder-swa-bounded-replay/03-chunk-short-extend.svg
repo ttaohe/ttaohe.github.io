@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="910" viewBox="0 0 1400 910" role="img" aria-label="03-chunk-short-extend">
+<rect width="1400" height="910" fill="#FFFFFF"/>
+<defs><marker id="arr" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,4 L0,8 Z" fill="#53677A"/></marker></defs>
+<g font-family="Noto Sans CJK SC, Noto Sans, Arial, sans-serif">
+<text x="48" y="55" font-size="32" fill="#142B43" font-weight="700" text-anchor="start">裁剪单位是每次 extend，短 extend 也有边界</text>
+<text x="48" y="93" font-size="19" fill="#53677A" font-weight="400" text-anchor="start">固定主线行为 · 32K 示例假设实际调度为四次等长 8K extend</text>
+<text x="48" y="160" font-size="26" fill="#142B43" font-weight="700" text-anchor="start">32K 输入分四次 extend</text>
+<rect x="48" y="188" width="310" height="167" rx="12" fill="#E9EDF1" stroke="#CFD9E2" stroke-width="1.5"/>
+<rect x="313" y="188" width="45" height="167" rx="0" fill="#E7F1FD" stroke="#156CBB" stroke-width="1.5"/>
+<text x="66" y="226" font-size="23" fill="#142B43" font-weight="700" text-anchor="start">Chunk 1</text>
+<text x="66" y="267" font-size="20" fill="#142B43" font-weight="400" text-anchor="start">L0–L20：全部 8192</text>
+<text x="66" y="302" font-size="20" fill="#142B43" font-weight="400" text-anchor="start">L21–L39：最后 128</text>
+<text x="66" y="333" font-size="19" fill="#156CBB" font-weight="700" text-anchor="start">8064–8191</text>
+<rect x="379" y="188" width="310" height="167" rx="12" fill="#E9EDF1" stroke="#CFD9E2" stroke-width="1.5"/>
+<rect x="644" y="188" width="45" height="167" rx="0" fill="#E7F1FD" stroke="#156CBB" stroke-width="1.5"/>
+<text x="397" y="226" font-size="23" fill="#142B43" font-weight="700" text-anchor="start">Chunk 2</text>
+<text x="397" y="267" font-size="20" fill="#142B43" font-weight="400" text-anchor="start">L0–L20：全部 8192</text>
+<text x="397" y="302" font-size="20" fill="#142B43" font-weight="400" text-anchor="start">L21–L39：最后 128</text>
+<text x="397" y="333" font-size="19" fill="#156CBB" font-weight="700" text-anchor="start">16256–16383</text>
+<rect x="710" y="188" width="310" height="167" rx="12" fill="#E9EDF1" stroke="#CFD9E2" stroke-width="1.5"/>
+<rect x="975" y="188" width="45" height="167" rx="0" fill="#E7F1FD" stroke="#156CBB" stroke-width="1.5"/>
+<text x="728" y="226" font-size="23" fill="#142B43" font-weight="700" text-anchor="start">Chunk 3</text>
+<text x="728" y="267" font-size="20" fill="#142B43" font-weight="400" text-anchor="start">L0–L20：全部 8192</text>
+<text x="728" y="302" font-size="20" fill="#142B43" font-weight="400" text-anchor="start">L21–L39：最后 128</text>
+<text x="728" y="333" font-size="19" fill="#156CBB" font-weight="700" text-anchor="start">24448–24575</text>
+<rect x="1041" y="188" width="310" height="167" rx="12" fill="#E9EDF1" stroke="#CFD9E2" stroke-width="1.5"/>
+<rect x="1306" y="188" width="45" height="167" rx="0" fill="#E7F1FD" stroke="#156CBB" stroke-width="1.5"/>
+<text x="1059" y="226" font-size="23" fill="#142B43" font-weight="700" text-anchor="start">Chunk 4</text>
+<text x="1059" y="267" font-size="20" fill="#142B43" font-weight="400" text-anchor="start">L0–L20：全部 8192</text>
+<text x="1059" y="302" font-size="20" fill="#142B43" font-weight="400" text-anchor="start">L21–L39：最后 128</text>
+<text x="1059" y="333" font-size="19" fill="#156CBB" font-weight="700" text-anchor="start">32640–32767</text>
+<text x="48" y="403" font-size="24" fill="#53677A" font-weight="400" text-anchor="start">晚层合计 4 × 128 = 512 行；各 chunk 分别设置自己的 SWA 下界</text>
+<text x="48" y="491" font-size="27" fill="#142B43" font-weight="700" text-anchor="start">缓存前缀 8192 + 新增 64：不会自动补齐成 128</text>
+<rect x="48" y="523" width="760" height="111" rx="12" fill="#E9EDF1" stroke="#CFD9E2" stroke-width="1.5"/>
+<text x="74" y="564" font-size="26" fill="#53677A" font-weight="700" text-anchor="start">已有前缀 0 … 8191</text>
+<text x="74" y="606" font-size="22" fill="#53677A" font-weight="400" text-anchor="start">晚层本次局部读取不会回退到此前 8128–8191</text>
+<rect x="838" y="523" width="512" height="111" rx="12" fill="#E7F1FD" stroke="#156CBB" stroke-width="1.5"/>
+<text x="864" y="564" font-size="25" fill="#156CBB" font-weight="700" text-anchor="start">本次 extend 8192 … 8255</text>
+<text x="864" y="606" font-size="21" fill="#142B43" font-weight="400" text-anchor="start">T = min(128, 64) = 64，floor = 8192</text>
+<rect x="48" y="681" width="1302" height="165" rx="12" fill="#FFF1D9" stroke="#AE6500" stroke-width="1.5"/>
+<text x="73" y="723" font-size="27" fill="#AE6500" font-weight="700" text-anchor="start">短 extend 没少算行，也可能改变注意力依赖</text>
+<text x="73" y="765" font-size="22" fill="#142B43" font-weight="400" text-anchor="start">8192 的 SWA 只读自身；8255 的 SWA 只读 8192–8255</text>
+<text x="73" y="804" font-size="22" fill="#142B43" font-weight="400" text-anchor="start">短 extend 修复 PR #41303 截至 2026-10-09 未合并，不能提前当成主线行为</text>
+</g></svg>

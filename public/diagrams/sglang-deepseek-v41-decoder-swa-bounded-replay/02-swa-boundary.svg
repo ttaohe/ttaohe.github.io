@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="890" viewBox="0 0 1400 890" role="img" aria-label="02-swa-boundary">
+<rect width="1400" height="890" fill="#FFFFFF"/>
+<defs><marker id="arr" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,4 L0,8 Z" fill="#53677A"/></marker></defs>
+<g font-family="Noto Sans CJK SC, Noto Sans, Arial, sans-serif">
+<text x="48" y="55" font-size="32" fill="#142B43" font-weight="700" text-anchor="start">同样的 128 个位置不保证同样的逐层表示</text>
+<text x="48" y="93" font-size="19" fill="#53677A" font-weight="400" text-anchor="start">只画 SWA 局部分支；全局稀疏分支仍可读取共享历史 KV</text>
+<text x="60" y="160" font-size="22" fill="#53677A" font-weight="700" text-anchor="start">query 位置</text>
+<text x="280" y="160" font-size="22" fill="#53677A" font-weight="700" text-anchor="start">完整 SWA 范围</text>
+<text x="815" y="160" font-size="22" fill="#156CBB" font-weight="700" text-anchor="start">尾部路径可见范围</text>
+<rect x="48" y="183" width="1302" height="88" rx="12" fill="#FFFFFF" stroke="#CFD9E2" stroke-width="1.5"/>
+<text x="73" y="235" font-size="26" fill="#142B43" font-weight="700" text-anchor="start">8064</text>
+<rect x="268" y="198" width="440" height="58" rx="12" fill="#E9EDF1" stroke="#CFD9E2" stroke-width="1.5"/>
+<text x="292" y="236" font-size="25" fill="#53677A" font-weight="400" text-anchor="start">7937–8064</text>
+<line x1="734" y1="227" x2="785" y2="227" stroke="#53677A" stroke-width="2.5" marker-end="url(#arr)"/>
+<rect x="803" y="198" width="520" height="58" rx="12" fill="#E7F1FD" stroke="#156CBB" stroke-width="1.5"/>
+<text x="826" y="236" font-size="25" fill="#156CBB" font-weight="700" text-anchor="start">8064（仅自身）</text>
+<rect x="48" y="288" width="1302" height="88" rx="12" fill="#FFFFFF" stroke="#CFD9E2" stroke-width="1.5"/>
+<text x="73" y="340" font-size="26" fill="#142B43" font-weight="700" text-anchor="start">8065</text>
+<rect x="268" y="303" width="440" height="58" rx="12" fill="#E9EDF1" stroke="#CFD9E2" stroke-width="1.5"/>
+<text x="292" y="341" font-size="25" fill="#53677A" font-weight="400" text-anchor="start">7938–8065</text>
+<line x1="734" y1="332" x2="785" y2="332" stroke="#53677A" stroke-width="2.5" marker-end="url(#arr)"/>
+<rect x="803" y="303" width="520" height="58" rx="12" fill="#E7F1FD" stroke="#156CBB" stroke-width="1.5"/>
+<text x="826" y="341" font-size="25" fill="#156CBB" font-weight="700" text-anchor="start">8064–8065</text>
+<rect x="48" y="393" width="1302" height="88" rx="12" fill="#FFFFFF" stroke="#CFD9E2" stroke-width="1.5"/>
+<text x="73" y="445" font-size="26" fill="#142B43" font-weight="700" text-anchor="start">8191</text>
+<rect x="268" y="408" width="440" height="58" rx="12" fill="#E9EDF1" stroke="#CFD9E2" stroke-width="1.5"/>
+<text x="292" y="446" font-size="25" fill="#53677A" font-weight="400" text-anchor="start">8064–8191</text>
+<line x1="734" y1="437" x2="785" y2="437" stroke="#53677A" stroke-width="2.5" marker-end="url(#arr)"/>
+<rect x="803" y="408" width="520" height="58" rx="12" fill="#E7F1FD" stroke="#156CBB" stroke-width="1.5"/>
+<text x="826" y="446" font-size="25" fill="#156CBB" font-weight="700" text-anchor="start">8064–8191（128 个）</text>
+<text x="60" y="548" font-size="28" fill="#142B43" font-weight="700" text-anchor="start">为什么最后一个 token 仍可能变化</text>
+<rect x="48" y="582" width="370" height="160" rx="12" fill="#FFF1D9" stroke="#AE6500" stroke-width="1.5"/>
+<text x="72" y="621" font-size="23" fill="#142B43" font-weight="400" text-anchor="start">L21 · 位置 8064</text>
+<text x="72" y="661" font-size="23" fill="#142B43" font-weight="400" text-anchor="start">少读左边 127 个局部位置</text>
+<text x="72" y="701" font-size="23" fill="#142B43" font-weight="400" text-anchor="start">层后 hidden 可能改变</text>
+<rect x="506" y="582" width="370" height="160" rx="12" fill="#E7F1FD" stroke="#156CBB" stroke-width="1.5"/>
+<text x="530" y="621" font-size="23" fill="#142B43" font-weight="400" text-anchor="start">L22 · 位置 8191</text>
+<text x="530" y="661" font-size="23" fill="#142B43" font-weight="400" text-anchor="start">读取 8064 等位置的</text>
+<text x="530" y="701" font-size="23" fill="#142B43" font-weight="400" text-anchor="start">新一层局部 KV</text>
+<rect x="964" y="582" width="386" height="160" rx="12" fill="#E4F5EF" stroke="#127A65" stroke-width="1.5"/>
+<text x="988" y="621" font-size="23" fill="#142B43" font-weight="400" text-anchor="start">L23 … L39</text>
+<text x="988" y="661" font-size="23" fill="#142B43" font-weight="400" text-anchor="start">差异继续沿局部依赖</text>
+<text x="988" y="701" font-size="23" fill="#142B43" font-weight="400" text-anchor="start">及残差 / mHC 传播</text>
+<line x1="423" y1="664" x2="500" y2="664" stroke="#53677A" stroke-width="2.5" marker-end="url(#arr)"/>
+<line x1="883" y1="664" x2="958" y2="664" stroke="#53677A" stroke-width="2.5" marker-end="url(#arr)"/>
+<text x="60" y="808" font-size="25" fill="#142B43" font-weight="700" text-anchor="start">位置集合完整 ≠ 输入表示相同；实际输出是否变化仍要测量</text>
+<text x="60" y="849" font-size="22" fill="#53677A" font-weight="400" text-anchor="start">窗口公式：i 的局部可见范围 = [max(8064, i − 127), i]</text>
+</g></svg>
