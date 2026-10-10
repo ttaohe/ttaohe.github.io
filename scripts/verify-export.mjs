@@ -1,3 +1,4 @@
+import {presentBlogContent} from "../lib/blog/article-presentation.mjs";
 import {verifyMarkdownSection} from "./article-markdown-verification.mjs";
 import { readFile, readdir, access } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -10,7 +11,7 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 const output = path.join(root, 'publish');
 const { basePath } = JSON.parse(await readFile(path.join(root, 'lib/site-config.json'), 'utf8'));
 const appOutput = path.join(output, basePath);
-const content = JSON.parse(await readFile(path.join(root, 'lib/blog/content.json'), 'utf8'));
+const content = await presentBlogContent(JSON.parse(await readFile(path.join(root, 'lib/blog/content.json'), 'utf8')));
 const status = JSON.parse(await readFile(path.join(root, 'lib/blog/feed-status.json'), 'utf8'));
 const decodeText = value => value.replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&quot;', '"').replaceAll('&#x27;', "'").replaceAll('&#39;', "'").replaceAll('&amp;', '&');
 const routes = ['', 'daily', 'research', 'experiments', ...content.posts.map(post => `notes/${post.slug}`)];

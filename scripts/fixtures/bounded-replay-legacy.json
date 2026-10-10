@@ -1,0 +1,259 @@
+{
+  "category": "研究笔记",
+  "date": "2026-10-09",
+  "disclosure": "",
+  "kind": "note",
+  "openQuestions": [],
+  "outline": [
+    "1 为什么最后一个全局 KV 生产层之后可以少算",
+    "2 SGLang 如何裁剪以及近似从哪里进入",
+    "3 如何看待收益证据以及设计可证伪实验"
+  ],
+  "relatedSlugs": [
+    "state-recovery",
+    "direct-linker"
+  ],
+  "sections": [
+    {
+      "diagramCaption": "图 1：以没有缓存前缀的单次 8192-token extend 为例。L20 仍完整执行；进入 L21 时才裁成 8064–8191。全局历史 KV 和晚层局部 SWA 是两条不同的数据路径。",
+      "heading": "1 为什么最后一个全局 KV 生产层之后可以少算",
+      "paragraphs": [
+        "本文围绕三个问题展开：",
+        "1. 为什么完整读过 8192 个输入 token，后面的 19 层却只需要计算其中 128 个？\n2. SGLang 在哪里裁剪，保留了哪些历史状态，又改变了哪些注意力依赖？\n3. 少算 46.76% 的 token×layer，能否换来等量加速，以及应该怎样验证质量和边界？",
+        "先给结论：开启 `--enable-decoder-swa-bounded-replay` 后，DeepSeek V4.1 Flash 在一次普通 prefill extend 中，让 L0–L20 处理本次 extend 的全部 token，再让 L21–L39 只处理每个请求本次 extend 的最后至多 128 个 token。跨层共享的全局 KV 保留下来，晚层各自的局部 SWA 状态则通过尾部计算生成。这是一项有意接受数值差异的推理优化。",
+        "但有一个容易被长 prompt 示例掩盖的边界：本文核对的主线实现对短 extend 也会截断局部注意力。若一个命中长前缀的请求只新增 64 个 token，晚层保留的是这 64 个，而非“从已缓存前缀补出 64 个，凑成 128 个”。该行为对应的修复 PR 尚未合并，部署前必须单独检查。",
+        "**核验范围。** 本文只使用公开资料。SGLang 代码固定为公开 main 在 2026-10-09 07:12 UTC 可见的提交 [`37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf`](https://github.com/sgl-project/sglang/commit/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf)；模型配置固定为 Hugging Face revision [`2cba9e42aa026125f3ed06c6d98c1db82f7ca027`](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash/blob/2cba9e42aa026125f3ed06c6d98c1db82f7ca027/config.json)。下文分别标明代码事实、作者报告与本文推导。本文没有进行模型 GPU 性能或质量复现，不能把文中的理论计数与他人报告读成本文实测。",
+        "### 1.1 先分开全局历史与逐层局部历史",
+        "普通 decoder-only Transformer 的一个直觉是：每层都要为全部输入 token 生成自己的 KV，供后续 token 使用。DeepSeek V4.1 Flash 的跨层共享改变了这个前提。",
+        "固定版本的官方模型配置给出：主干有 40 层，本文层号从 0 开始；`kv_source_layer_ids=[2,8,14,20]`，`sliding_window=128`。L20 是最后一个全局 KV source。后面的 L21–L39 不再各自生产一份独立的全局历史 KV，但仍计算自己的 query、局部 SWA KV、注意力输出和 FFN/MoE。模型构造也只在 KV source 层创建对应 compressor。[模型配置](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash/blob/2cba9e42aa026125f3ed06c6d98c1db82f7ca027/config.json)、[source 层模块构造](https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/python/sglang/srt/models/deepseek_v4.py#L1196-L1213)",
+        "这里有两类状态：",
+        "- **全局历史状态**：main KV 与 indexer keys，由 source 层生成并供后续消费者使用，服务跨较长距离的稀疏检索\n- **局部窗口状态**：每层自己的 SWA KV，服务当前位置附近的因果注意力",
+        "“完整历史保留下来”指前一类状态的历史覆盖没有随尾部裁剪而缩成 128 个 token，不能解释成晚层仍保存每个历史 token 在每一层的独立 KV，也不能解释成每个 query 会稠密读取全部历史。全局分支仍按模型的稀疏选择规则工作。这个区分决定了该优化为什么有机会成立，也决定了它为什么不是严格等价变换。[模型技术报告 §2.3 与 §3.2.2](https://arxiv.org/html/2609.19969v1#S3.SS2.SSS2)",
+        "### 1.2 要交付的是继续生成所需的状态",
+        "只做后续生成时，prefill 最终要交付最后位置的输出，以及新 token 会使用的缓存。对于晚层，较早 token 的全局信息已经可以从共享 source KV 中读取；接下来首先要接上的逐层局部状态只覆盖近期窗口。",
+        "于是工程上可以选择：完整运行前面的 source 区域，给后面保留足够的全局历史；在晚层仅计算尾部，建立一个有界的局部窗口。跳过的行连同其晚层 attention、FFN/MoE 和 mHC 运算一起消失。节省来自整段晚层的 token 行数减少，不能简单归结为少读几页 attention KV。",
+        "这仍是近似策略。假如要求精确重建尾部晚层状态，某个尾部 token 在更早层的依赖还会向左展开；保留一个窗口并不等于保留了整个多层依赖闭包。第 2 节会用两个相邻层说明差异如何传播。",
+        "### 1.3 两个名字相近的开关解决不同问题",
+        "本文研究 decoder 侧开关。它在当前 extend 内减少晚层计算，晚层所需的尾部输入已经经过前面的完整层，因此实现并不是把原始尾部 token 再从 L0 重跑一遍。",
+        "`--enable-encoder-swa-bounded-replay` 则涉及前缀缓存命中后的 SWA 状态重建：保留全局缓存，按需重建局部窗口。二者可以组合，但组合后还会引入缓存命中位置、窗口重建、请求类型等额外变量。验证 decoder 优化时，第一轮应把 encoder 开关固定为关闭，避免把两项变更混成一个结果。[SGLang 团队对两条路径的说明](https://www.lmsys.org/blog/2026-09-10-deepseek-v41)",
+        "图 1：以没有缓存前缀的单次 8192-token extend 为例。L20 仍完整执行；进入 L21 时才裁成 8064–8191。全局历史 KV 和晚层局部 SWA 是两条不同的数据路径。"
+      ],
+      "diagramUrl": "https://ttaohe.github.io/ai-infra-daily-notes/diagrams/sglang-deepseek-v41-decoder-swa-bounded-replay/01-layer-tail-flow.svg",
+      "diagramDownloadUrl": "https://ttaohe.github.io/ai-infra-daily-notes/diagrams/sglang-deepseek-v41-decoder-swa-bounded-replay/bounded-replay-mechanism.drawio"
+    },
+    {
+      "diagramCaption": "图 2：浅灰为被裁掉的局部历史，蓝色为晚层实际可见的尾部。最后一个 query 虽然有完整的 128 个局部位置，里面的逐层表示仍可能已受边界影响。",
+      "heading": "2 SGLang 如何裁剪以及近似从哪里进入",
+      "paragraphs": [
+        "### 2.1 裁剪边界来自配置而不是“正好一半”\n\n模型初始化读取开关，要求 `kv_source_layer_ids` 非空，并把晚层起点设为最后一个 source 层之后；还要求晚层 compression ratio 只能属于 `{0,1}`。对本模型，这个起点是 21。因此 L0–L20 一共 21 层完整执行，L21–L39 一共 19 层处理尾部。“前 20 层完整、后 20 层裁剪”会把 L20 放错边界。[边界与断言](https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/python/sglang/srt/models/deepseek_v4.py#L3928-L3942)",
+        "把每个请求本次 extend 的 token 数记为 E，本次 extend 完成后的总序列长度记为 S，尾部长度为 T，则固定版本中的规则是：\n\n这个计算是**逐请求**进行的。一个 batch 里有多条请求时，各取各的尾部再构造紧凑布局，不是从整个 batch 的扁平 token 数组最后取 128 行。实现同时给出原 extend 中的行索引、各请求尾部长度及每行的绝对窗口下界。[尾部布局函数](https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/python/sglang/kernels/ops/attention/dsv4_attn_metadata_kernels.py#L438-L466)",
+        "### 2.2 裁的是一组相互对应的状态\n\n进入晚层边界时，SGLang 切换 attention metadata，并同步裁剪 mHC 状态、token IDs 与全局 token ID 布局；存在 Engram hash 行时也同步裁剪。`positions` 来自原 forward 的位置切片，没有重新编号成 0–127。[模型中的切换](https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/python/sglang/srt/models/deepseek_v4.py#L4043-L4067)、[原始 positions 的切片](https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/python/sglang/srt/layers/attention/deepseek_v4_backend.py#L1538-L1619)",
+        "保留绝对位置很重要。例如 8192-token 输入的尾部起点是 8064，RoPE 与索引器必须继续把它当作位置 8064。若把紧凑张量的行号误当绝对位置，错误就不再只是局部上下文截断，还会改变位置语义和缓存寻址。\n\nmetadata 切换也不是“给旧 batch 换一个长度”就结束。它需要延续早层已经发布的稀疏 top-k 信息，把对应的尾部行带到新 metadata，并在晚层结束后恢复外层 forward 所用布局。CP 场景还涉及原 rank 的行归属与 padding，不能仅按裁剪后的紧凑行号重新交错分片。[metadata 进入与恢复](https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/python/sglang/srt/layers/attention/deepseek_v4_backend.py#L1625-L1748)",
+        "### 2.3 8192-token 示例里究竟看得见谁\n\n先只观察晚层的 SWA 分支。通常，位置 i 的 128-token 因果窗口为 `[max(0,i−127), i]`。尾部裁剪后，它还要满足下界 s，实际变成：",
+        "对一次 8192-token extend，s=8064：\n\n因此，“8064 只读自身”必须补上“在 SWA 分支中”这个限定。该 query 的全局稀疏分支仍可读取共享历史 KV；它不是彻底看不见所有更早的信息。窗口 kernel 明确把下界之前的位置置为无效，这个遮罩不是图示上的简化。[Python 与 Triton 的窗口遮罩](https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/python/sglang/kernels/ops/attention/dsv4_attn_metadata_kernels.py#L469-L543)",
+        "图 2：浅灰为被裁掉的局部历史，蓝色为晚层实际可见的尾部。最后一个 query 虽然有完整的 128 个局部位置，里面的逐层表示仍可能已受边界影响。\n\n### 2.4 最后一个 token 有完整窗口为何仍可能变化",
+        "考虑 L21 的位置 8064。与完整 prefill 相比，它缺少 7937–8063 的局部 SWA 信息，所以其注意力输出与层后表示可能发生变化。\n\n再看 L22 的位置 8191。它在位置集合上可以看到 8064–8191，但这些位置的 L22 局部 KV 来自已经经过 L21 的表示，其中包括刚才可能变化的 8064。于是差异可以沿逐层局部依赖传到最后位置，再经 mHC、注意力和 FFN/MoE 延续到后面的层。",
+        "这给出的是**非等价的机制解释**，不是“任意 prompt 都一定不同”的证明。某些样例可以恰好输出一致；固定 token 的 argmax 一致也不代表 logits 一致。反过来，共享全局 KV 保持相同也不足以证明整个网络前向相同。全局缓存和逐层局部状态承担不同的依赖。\n\n### 2.5 chunk 是机制的一部分",
+        "实现的裁剪单位是每次普通 prefill extend。假设无缓存的 32768-token prompt 被实际调度成四个等长 8192-token extend，晚层分别处理：\n\n- 第一个 chunk：8064–8191\n- 第二个 chunk：16256–16383\n- 第三个 chunk：24448–24575\n- 第四个 chunk：32640–32767",
+        "不能把它说成“整段 32K prompt 的后半层总共只跑 128 个 token”。四个 chunk 在晚层合计跑 512 个 token，且每个 chunk 都有自己的局部截断边界。真实调度的 extend 长度可能受 batch token budget、prefix hit、并发与最后余块影响，实验必须记录实际布局，不能只记录一个配置上的 chunk 上限。[每次 extend 建立尾部 metadata](https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/python/sglang/srt/layers/attention/deepseek_v4_backend.py#L2346-L2360)\n\nchunk 改变意味着计算量与依赖边界改变，输出也可能改变。即使固定 chunk，也不能承诺跨 batch 组成的 bitwise 一致；官方 cookbook 明确说明该 backend 的批次形状相关数值边界，并拒绝 deterministic-inference 模式。[固定版本 cookbook](https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/docs/cookbook/autoregressive/DeepSeek/DeepSeek-V4_1.mdx#L108-L110)",
+        "### 2（续）chunk、短 extend 与输出契约\n\n图 3：每次 extend 各取尾部；短 extend 不会自动借用旧前缀补足 128 个 token。图中是本文固定版本行为。",
+        "### 2.6 短 extend 是最需要单列的反例\n\n假设缓存中已有 8192 个 token，这次新增 E=64 个，总长 S=8256。布局函数得到 T=64，局部下界为 8192。因此晚层位置 8192 的 SWA 只读自己，位置 8255 的 SWA 只读 8192–8255。此前缓存的 8128–8191 不会因为“窗口宽度为 128”自动成为本次晚层可见范围。",
+        "这也说明：E≤128 时，虽然没有减少本次 extend 的晚层 token 行数，仍可能改变注意力语义。不要用“没有裁掉行”推导“与关闭开关等价”。[具体 floor 计算](https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/python/sglang/kernels/ops/attention/dsv4_attn_metadata_kernels.py#L448-L466)\n\n公开 [PR #41303](https://github.com/sgl-project/sglang/pull/41303) 正在处理短 extend 的窗口保存问题。2026-10-09 本文核验时该 PR 仍处于 open、未合并状态。本文据固定主线记录现状，不把修复提案提前写成可用能力。",
+        "### 2.7 输出契约决定哪些请求不成立\n\n模型为完整 prompt hidden-state capture 与 prompt logprobs 设置了运行时检查。逻辑很直接：被跳过的 token 没有完整晚层输出，无法给它们生成与正常全模型前向相对应的 prompt logprobs。代码在需要兼容全 extend 行布局时会把已计算的尾部 scatter 回去，但其他行没有因此被补算；这些行不得被下游读走。[读取者检查](https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/python/sglang/srt/models/deepseek_v4.py#L3983-L4003)、[只填尾部的输出布局](https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/python/sglang/srt/models/deepseek_v4.py#L3800-L3809)",
+        "这不等于“一切 logprob 都不支持”：生成 token 的 logprobs 是不同的需求。错误文案本身就提示把 `logprob_start_len` 设为 prompt 长度。DSpark 还有专用的辅助 hidden-state 处理，不能把它的例外推广为任意完整 prompt hidden capture 都可用。\n\n拒绝发生在哪一层也值得关注。针对请求进入调度器前友好拒绝的 [PR #42719](https://github.com/sgl-project/sglang/pull/42719) 在本文核验时尚未合并，因此不能承诺固定版本对所有不支持请求都会返回无副作用的 HTTP 400。负向测试应在隔离实例进行，并同时观察服务是否存活。"
+      ],
+      "code": "T = min(128, E)\n当前请求保留的绝对位置 = [S - T, S)\n晚层 SWA 的额外读取下界 = S - T\n\n晚层可见的局部位置 = [max(s, i - 127), i]",
+      "bullets": [
+        "| query 绝对位置 | 普通 SWA 可见位置 | bounded 路径可见位置 |",
+        "| 8064 | 7937–8064 | 8064 |",
+        "| 8065 | 7938–8065 | 8064–8065 |",
+        "| 8191 | 8064–8191 | 8064–8191 |"
+      ],
+      "diagramUrl": "https://ttaohe.github.io/ai-infra-daily-notes/diagrams/sglang-deepseek-v41-decoder-swa-bounded-replay/02-swa-boundary.svg",
+      "diagramDownloadUrl": "https://ttaohe.github.io/ai-infra-daily-notes/diagrams/sglang-deepseek-v41-decoder-swa-bounded-replay/bounded-replay-mechanism.drawio"
+    },
+    {
+      "heading": "3 如何看待收益证据以及设计可证伪实验",
+      "paragraphs": [
+        "### 3.1 46.76% 是一种工作量计数\n\n对一个 8192-token extend，用每层处理的 token 行数作为粗粒度工作量：",
+        "对于一组实际 extend 长度 E₁…Eₘ，同样的模型下可写成：\n\n四个 8K chunk 的 32K 输入计数为 697856；单个 32K extend 则是 690560；对应完整计数均为 1310720。两种切法多出或少掉的晚层行数可以直接算出来。",
+        "这个代理指标没有反映各层 FLOPs、压缩比、稀疏检索成本、MoE 路由、通信、GPU 利用率、kernel launch、metadata 构造和内存分配。因此不能把 46.76% 写成 TTFT 降低 46.76%，也不能把 327680/174464≈1.878 写成已获得 1.878 倍吞吐。哪怕主要计算减少，尾部变小还可能降低某些算子的硬件利用率。\n\n### 3.2 已有公开结果支持到哪里",
+        "SGLang/Miles 团队的公开发布文章报告：在每批八条 8K prompt 的配对测试中，decoder bounded replay 的 prefill 吞吐为关闭时的 1.56 倍（8×H200）和 1.37 倍（4×GB300）；在其 4×GB300 的 AIME 2026 配对评测中，开关两侧均为 453/480 正确样本。这些是**作者报告**，本文没有重跑其环境或核对完整原始测量日志。[作者报告与正确性边界](https://www.lmsys.org/blog/2026-09-10-deepseek-v41)\n\n相同汇总分数说明该次评测没有观察到净分数下降，不代表逐题答案、logits 或所有长上下文任务等价，也不能把 prefill 吞吐倍数直接换算成混合线上流量的端到端收益。该网页会更新，引用时应保留访问日期和对应硬件条件。",
+        "本文完成的独立核验是公开代码的静态路径、模型配置、算术与边界示例。**独立模型 GPU 复现仍为空白。** 不能将公开 PR 的测试数、主线代码存在某段逻辑、以及作者的硬件测量合并成“本文已验证”。\n\n### 3.3 开关边界与合并状态",
+        "固定提交中，该开关默认关闭，作用路径是普通、非 speculative 的 extend；decode token 不会因此只走后半段，也不会每步重新跑 128-token prefill。主干的新生成 token 仍经过完整 40 层，模型仍构建完整层集合。该开关本身不删除后半层权重、不改变模型总参数量，也不保证权重显存变小。TP/EP 分片、Engram host placement 等独立设置仍会影响实际设备驻留。[模型构建](https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/python/sglang/srt/models/deepseek_v4.py#L3878-L3893)、[extend 激活条件](https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/python/sglang/srt/models/deepseek_v4.py#L4043-L4067)\n\n应逐版本核对以下限制，而非把一个开关复制到任意模型和拓扑：",
+        "对应源码：[参数与启动检查](https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/python/sglang/srt/arg_groups/deepseek_v4_hook.py#L260-L336)、[参数默认值](https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/python/sglang/srt/arg_groups/fields/exec_.py#L92-L100)、[HIP CP 检查](https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/python/sglang/srt/arg_groups/deepseek_v4_hook.py#L115-L181)。\n\n“公开主线已有基础能力”与“后续 PR 已合并”是两件事。2026-10-09 本文读取 GitHub 元数据时，以下改动仍未合并：",
+        "- [#42901](https://github.com/sgl-project/sglang/pull/42901)：进一步跳过 L20 中早期 prompt 行的部分工作。因此本文仍按 L20 完整执行计算\n- [#42909](https://github.com/sgl-project/sglang/pull/42909)、[#42078](https://github.com/sgl-project/sglang/pull/42078)：decoder bounded replay 与 breakable prefill CUDA graph 的集成\n- [#40161](https://github.com/sgl-project/sglang/pull/40161)、[#42924](https://github.com/sgl-project/sglang/pull/42924)：prefill CP 及 vision CP/DSpark 组合中的集成问题\n- [#41303](https://github.com/sgl-project/sglang/pull/41303)、[#42719](https://github.com/sgl-project/sglang/pull/42719)：短 extend 与 prompt-logprob admission 边界\n\n这些 PR 是理解未解问题的材料。它们的作者测试结果适用于各自分支与组合，不能直接嫁接到本文固定的主线提交。",
+        "### 3.4 一个最小但能推翻结论的实验\n\n第一轮可以很小，但对照要干净。使用同一模型 revision、同一 SGLang SHA、GPU 拓扑、量化、attention backend、精度、tokenizer 与 chat template，启动两组匹配实例：A 关闭 decoder replay，B 仅开启该开关。两侧 encoder replay 均关闭；先不启用 speculative decoding、prefill CUDA graph、DP attention、CP 或其他尚未验证的组合。",
+        "准备固定 token IDs，优先避免文本重新编码引入输入长度差异。最小集合如下：\n\n1. 无缓存前缀的 8192-token 输入，实际一次 extend，分别生成 1 个 token 与固定预算的后续 token\n2. 同一 32768-token 输入，以实际 32768、8192、2048 的 extend 目标进行对照；记录调度后的真实 chunk 边界\n3. 已缓存前缀后追加 1、64、127、128、129 个 token，跨页边界、跨窗口边界分别覆盖\n4. batch 中混合一条长 extend、一条短 extend，再与它们各自单独运行比较",
+        "每种性能条件先预热，再至少收集足以观察波动的重复样本，交错运行 A/B 并报告样本数、原始值和分位数。基线 A 也要自己重复，以测量该环境原有的数值与时延噪声。冷 prefill 用唯一前缀或隔离缓存保证零命中，prefix-hit 测试则明确记录命中长度。不要把有命中的 B 与无命中的 A 比较。\n\n这套最小实验能立刻检验三个预测：长 extend 的晚层行数会下降；短 extend 的行数可能不下降但窗口边界仍改变；32K 的不同切法不会拥有相同晚层计算布局。若 trace 与这些预测冲突，先检查是否真正走到开关路径或是否已经换了实现版本。",
+        "### 3.5 window sweep 需要明确属于实验分支\n\n固定版本的该路径使用 128，不能为了写实验计划而虚构一个 `--decoder-replay-window` 参数，也不要直接改模型的 `sliding_window` 配置后把它当作同一模型。",
+        "若要研究 replay budget，可以另外建立有明确 patch 的实验分支，将“晚层保留多少输入行”和“模型 SWA 的宽度 128”分开。例如 sweep R=64、128、256、512，保持模型窗口宽度不变，增加必要的写入容量与 metadata 检查，并只比较相同输出位置。R>128 提供 warm-up 行，可能减轻多层边界传播，但其有效性仍需实验；R<128 则施加更强的截断。\n\n报告时固定实验 patch SHA，先做边界与内存安全测试，再测速度与质量。未修改的原生开关实验和扩展 R 的研究实验分栏记录，不能把后者称为主线默认能力。",
+        "### 3.6 需要同时收集的六组证据\n\nteacher forcing 应比较可支持的续写位置或专用调试 harness，不能绕过 prompt-logprob guard 读取没有计算的行。hidden 与 KV instrumentation 本身也会改变执行开销，数值诊断和性能测试应分开运行。",
+        "质量评估至少给出样本数、任务分层、正确→错误及错误→正确的配对计数，条件允许时给置信区间。速度收益应同时报告绝对时延和相对变化。对短 prompt、缓存命中、多轮追加与高并发分别给结果，不把长冷 prompt 的结论外推到全部请求。\n\n### 3.7 预先写下反证条件",
+        "一份可信的优化报告，应允许实验结果推翻它：\n\n- 若 profiler 显示普通非 speculative extend 的 L21–L39 仍处理完整 E 行，则“实际启用了尾部计算”这一前提不成立\n- 若声称共享历史 KV 完全保持，却在固定输入与受控基线下发现 source KV 被裁成尾部、遗漏或被晚层覆盖，则必须撤回该实现正确性的解释\n- 若控制缓存、批次与预热后，长输入的 TTFT/吞吐没有可重复改善，则不能用理论行数计数替代性能收益\n- 若质量退化集中出现在短 extend、chunk 边界或远距离信息任务，并超过预先约定的容忍范围，则该部署工作负载不应接受当前策略\n- 若不支持的 logprob/hidden 请求导致进程异常退出或读取无效行，则接入侧必须在隔离验证后增加拦截，不能把模型内部检查当作完整服务契约",
+        "“数学上非等价”不要求在每条测试上出现差异；“部署上可接受”则需要具体任务分布、容忍阈值和持续回归证据。这两个判断应分别作出。\n\n### 3.8 接下来最值得回答的问题",
+        "第一，短 extend 修复落地后，前缀可见窗口与晚层状态恢复的契约是什么，旧 checkpoint 是否足够？第二，图执行与 CP 集成后，裁剪行映射、DSpark 辅助 hidden 和 logits 的对应关系能否在动态 batch 下保持？第三，不同 replay budget 对速度与质量的曲线是什么，是否存在一套低成本但有效的 warm-up 策略？第四，实际 agent 工作负载中，缓存命中、chunk 调度与多轮追加叠加后的收益和误差如何分布？\n\n目前能明确回答的是：公开主线已经提供了一条基于模型跨层 KV 共享的晚层尾部计算路径。它保留 source 区域的完整处理，将 late layers 的局部状态建设限制在一个有界片段里；其速度优势有公开作者报告，严格等价性则被机制本身与源码契约明确排除。真正的上线判断，需要把长输入收益和短 extend 风险放在同一套实验里。",
+        "## 延伸阅读与关联建议\n\n如果已有 state-recovery 笔记，可以从“恢复对象”建立链接：持久化的全局 KV、临时局部状态、精确恢复所需的多层依赖，以及有界近似恢复的代价各是什么。本篇适合放在“缓存状态不完整时如何续算”的机制分支，而不是只放在 benchmark 汇总里。",
+        "如果已有 direct-linker 笔记，可以关联到“状态依赖与版本证据”：模型配置决定谁生产历史，metadata 决定后续消费者读哪些行，固定 SHA 决定文章在描述哪个实现。这里仅给出关联方向，不假定旧文的具体内容，也不把未核对的旧文结论当成本篇证据。\n\n## 公开来源",
+        "1. [SGLang 固定提交](https://github.com/sgl-project/sglang/commit/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf)，本文所有 SGLang 代码引用均固定至同一 SHA\n2. [模型官方配置固定 revision](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash/blob/2cba9e42aa026125f3ed06c6d98c1db82f7ca027/config.json)\n3. [DeepSeek V4.1 Flash 技术报告 v1](https://arxiv.org/html/2609.19969v1)，重点为 §3.2.2\n4. [SGLang/Miles 团队公开发布文章](https://www.lmsys.org/blog/2026-09-10-deepseek-v41)，作者测量和两类 bounded replay 的说明，访问日期 2026-10-09\n5. [固定版本 cookbook](https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/docs/cookbook/autoregressive/DeepSeek/DeepSeek-V4_1.mdx)\n\n本文附带三张 SVG 机制图及对应的可编辑 draw.io 源文件。图是依据上述公开代码重绘的解释图，不是模型实验输出。"
+      ],
+      "code": "完整 prefill = 40 × 8192 = 327680 token×layer\n尾部 prefill = 21 × 8192 + 19 × 128 = 174464 token×layer\n减少比例 = (327680 − 174464) / 327680 = 46.7578125%\n\n完整计数 = 40 × ΣEⱼ\n尾部计数 = 21 × ΣEⱼ + 19 × Σmin(128, Eⱼ)",
+      "bullets": [
+        "| 项目 | 本文固定版本的边界 |",
+        "| 默认值 | decoder 开关为 false，须显式开启 |",
+        "| 尾部大小 | metadata backend 的 `SWA_WINDOW=128`；没有在本文核对路径中发现独立的 replay-window CLI 旋钮 |",
+        "| 模型配置 | 必须有 KV source 层，晚层不能自行做大于 1 的压缩；本例是 DeepSeek V4.1 Flash |",
+        "| Prefill CUDA graph | 启动检查拒绝与 decoder bounded replay 同时启用 |",
+        "| DP attention | 启动检查拒绝同时启用 |",
+        "| CP | 已存在尾部 CP metadata 代码；不能由此推定 vision、DSpark、P/D 等组合全部验证通过 |",
+        "| HIP prefill CP | 固定版本有针对 V4.1 与 decoder replay 的明确限制；CUDA zigzag 也有模型限制 |",
+        "| TRT-LLM attention | 固定版本拒绝与 SWA bounded replay 组合 |",
+        "| Pipeline parallel / TBO | 固定版本 V4.1 启动检查不支持这两种组合 |",
+        "| Prompt logprobs | 不支持，需要避免进入该输出路径 |",
+        "| 完整 prompt hidden states | 不支持通用 FULL capture；专用 DSpark 路径另行处理 |",
+        "| Decode 与权重 | 未删除主干层或该层权重；优化对象是普通 prefill 的晚层行数 |",
+        "| 证据 | 推荐测量 | 主要排除的误读 |",
+        "| 数值差异 | 相同上下文、相同 teacher-forced 续写位置的 logits / logprobs，最大与平均绝对差、KL、top-1 分歧；A/A 噪声作对照 | 输出文字相同就等价 |",
+        "| 任务质量 | 长距离检索、窗口边界附近线索、代码续写、跨 chunk 指代、结构化输出与代表性真实任务；逐题配对变化 | 一个榜单总分相同就普遍无损 |",
+        "| TTFT | 客户端首内容 token 时延，p50/p95；区分排队、prefill 和传输 | token×layer 降幅就是 TTFT 降幅 |",
+        "| Prefill 吞吐 | 固定输入/输出长度与并发，记录实际 prompt token 数、有效 prefill 时间及批次布局 | 混合端到端吞吐代表纯 prefill 性能 |",
+        "| 显存 | 权重、KV pool 配额、活跃 KV、临时峰值分别看 allocated/reserved；固定分配策略 | 少算晚层就能少加载一半权重 |",
+        "| 尾部传播 | 在 L20、L21、L22、L39 对相同绝对位置的 hidden/SWA KV 作调试采样 | 最后 token 窗口位置完整就不受边界影响 |"
+      ],
+      "diagramUrl": "https://ttaohe.github.io/ai-infra-daily-notes/diagrams/sglang-deepseek-v41-decoder-swa-bounded-replay/03-chunk-short-extend.svg",
+      "diagramDownloadUrl": "https://ttaohe.github.io/ai-infra-daily-notes/diagrams/sglang-deepseek-v41-decoder-swa-bounded-replay/bounded-replay-mechanism.drawio",
+      "diagramCaption": "图 3：每次 extend 各取尾部；短 extend 不会自动借用旧前缀补足 128 个 token。图中是本文固定版本行为。"
+    }
+  ],
+  "slug": "sglang-deepseek-v41-decoder-swa-bounded-replay",
+  "sources": [
+    {
+      "title": "`37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf`",
+      "url": "https://github.com/sgl-project/sglang/commit/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf"
+    },
+    {
+      "title": "`2cba9e42aa026125f3ed06c6d98c1db82f7ca027`",
+      "url": "https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash/blob/2cba9e42aa026125f3ed06c6d98c1db82f7ca027/config.json"
+    },
+    {
+      "title": "source 层模块构造",
+      "url": "https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/python/sglang/srt/models/deepseek_v4.py#L1196-L1213"
+    },
+    {
+      "title": "模型技术报告 §2.3 与 §3.2.2",
+      "url": "https://arxiv.org/html/2609.19969v1#S3.SS2.SSS2"
+    },
+    {
+      "title": "SGLang 团队对两条路径的说明",
+      "url": "https://www.lmsys.org/blog/2026-09-10-deepseek-v41"
+    },
+    {
+      "title": "边界与断言",
+      "url": "https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/python/sglang/srt/models/deepseek_v4.py#L3928-L3942"
+    },
+    {
+      "title": "S - T, S)晚层 SWA 的额外读取下界 = S - T```这个计算是**逐请求**进行的。一个 batch 里有多条请求时，各取各的尾部再构造紧凑布局，不是从整个 batch 的扁平 token 数组最后取 128 行。实现同时给出原 extend 中的行索引、各请求尾部长度及每行的绝对窗口下界。[尾部布局函数",
+      "url": "https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/python/sglang/kernels/ops/attention/dsv4_attn_metadata_kernels.py#L438-L466"
+    },
+    {
+      "title": "模型中的切换",
+      "url": "https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/python/sglang/srt/models/deepseek_v4.py#L4043-L4067"
+    },
+    {
+      "title": "原始 positions 的切片",
+      "url": "https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/python/sglang/srt/layers/attention/deepseek_v4_backend.py#L1538-L1619"
+    },
+    {
+      "title": "metadata 进入与恢复",
+      "url": "https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/python/sglang/srt/layers/attention/deepseek_v4_backend.py#L1625-L1748"
+    },
+    {
+      "title": "Python 与 Triton 的窗口遮罩",
+      "url": "https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/python/sglang/kernels/ops/attention/dsv4_attn_metadata_kernels.py#L469-L543"
+    },
+    {
+      "title": "每次 extend 建立尾部 metadata",
+      "url": "https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/python/sglang/srt/layers/attention/deepseek_v4_backend.py#L2346-L2360"
+    },
+    {
+      "title": "固定版本 cookbook",
+      "url": "https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/docs/cookbook/autoregressive/DeepSeek/DeepSeek-V4_1.mdx#L108-L110"
+    },
+    {
+      "title": "具体 floor 计算",
+      "url": "https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/python/sglang/kernels/ops/attention/dsv4_attn_metadata_kernels.py#L448-L466"
+    },
+    {
+      "title": "PR #41303",
+      "url": "https://github.com/sgl-project/sglang/pull/41303"
+    },
+    {
+      "title": "读取者检查",
+      "url": "https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/python/sglang/srt/models/deepseek_v4.py#L3983-L4003"
+    },
+    {
+      "title": "只填尾部的输出布局",
+      "url": "https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/python/sglang/srt/models/deepseek_v4.py#L3800-L3809"
+    },
+    {
+      "title": "PR #42719",
+      "url": "https://github.com/sgl-project/sglang/pull/42719"
+    },
+    {
+      "title": "模型构建",
+      "url": "https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/python/sglang/srt/models/deepseek_v4.py#L3878-L3893"
+    },
+    {
+      "title": "参数与启动检查",
+      "url": "https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/python/sglang/srt/arg_groups/deepseek_v4_hook.py#L260-L336"
+    },
+    {
+      "title": "参数默认值",
+      "url": "https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/python/sglang/srt/arg_groups/fields/exec_.py#L92-L100"
+    },
+    {
+      "title": "HIP CP 检查",
+      "url": "https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/python/sglang/srt/arg_groups/deepseek_v4_hook.py#L115-L181"
+    },
+    {
+      "title": "#42901",
+      "url": "https://github.com/sgl-project/sglang/pull/42901"
+    },
+    {
+      "title": "#42909",
+      "url": "https://github.com/sgl-project/sglang/pull/42909"
+    },
+    {
+      "title": "#42078",
+      "url": "https://github.com/sgl-project/sglang/pull/42078"
+    },
+    {
+      "title": "#40161",
+      "url": "https://github.com/sgl-project/sglang/pull/40161"
+    },
+    {
+      "title": "#42924",
+      "url": "https://github.com/sgl-project/sglang/pull/42924"
+    },
+    {
+      "title": "DeepSeek V4.1 Flash 技术报告 v1",
+      "url": "https://arxiv.org/html/2609.19969v1"
+    },
+    {
+      "title": "固定版本 cookbook",
+      "url": "https://github.com/sgl-project/sglang/blob/37ae292e6f84cb8ec9503892d6cf74f9c8b2bfaf/docs/cookbook/autoregressive/DeepSeek/DeepSeek-V4_1.mdx"
+    }
+  ],
+  "subtitle": "",
+  "summary": "固定公开源码解释 L0–L20 完整执行、L21–L39 仅处理每次 extend 的尾部128行，核对近似性、短extend风险、未合并PR与可证伪实验。",
+  "tags": [
+    "SGLang",
+    "DeepSeek V4.1",
+    "Prefill",
+    "SWA",
+    "KV Cache",
+    "Bounded Replay"
+  ],
+  "takeaways": [],
+  "title": "SGLang 如何让 DeepSeek V4.1 Flash 的后半层只处理尾部 token"
+}
