@@ -12,7 +12,8 @@ await rm(publish, { recursive: true, force: true });
 await mkdir(publish, { recursive: true });
 if (!config.publicContentOrigin) await cp(path.join(root, 'out'), path.join(publish, config.basePath), { recursive: true });
 const escapeHtml = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#x27;');
-const selected = [...content.posts].reverse().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3);
+const researchPosts = content.posts.filter(post => post.kind !== 'project');
+const selected = [...researchPosts].reverse().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3);
 const noteMarkup = selected.map((post, index) => `<li class="note"><span class="note-number">0${index + 1}</span><article><a href="${config.basePath}/notes/${post.slug}/">${escapeHtml(post.title)}</a><p class="note-meta">${escapeHtml(post.category)} · <time datetime="${escapeHtml(post.date)}">${escapeHtml(post.date)}</time></p><p class="note-summary">${escapeHtml(post.summary)}</p><div class="note-tags">${post.tags.slice(0, 3).map(tag => `<span>${escapeHtml(tag)}</span>`).join('')}</div></article></li>`).join('');
 // Topic shortcuts lead to real related articles. A missing article falls back to the full map.
 const topics = [
@@ -65,7 +66,7 @@ const assets = {
 let landing = (await readFile(path.join(root, 'portfolio/index.html'), 'utf8'))
   .replaceAll('{{CONTENT_UPDATED_AT}}', escapeHtml(content.updatedAt))
   .replaceAll('{{LAST_CONTENT_UPDATE}}', escapeHtml(shanghaiTimestamp(content.updatedAt)))
-  .replaceAll('{{NOTE_COUNT}}', String(content.posts.length))
+  .replaceAll('{{NOTE_COUNT}}', String(researchPosts.length))
   .replace('<!-- FOCUS_DATE -->', focusDate ? `<time datetime="${escapeHtml(focusDate)}">${escapeHtml(focusDate)}</time>` : '')
   .replace('<!-- SELECTED_NOTES -->', noteMarkup)
   .replace('<!-- TOPIC_LINKS -->', topicMarkup)
