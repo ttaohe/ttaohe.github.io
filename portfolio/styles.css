@@ -523,3 +523,20 @@ html.contact-open{overflow:hidden}
   .research-panel{padding:17px}
   .research-context .countdown{max-width:100%;grid-column:auto}
 }
+
+/* Unified reading-first theme */
+:root,:root[data-theme]{color-scheme:light;--bg:#f6f6f6;--surface:#fff;--raised:#fff;--line:#ebebeb;--fg:#444;--muted:#8590a6;--dim:#8590a6;--green:#056de8;--blue:#056de8;--purple:#056de8;--selection:#e6f0ff;--selection-fg:#056de8;--shadow:#12121208;--chrome:#fff;--sidebar:#fff;--folder:#646464;--hover:#f6f6f6;--active:#ebf3ff;--active-fg:#056de8;--gold:#646464;--tabs:#fff;--strong:#121212;--value:#444;--button-line:#d8e6fa;--button-fg:#056de8;--button-bg:#fff;--primary-fg:#fff;--card:#fff;--heading:#121212;--dashed-line:#ebebeb;--tag-line:#ebebeb;--tag-bg:#f6f6f6}
+body{background:#f6f6f6;font-family:var(--sans)}
+.shell{max-width:1100px;margin:20px auto;background:transparent;border:0;box-shadow:none}
+.titlebar,.statusbar,.sidebar,.theme-picker,.lights,.explorer,.folder,.file-symbol,.code-comment,.filename,.hash{display:none!important}
+.workspace{display:block}.editor{background:transparent;min-width:0}.content{padding:0}
+.site-nav{background:#fff;border:1px solid #ebebeb;border-radius:5px;padding:16px 28px;font-family:var(--sans);font-size:15px}
+.site-nav a[aria-current=page]{color:#056de8}
+.hero,.content>.section{margin-top:16px;background:#fff;border:1px solid #ebebeb;border-radius:5px;padding:28px}
+.hero h1{font-size:36px;letter-spacing:-1px}.hero h1 span{color:#8590a6}.section-heading{border-bottom:1px solid #ebebeb;padding-bottom:16px;margin-bottom:20px}
+.section-heading h2{font-size:22px;font-family:var(--sans)}
+.button.primary{background:#056de8;border-color:#056de8;color:#fff}.button{border-radius:4px}
+.note{border-color:#ebebeb}.note a{color:#121212}.note a:hover{color:#056de8}.note-tags span{background:#f6f6f6;color:#8590a6;border:0}
+.project-card{background:white;border-color:#ebebeb}.project-card h3 a{color:#121212}.project-card h3 a:hover{color:#056de8}
+.outer-foot,.disclosure{color:#8590a6}.mobile-nav{background:white}
+@media(max-width:700px){.shell{margin:0 10px}.hero,.content>.section{padding:22px 18px}.site-nav{padding:15px 18px}.hero h1{font-size:30px}}

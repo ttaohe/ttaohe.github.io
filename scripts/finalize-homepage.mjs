@@ -12,6 +12,10 @@ html=html.replaceAll('href="/ai-infra-daily-notes/', 'href="'+origin+'/')
  .replace(/<section class="countdown"[^]*?<\/section>/,'')
  .replace(/<p class="visit-counter"[^]*?<\/p>/,'')
  .replace(/<script[^>]+src="\/assets\/portfolio-(?:countdown|visits)[^"]*"[^>]*><\/script>/g,'');
+html=html.replace('>Home</a>','>个人主页</a>').replace('>Projects</a>','>项目</a>').replace('>Notes</a>','>研究笔记</a>');
+const projectCard='<article class="project-card" id="personal-content-system"><h3><a href="'+origin+'/projects/self-owned-portable-publishing-backend/"><span class="project-index">02</span>个人网站与内容管理系统</a></h3><p class="project-summary">统一管理项目、研究文章、日报和实验记录，支持编辑、公开控制、修订历史与备份恢复</p></article>';
+html=html.replace(/(<section[^>]+id="experience"[^]*?)(<\/section>)/,(_,body,end)=>body+projectCard+end);
+for(const label of ['阅读 AI Infra 笔记','阅读全部笔记','研究笔记'])html=html.replace('href="'+origin+'/">'+label,'href="'+origin+'/notes/">'+label);
 await writeFile(path.join(out,'index.html'),html);
 const esc=s=>s.replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;');
 const redirect=target=>'<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="canonical" href="'+esc(target)+'"><meta http-equiv="refresh" content="0;url='+esc(target)+'"><title>内容已迁移</title><script>location.replace('+JSON.stringify(target)+'+location.search+location.hash)</script><body><p>内容已迁移至<a href="'+esc(target)+'">研究站</a>。</p></body></html>';
