@@ -71,6 +71,10 @@ let landing = (await readFile(path.join(root, 'portfolio/index.html'), 'utf8'))
   .replace('<!-- SELECTED_NOTES -->', noteMarkup)
   .replace('<!-- TOPIC_LINKS -->', topicMarkup)
   .replace('<!-- RECENT_FOCUS -->', focusMarkup);
+// Respect public project visibility without changing the original visual design.
+if (config.publicContentOrigin && !content.posts.some(post => post.kind === 'project' && post.slug === 'mla-tp-l2-cache-deduplication')) {
+  landing = landing.replace(/<section[^>]+id="experience"[^]*?<\/section>/, '');
+}
 for (const [unversioned, versioned] of Object.entries(assets)) landing = landing.replaceAll(unversioned, versioned);
 await writeFile(path.join(publish, 'index.html'), landing);
 // Project documents have stable, independent URLs and share the same theme assets.

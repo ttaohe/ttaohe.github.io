@@ -27,7 +27,7 @@ await mkdir(path.join(out,'ai-infra-daily-notes/diagrams'),{recursive:true});
 await cp('public/diagrams',path.join(out,'ai-infra-daily-notes/diagrams'),{recursive:true});
 await cp('public/downloads',path.join(out,'ai-infra-daily-notes/downloads'),{recursive:true});
 await writeFile(path.join(out,'404.html'),'<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>页面未找到</title><body><h1>页面未找到</h1><p><a href="/">个人主页</a> · <a href="'+origin+'/">研究站</a></p><script>const p=location.pathname.replace(/^\\/ai-infra-daily-notes(?=\\/)/,"");if(/^\\/(notes|projects|daily|research|experiments)(\\/|$)/.test(p))location.replace('+JSON.stringify(origin)+'+p+location.search+location.hash)</script></body></html>');
-assert(html.includes(origin+'/projects/mla-tp-l2-cache-deduplication/'));
+if(content.posts.some(p=>p.kind==='project'&&p.slug==='mla-tp-l2-cache-deduplication'))assert(html.includes(origin+'/projects/mla-tp-l2-cache-deduplication/'));
 assert(html.includes(origin+'/daily/'));
 assert(html.includes('data-review-countdown')&&html.includes('data-visit-counter'));
 assert(html.includes('class="sidebar"')&&html.includes('class="theme-picker"'));
