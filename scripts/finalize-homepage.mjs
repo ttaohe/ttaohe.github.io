@@ -8,14 +8,7 @@ const content=JSON.parse(await readFile('lib/blog/content.json','utf8'));
 const oldSlugs=JSON.parse(await readFile('lib/blog/legacy-slugs.json','utf8'));
 let html=await readFile(path.join(out,'index.html'),'utf8');
 html=html.replaceAll('href="/ai-infra-daily-notes/', 'href="'+origin+'/')
- .replaceAll('href="/projects/', 'href="'+origin+'/projects/')
- .replace(/<section class="countdown"[^]*?<\/section>/,'')
- .replace(/<p class="visit-counter"[^]*?<\/p>/,'')
- .replace(/<script[^>]+src="\/assets\/portfolio-(?:countdown|visits)[^"]*"[^>]*><\/script>/g,'');
-html=html.replace('>Home</a>','>个人主页</a>').replace('>Projects</a>','>项目</a>').replace('>Notes</a>','>研究笔记</a>');
-const projectCard='<article class="project-card" id="personal-content-system"><h3><a href="'+origin+'/projects/self-owned-portable-publishing-backend/"><span class="project-index">02</span>个人网站与内容管理系统</a></h3><p class="project-summary">统一管理项目、研究文章、日报和实验记录，支持编辑、公开控制、修订历史与备份恢复</p></article>';
-html=html.replace(/(<section[^>]+id="experience"[^]*?)(<\/section>)/,(_,body,end)=>body+projectCard+end);
-for(const label of ['阅读 AI Infra 笔记','阅读全部笔记','研究笔记'])html=html.replace('href="'+origin+'/">'+label,'href="'+origin+'/notes/">'+label);
+ .replaceAll('href="/projects/', 'href="'+origin+'/projects/');
 await writeFile(path.join(out,'index.html'),html);
 const esc=s=>s.replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;');
 const redirect=target=>'<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="canonical" href="'+esc(target)+'"><meta http-equiv="refresh" content="0;url='+esc(target)+'"><title>内容已迁移</title><script>location.replace('+JSON.stringify(target)+'+location.search+location.hash)</script><body><p>内容已迁移至<a href="'+esc(target)+'">研究站</a>。</p></body></html>';
@@ -36,7 +29,9 @@ await cp('public/downloads',path.join(out,'ai-infra-daily-notes/downloads'),{rec
 await writeFile(path.join(out,'404.html'),'<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>页面未找到</title><body><h1>页面未找到</h1><p><a href="/">个人主页</a> · <a href="'+origin+'/">研究站</a></p><script>const p=location.pathname.replace(/^\\/ai-infra-daily-notes(?=\\/)/,"");if(/^\\/(notes|projects|daily|research|experiments)(\\/|$)/.test(p))location.replace('+JSON.stringify(origin)+'+p+location.search+location.hash)</script></body></html>');
 assert(html.includes(origin+'/projects/mla-tp-l2-cache-deduplication/'));
 assert(html.includes(origin+'/daily/'));
-assert(!html.includes('data-review-countdown')&&!html.includes('data-visit-counter'));
+assert(html.includes('data-review-countdown')&&html.includes('data-visit-counter'));
+assert(html.includes('class="sidebar"')&&html.includes('class="theme-picker"'));
+assert(!html.includes('id="personal-content-system"'));
 assert(!html.includes('{{'));
 for(const [route,target]of routes){const h=await readFile(path.join(out,route,'index.html'),'utf8');assert(h.includes(target));assert(h.includes('+location.search+location.hash'));}
 for(const [,url] of html.matchAll(/(?:src|href)="(\/assets\/[^"#?]+)/g))await access(path.join(out,url));
