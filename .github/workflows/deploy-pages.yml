@@ -1,10 +1,10 @@
-name: Deploy AI Infra Notes to GitHub Pages
+name: Deploy personal homepage
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
-  # GitHub schedules can be delayed; every 4 hours is a target cadence.
+  # Refresh homepage excerpts; VPS publishes articles immediately.
   schedule:
     - cron: "23 */4 * * *"
 

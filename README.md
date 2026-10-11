@@ -1,16 +1,15 @@
-# 你好，我是何涛 👋
+# Personal homepage
+This repository deploys https://ttaohe.github.io/ (profile, experience summaries and resume).
+Research articles, project details, daily reports and experiments are served by https://8.159.157.10/.
+The private notes repository stores the VPS source under services/personal-site.
 
-这里是我的个人主页源码，记录学习经历，以及我在 AI Infra 与推理系统方向的阅读、思考和待验证的问题。
+Pushes to main deploy automatically. A four-hour schedule refreshes public excerpts from the VPS API.
+The build fails if the VPS public feed cannot be fetched; it does not silently publish an older feed.
+Change publicContentOrigin in lib/site-config.json when the filed domain is ready.
+Old section and article URLs redirect to the matching VPS route, preserving query strings and fragments.
 
-[逛逛个人主页](https://ttaohe.github.io/) · [直达 AI Infra 笔记](https://ttaohe.github.io/ai-infra-daily-notes/)
+Build: pnpm install --frozen-lockfile && pnpm build
+Validation: pnpm test && pnpm lint
+The final build verifies the homepage assets, PDF resume and redirect targets.
 
-## 里面有什么？
-
-- 🎓 **关于我**：教育经历（西北工业大学电子信息工程本科、武汉大学计算机应用技术硕士），以及 KV Cache 优化项目摘要；完整研究记录后续补充
-- 🧠 **研究笔记**：知识地图、完整文章、每日简报和待验证的实验设想，围绕缓存、调度、通信与异构内存展开
-- ⏳ **资料检查倒计时**：计划每 4 小时检查，有实质新内容再更新；倒计时不是发布保证
-- 📄 **简历角落**：可缩放、选字、下载的 ttaohe 个人简历 PDF，由 LaTeX 源文件编译
-
-欢迎随便逛逛，笔记里也留着还没想明白的问题。
-
-开发、部署和内容维护说明见[维护文档](docs/CONTENT-MAINTENANCE.md)。
+Legacy research source and tests are retained for migration history. They are no longer built or hosted here.

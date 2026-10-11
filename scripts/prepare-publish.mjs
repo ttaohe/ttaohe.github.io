@@ -10,7 +10,7 @@ const content = JSON.parse(await readFile(path.join(root, 'lib/blog/content.json
 const publish = path.join(root, 'publish');
 await rm(publish, { recursive: true, force: true });
 await mkdir(publish, { recursive: true });
-await cp(path.join(root, 'out'), path.join(publish, config.basePath), { recursive: true });
+if (!config.publicContentOrigin) await cp(path.join(root, 'out'), path.join(publish, config.basePath), { recursive: true });
 const escapeHtml = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#x27;');
 const selected = [...content.posts].reverse().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3);
 const noteMarkup = selected.map((post, index) => `<li class="note"><span class="note-number">0${index + 1}</span><article><a href="${config.basePath}/notes/${post.slug}/">${escapeHtml(post.title)}</a><p class="note-meta">${escapeHtml(post.category)} · <time datetime="${escapeHtml(post.date)}">${escapeHtml(post.date)}</time></p><p class="note-summary">${escapeHtml(post.summary)}</p><div class="note-tags">${post.tags.slice(0, 3).map(tag => `<span>${escapeHtml(tag)}</span>`).join('')}</div></article></li>`).join('');
@@ -80,7 +80,7 @@ for (const slug of ['mla-tp-l2-cache-deduplication']) {
   await mkdir(directory, { recursive: true });
   await writeFile(path.join(directory, 'index.html'), document);
 }
-await cp(path.join(root, 'out/404.html'), path.join(publish, '404.html'));
+if (!config.publicContentOrigin) await cp(path.join(root, 'out/404.html'), path.join(publish, '404.html'));
 await writeFile(path.join(publish, '.nojekyll'), '');
 // Keep the first publication's direct article links useful after moving the section.
 for (const route of ['daily', 'research', 'experiments', ...content.posts.map(post => `notes/${post.slug}`)]) {
