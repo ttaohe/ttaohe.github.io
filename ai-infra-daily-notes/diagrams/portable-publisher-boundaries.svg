@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1000" viewBox="0 0 1440 1000" role="img" aria-labelledby="title desc">
+<title id="title">私有控制与公开发布的边界</title>
+<desc id="desc">可编辑目标架构图。所有连线均表示设计路径，而非已完成能力。</desc>
+<rect width="1440" height="1000" fill="#F7F9FC"/>
+<defs>
+<marker id="arrow2C64A3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9 Z" fill="#2C64A3"/></marker>
+<marker id="arrowA66918" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9 Z" fill="#A66918"/></marker>
+<marker id="arrow207761" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9 Z" fill="#207761"/></marker>
+</defs>
+<rect x="50" y="151" width="292" height="36" rx="18" fill="#EAF2FC"/>
+<rect x="40" y="222" width="480" height="481" rx="20" fill="#F0F5FC" stroke="#D6E0EB" stroke-width="2"/>
+<rect x="780" y="222" width="620" height="481" rx="20" fill="#F0F8F4" stroke="#D6E0EB" stroke-width="2"/>
+<path d="M229 370 L277 370" fill="none" stroke="#2C64A3" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow2C64A3)"/>
+<path d="M381 441 L381 482 L281 482 L281 523" fill="none" stroke="#2C64A3" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow2C64A3)"/>
+<path d="M485 370 L548 370" fill="none" stroke="#A66918" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrowA66918)"/>
+<path d="M752 385 L804 385" fill="none" stroke="#207761" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow207761)"/>
+<path d="M1016 385 L1073 385" fill="none" stroke="#207761" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow207761)"/>
+<path d="M1176 461 L1176 523 L932 523 L932 573" fill="none" stroke="#207761" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow207761)"/>
+<path d="M1250 461 L1250 573" fill="none" stroke="#207761" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow207761)"/>
+<path d="M281 649 L281 730 L281 802" fill="none" stroke="#2C64A3" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow2C64A3)" stroke-dasharray="9 7"/>
+<text x="48" y="75.18" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="38" font-weight="700" fill="#172B45">私有控制与公开发布的边界</text>
+<text x="50" y="121.56" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="21" font-weight="400" fill="#53677E">只有显式选定、固定版本的内容，才能进入公开发布链路</text>
+<text x="64" y="175.48" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="18" font-weight="700" fill="#2C64A3">目标架构 · 设计路径</text>
+<text x="1390" y="175.48" text-anchor="end" font-family="Noto Sans CJK SC, sans-serif" font-size="18" font-weight="400" fill="#53677E">图 1 / 03</text>
+<text x="50" y="981.76" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#53677E">概念设计，不表示相关能力已经实现或通过验证</text>
+<text x="64" y="268.64" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="24" font-weight="700" fill="#2C64A3">私有控制面</text>
+<text x="804" y="268.64" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="24" font-weight="700" fill="#207761">公开内容链路</text>
+<rect x="67" y="315" width="162" height="112" rx="16" fill="#FFFFFF" stroke="#2C64A3" stroke-width="2"/>
+<text x="148.0" y="360.34" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-size="19" font-weight="700" fill="#172B45">所有者 / Agent</text>
+<text x="148.0" y="397.48" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-size="18" font-weight="400" fill="#53677E">私有授权操作</text>
+<rect x="277" y="301" width="208" height="140" rx="16" fill="#FFFFFF" stroke="#2C64A3" stroke-width="2"/>
+<text x="381.0" y="348.5" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-size="25" font-weight="700" fill="#172B45">Python 后台</text>
+<text x="381.0" y="388.2" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="400" fill="#53677E">仅回环地址访问</text>
+<text x="381.0" y="420.2" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="400" fill="#53677E">私有读写接口</text>
+<rect x="78" y="523" width="406" height="126" rx="16" fill="#FFFFFF" stroke="#2C64A3" stroke-width="2"/>
+<text x="281.0" y="570.86" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-size="26" font-weight="700" fill="#172B45">本地持久化</text>
+<text x="281.0" y="610.2" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="400" fill="#53677E">SQLite 数据 · 素材 · 修订记录</text>
+<rect x="548" y="305" width="204" height="224" rx="16" fill="#FFF4DD" stroke="#A66918" stroke-width="2"/>
+<text x="570" y="341.62" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="700" fill="#A66918">不可变选择</text>
+<text x="650.0" y="384.5" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-size="25" font-weight="700" fill="#172B45">显式发布闸门</text>
+<text x="650.0" y="424.2" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="400" fill="#53677E">选定内容与修订</text>
+<text x="650.0" y="456.2" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="400" fill="#53677E">固定素材引用</text>
+<text x="650.0" y="488.2" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="400" fill="#53677E">冻结并校验快照</text>
+<rect x="804" y="306" width="212" height="155" rx="16" fill="#FFFFFF" stroke="#207761" stroke-width="2"/>
+<text x="910.0" y="353.14" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-size="24" font-weight="700" fill="#172B45">完整公开 JSON</text>
+<text x="910.0" y="393.2" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="400" fill="#53677E">只含选定内容</text>
+<text x="910.0" y="425.2" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="400" fill="#53677E">不泄露私有状态</text>
+<rect x="1073" y="306" width="301" height="155" rx="16" fill="#FFFFFF" stroke="#207761" stroke-width="2"/>
+<text x="1223.5" y="353.86" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-size="26" font-weight="700" fill="#172B45">Drive 权威原文件</text>
+<text x="1223.5" y="393.2" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="400" fill="#53677E">原位更新公开完整内容</text>
+<text x="1223.5" y="425.2" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="400" fill="#53677E">持续保留同一个文件 ID</text>
+<rect x="813" y="573" width="238" height="102" rx="16" fill="#FFFFFF" stroke="#207761" stroke-width="2"/>
+<text x="932.0" y="619.42" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-size="22" font-weight="700" fill="#172B45">GitHub 静态 Pages</text>
+<text x="932.0" y="653.98" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-size="18" font-weight="400" fill="#53677E">独立构建与验证</text>
+<rect x="1125" y="573" width="248" height="102" rx="16" fill="#FFFFFF" stroke="#207761" stroke-width="2"/>
+<text x="1249.0" y="620.14" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-size="24" font-weight="700" fill="#172B45">其他静态站点</text>
+<text x="1249.0" y="653.98" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-size="18" font-weight="400" fill="#53677E">独立构建与验证</text>
+<rect x="78" y="802" width="406" height="123" rx="16" fill="#EAF2FC" stroke="#2C64A3" stroke-width="2"/>
+<text x="281.0" y="849.86" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-size="26" font-weight="700" fill="#172B45">私有一致性备份</text>
+<text x="281.0" y="889.2" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="400" fill="#53677E">数据库 · 素材 · 版本清单</text>
+<text x="170.0" y="762.2" text-anchor="middle" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="700" fill="#2C64A3">独立私有路径</text>
+<rect x="548" y="757" width="852" height="168" rx="18" fill="#FFFFFF" stroke="#D6E0EB" stroke-width="2"/>
+<text x="575" y="800.5" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="25" font-weight="700" fill="#172B45">边界约束</text>
+<text x="575" y="846.92" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="22" font-weight="400" fill="#53677E">公开发布包不携带凭据、后台状态或私有备份</text>
+<text x="575" y="890.92" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="22" font-weight="400" fill="#53677E">各站点分别验证、分别记录回执；备份不经过公开链路</text>
+<text x="805" y="500.98" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="18" font-weight="400" fill="#207761">由权威公开内容同步</text>
+</svg>

@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1060" viewBox="0 0 1000 1060" role="img" aria-labelledby="title desc">
+<title id="title">传输提前，关键路径未必缩短</title>
+<desc id="desc">概念示意，非实测时间线。实线表示典型关键依赖；虚线表示受 Decode HBM 与网络预算约束的命中前缀提前发送候选策略，并不保证当前部署或特定 connector 已实现。CPU 提交/等待与 GPU/NIC 已执行工作是两类不同测量；没有据此声称普遍吞吐或时延收益。</desc>
+<defs><pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M 24 0 L 0 0 0 24" fill="none" stroke="#E6ECE9" stroke-width="0.6"/></pattern>
+<marker id="arrow147D83" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9 Z" fill="#147D83"/></marker>
+<marker id="arrow3D9FAF" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9 Z" fill="#3D9FAF"/></marker>
+<marker id="arrowB47D27" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9 Z" fill="#B47D27"/></marker>
+<marker id="arrow7599A5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9 Z" fill="#7599A5"/></marker>
+</defs>
+<rect width="1000" height="1060" fill="#FBFAF6"/>
+<rect width="1000" height="1060" fill="url(#grid)"/>
+<text x="40" y="64.2" font-family="Noto Sans CJK SC, sans-serif" font-size="32" font-weight="650" fill="#183044" text-anchor="start">
+<tspan x="40" dy="0">传输提前，关键路径未必缩短</tspan>
+</text>
+<text x="40" y="102.95" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="400" fill="#51687A" text-anchor="start">
+<tspan x="40" dy="0">PD 协同：同时看计算依赖、网络争用与 Decode 容量</tspan>
+</text>
+<rect x="25" y="124" width="950" height="370" rx="15" fill="#F3F7F5" stroke="#D4E2E5" stroke-width="1.5"/>
+<text x="45" y="164.65" font-family="Noto Sans CJK SC, sans-serif" font-size="19" font-weight="650" fill="#183044" text-anchor="start">
+<tspan x="45" dy="0">请求关键路径（顺序示意）</tspan>
+</text>
+<path d="M 184 244 L 218 244" fill="none" stroke="#147D83" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow147D83)"/>
+<path d="M 363 244 L 397 244" fill="none" stroke="#147D83" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow147D83)"/>
+<path d="M 593 244 L 627 244" fill="none" stroke="#147D83" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow147D83)"/>
+<path d="M 772 244 L 806 244" fill="none" stroke="#147D83" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow147D83)"/>
+<rect x="44" y="195" width="140" height="99" rx="15" fill="#FFFFFF" stroke="#D4E2E5" stroke-width="1.5"/>
+<text x="114.0" y="236.85000000000002" font-family="Noto Sans CJK SC, sans-serif" font-size="18" font-weight="400" fill="#183044" text-anchor="middle">
+<tspan x="114.0" dy="0">请求队列</tspan>
+<tspan x="114.0" dy="27.900000000000002">等待 / 准入</tspan>
+</text>
+<rect x="218" y="195" width="145" height="99" rx="15" fill="#EAF5F3" stroke="#147D83" stroke-width="1.5"/>
+<text x="290.5" y="236.85000000000002" font-family="Noto Sans CJK SC, sans-serif" font-size="18" font-weight="400" fill="#183044" text-anchor="middle">
+<tspan x="290.5" dy="0">KV 恢复</tspan>
+<tspan x="290.5" dy="27.900000000000002">状态齐备</tspan>
+</text>
+<rect x="397" y="195" width="196" height="99" rx="15" fill="#FFFFFF" stroke="#D4E2E5" stroke-width="1.5"/>
+<text x="495.0" y="236.85000000000002" font-family="Noto Sans CJK SC, sans-serif" font-size="18" font-weight="400" fill="#183044" text-anchor="middle">
+<tspan x="495.0" dy="0">Prefill 计算</tspan>
+<tspan x="495.0" dy="27.900000000000002">DeepEP 集合通信</tspan>
+</text>
+<rect x="627" y="195" width="145" height="99" rx="15" fill="#EAF5F3" stroke="#147D83" stroke-width="1.5"/>
+<text x="699.5" y="236.85000000000002" font-family="Noto Sans CJK SC, sans-serif" font-size="18" font-weight="400" fill="#183044" text-anchor="middle">
+<tspan x="699.5" dy="0">P → D</tspan>
+<tspan x="699.5" dy="27.900000000000002">KV 传输</tspan>
+</text>
+<rect x="806" y="195" width="150" height="99" rx="15" fill="#FFFFFF" stroke="#D4E2E5" stroke-width="1.5"/>
+<text x="881.0" y="236.85000000000002" font-family="Noto Sans CJK SC, sans-serif" font-size="18" font-weight="400" fill="#183044" text-anchor="middle">
+<tspan x="881.0" dy="0">Decode 准入</tspan>
+<tspan x="881.0" dy="27.900000000000002">首 token</tspan>
+</text>
+<path d="M 290 294 L 290 363 L 881 363 L 881 294" fill="none" stroke="#3D9FAF" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 6" marker-end="url(#arrow3D9FAF)"/>
+<text x="375" y="342.3" font-family="Noto Sans CJK SC, sans-serif" font-size="18" font-weight="650" fill="#147D83" text-anchor="start">
+<tspan x="375" dy="0">命中前缀提前发送（待验证策略）</tspan>
+</text>
+<rect x="210" y="393" width="730" height="76" rx="15" fill="#FFF4DF" stroke="#B47D27" stroke-width="1.5"/>
+<text x="575.0" y="423.35" font-family="Noto Sans CJK SC, sans-serif" font-size="18" font-weight="400" fill="#183044" text-anchor="middle">
+<tspan x="575.0" dy="0">受 Decode HBM 预留预算与网络预算约束</tspan>
+<tspan x="575.0" dy="27.900000000000002">只提前发送已命中前缀；suffix 计算依赖仍保留</tspan>
+</text>
+<text x="40" y="552.4" font-family="Noto Sans CJK SC, sans-serif" font-size="24" font-weight="650" fill="#183044" text-anchor="start">
+<tspan x="40" dy="0">两类“并发”必须分开验证</tspan>
+</text>
+<rect x="40" y="588" width="225" height="106" rx="15" fill="#FFFFFF" stroke="#D4E2E5" stroke-width="1.5"/>
+<text x="152.5" y="632.925" font-family="Noto Sans CJK SC, sans-serif" font-size="19" font-weight="650" fill="#183044" text-anchor="middle">
+<tspan x="152.5" dy="0">CPU 提交 / 等待</tspan>
+<tspan x="152.5" dy="29.45">GIL · 同步点</tspan>
+</text>
+<path d="M 265 641 L 306 641" fill="none" stroke="#147D83" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow147D83)"/>
+<rect x="306" y="588" width="654" height="106" rx="15" fill="#FFFFFF" stroke="#D4E2E5" stroke-width="1.5"/>
+<text x="633.0" y="632.5" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="400" fill="#183044" text-anchor="middle">
+<tspan x="633.0" dy="0">记录提交开始、提交完成与等待</tspan>
+<tspan x="633.0" dy="31.0">异步 API 不代表 GPU / 网卡工作已经重叠</tspan>
+</text>
+<rect x="40" y="716" width="225" height="106" rx="15" fill="#FFFFFF" stroke="#D4E2E5" stroke-width="1.5"/>
+<text x="152.5" y="760.925" font-family="Noto Sans CJK SC, sans-serif" font-size="19" font-weight="650" fill="#183044" text-anchor="middle">
+<tspan x="152.5" dy="0">GPU / 网卡执行</tspan>
+<tspan x="152.5" dy="29.45">设备时间线</tspan>
+</text>
+<path d="M 265 769 L 306 769" fill="none" stroke="#147D83" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow147D83)"/>
+<rect x="306" y="716" width="654" height="106" rx="15" fill="#FFFFFF" stroke="#D4E2E5" stroke-width="1.5"/>
+<text x="633.0" y="760.5" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="400" fill="#183044" text-anchor="middle">
+<tspan x="633.0" dy="0">KV transfer 与 DeepEP 可能共用网卡</tspan>
+<tspan x="633.0" dy="31.0">已执行工作的重叠，也可能伴随带宽争用</tspan>
+</text>
+<rect x="40" y="854" width="920" height="91" rx="15" fill="#EAF5F3" stroke="#147D83" stroke-width="1.5"/>
+<text x="500.0" y="891.0" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="650" fill="#183044" text-anchor="middle">
+<tspan x="500.0" dy="0">端到端判断：TTFT + goodput</tspan>
+<tspan x="500.0" dy="31.0">同时记录 Decode HBM 字节×时间、排队与传输完成点</tspan>
+</text>
+<path d="M 44 994 L 85 994" fill="none" stroke="#147D83" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow147D83)"/>
+<text x="98" y="999.6" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#51687A" text-anchor="start">
+<tspan x="98" dy="0">实线：必要依赖 / 主路径</tspan>
+</text>
+<path d="M 405 994 L 446 994" fill="none" stroke="#3D9FAF" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="7 6" marker-end="url(#arrow3D9FAF)"/>
+<text x="460" y="999.6" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#51687A" text-anchor="start">
+<tspan x="460" dy="0">虚线：条件路径 / 待验证策略</tspan>
+</text>
+<text x="40" y="1039.6" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#51687A" text-anchor="start">
+<tspan x="40" dy="0">概念示意，非实测时间线；箭头不表示耗时比例</tspan>
+</text>
+</svg>

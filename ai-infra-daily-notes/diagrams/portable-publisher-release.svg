@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1000" viewBox="0 0 1440 1000" role="img" aria-labelledby="title desc">
+<title id="title">一次发布，绑定一个不可变快照</title>
+<desc id="desc">可编辑目标架构图。所有连线均表示设计路径，而非已完成能力。</desc>
+<rect width="1440" height="1000" fill="#F7F9FC"/>
+<defs>
+<marker id="arrow2C64A3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9 Z" fill="#2C64A3"/></marker>
+<marker id="arrow207761" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9 Z" fill="#207761"/></marker>
+</defs>
+<rect x="50" y="151" width="292" height="36" rx="18" fill="#EAF2FC"/>
+<path d="M440 347 L525 347" fill="none" stroke="#2C64A3" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow2C64A3)"/>
+<path d="M915 347 L1000 347" fill="none" stroke="#2C64A3" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow2C64A3)"/>
+<path d="M1195 442 L1195 570" fill="none" stroke="#207761" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow207761)"/>
+<path d="M1000 665 L915 665" fill="none" stroke="#207761" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow207761)"/>
+<path d="M525 665 L440 665" fill="none" stroke="#207761" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow207761)"/>
+<text x="48" y="75.18" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="38" font-weight="700" fill="#172B45">一次发布，绑定一个不可变快照</text>
+<text x="50" y="121.56" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="21" font-weight="400" fill="#53677E">从读取到上线验收，始终追踪同一份内容、同一个提交和对应的构建</text>
+<text x="64" y="175.48" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="18" font-weight="700" fill="#2C64A3">目标架构 · 设计路径</text>
+<text x="1390" y="175.48" text-anchor="end" font-family="Noto Sans CJK SC, sans-serif" font-size="18" font-weight="400" fill="#53677E">图 2 / 03</text>
+<text x="50" y="981.76" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="16" font-weight="400" fill="#53677E">概念设计，不表示相关能力已经实现或通过验证</text>
+<text x="50" y="227.78" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="23" font-weight="700" fill="#2C64A3">准备与冻结</text>
+<rect x="50" y="251" width="390" height="191" rx="16" fill="#FFFFFF" stroke="#2C64A3" stroke-width="2"/>
+<text x="72" y="287.62" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="700" fill="#2C64A3">01 · 读取</text>
+<text x="72" y="331.58" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="28" font-weight="700" fill="#172B45">加载最新完整内容</text>
+<text x="72" y="370.2" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="400" fill="#53677E">读取最新基线与版本</text>
+<text x="72" y="402.2" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="400" fill="#53677E">未修改字段原样保留</text>
+<rect x="525" y="251" width="390" height="191" rx="16" fill="#FFFFFF" stroke="#2C64A3" stroke-width="2"/>
+<text x="547" y="287.62" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="700" fill="#2C64A3">02 · 比较并交换</text>
+<text x="547" y="331.58" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="28" font-weight="700" fill="#172B45">合并并做 CAS 检查</text>
+<text x="547" y="370.2" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="400" fill="#53677E">只应用本次变更</text>
+<text x="547" y="402.2" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="400" fill="#53677E">版本冲突：重读后重建</text>
+<rect x="1000" y="251" width="390" height="191" rx="16" fill="#FFFFFF" stroke="#2C64A3" stroke-width="2"/>
+<text x="1022" y="287.62" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="700" fill="#2C64A3">03 · 固定发布输入</text>
+<text x="1022" y="331.58" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="28" font-weight="700" fill="#172B45">冻结不可变快照</text>
+<text x="1022" y="370.2" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="400" fill="#53677E">校验结构与素材 · 计算哈希</text>
+<text x="1022" y="402.2" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="400" fill="#53677E">一次运行绑定同一快照</text>
+<text x="50" y="544.78" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="23" font-weight="700" fill="#207761">提交、构建与验收</text>
+<rect x="1000" y="570" width="390" height="191" rx="16" fill="#FFFFFF" stroke="#207761" stroke-width="2"/>
+<text x="1022" y="606.62" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="700" fill="#207761">04 · 内容提交</text>
+<text x="1022" y="650.58" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="28" font-weight="700" fill="#172B45">提交确定的内容</text>
+<text x="1022" y="689.2" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="400" fill="#53677E">记录快照哈希与 commit SHA</text>
+<text x="1022" y="721.2" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="400" fill="#53677E">使用稳定、幂等的发布标识</text>
+<rect x="525" y="570" width="390" height="191" rx="16" fill="#FFFFFF" stroke="#207761" stroke-width="2"/>
+<text x="547" y="606.62" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="700" fill="#207761">05 · 精确关联构建</text>
+<text x="547" y="650.58" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="28" font-weight="700" fill="#172B45">等待对应提交的 CI</text>
+<text x="547" y="689.2" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="400" fill="#53677E">匹配仓库、工作流与 commit</text>
+<text x="547" y="721.2" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="400" fill="#53677E">不以“最近成功”替代精确匹配</text>
+<rect x="50" y="570" width="390" height="191" rx="16" fill="#FFFFFF" stroke="#207761" stroke-width="2"/>
+<text x="72" y="606.62" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="17" font-weight="700" fill="#207761">06 · 验收实际结果</text>
+<text x="72" y="650.58" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="28" font-weight="700" fill="#172B45">逐站验证并写回执</text>
+<text x="72" y="689.2" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="400" fill="#53677E">核对线上版本与内容哈希</text>
+<text x="72" y="721.2" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="20" font-weight="400" fill="#53677E">每个站点独立记录状态</text>
+<text x="1000" y="505.84" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="19" font-weight="400" fill="#207761">快照与标识固定</text>
+<rect x="50" y="816" width="1340" height="131" rx="18" fill="#FFF4DD"/>
+<text x="76" y="857.28" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="23" font-weight="700" fill="#A66918">部分失败：只重试失败目标</text>
+<text x="76" y="903.56" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="21" font-weight="400" fill="#53677E">已成功的站点保留原回执</text>
+<path d="M502 839 L502 922" stroke="#E3CEAA" stroke-width="2" fill="none"/>
+<text x="530" y="857.28" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="23" font-weight="700" fill="#A66918">幂等重试：沿用原快照</text>
+<text x="530" y="903.56" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="21" font-weight="400" fill="#53677E">避免生成重复内容或重复发布</text>
+<path d="M948 839 L948 922" stroke="#E3CEAA" stroke-width="2" fill="none"/>
+<text x="976" y="857.28" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="23" font-weight="700" fill="#A66918">并发安全：保留后续写入</text>
+<text x="976" y="903.56" text-anchor="start" font-family="Noto Sans CJK SC, sans-serif" font-size="21" font-weight="400" fill="#53677E">不回滚其他人的无关修改</text>
+</svg>

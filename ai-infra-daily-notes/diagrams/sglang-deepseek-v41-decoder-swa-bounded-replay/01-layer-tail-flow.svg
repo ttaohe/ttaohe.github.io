@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="850" viewBox="0 0 1400 850" role="img" aria-label="01-layer-tail-flow">
+<rect width="1400" height="850" fill="#FFFFFF"/>
+<defs><marker id="arr" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L10,4 L0,8 Z" fill="#53677A"/></marker></defs>
+<g font-family="Noto Sans CJK SC, Noto Sans, Arial, sans-serif">
+<text x="48" y="55" font-size="32" fill="#142B43" font-weight="700" text-anchor="start">从完整 source 计算到晚层尾部计算</text>
+<text x="48" y="93" font-size="19" fill="#53677A" font-weight="400" text-anchor="start">单请求 · 一次 8192-token extend · 0-based 层号 · decoder bounded replay 开启</text>
+<rect x="48" y="145" width="780" height="108" rx="12" fill="#E7F1FD" stroke="#156CBB" stroke-width="1.5"/>
+<text x="70" y="180" font-size="27" fill="#156CBB" font-weight="700" text-anchor="start">L0–L20  ·  21 层完整执行</text>
+<text x="70" y="220" font-size="23" fill="#142B43" font-weight="400" text-anchor="start">位置 0 … 8191，全体 8192 行</text>
+<rect x="895" y="145" width="455" height="155" rx="12" fill="#E4F5EF" stroke="#127A65" stroke-width="1.5"/>
+<text x="920" y="183" font-size="27" fill="#127A65" font-weight="700" text-anchor="start">共享全局历史</text>
+<text x="920" y="224" font-size="21" fill="#142B43" font-weight="400" text-anchor="start">L20 是最后一个 KV source</text>
+<text x="920" y="253" font-size="21" fill="#142B43" font-weight="400" text-anchor="start">main KV + indexer keys</text>
+<text x="920" y="282" font-size="21" fill="#142B43" font-weight="400" text-anchor="start">历史覆盖不随 hidden 裁成 128 行</text>
+<line x1="828" y1="195" x2="890" y2="195" stroke="#127A65" stroke-width="2.5" marker-end="url(#arr)"/>
+<line x1="435" y1="255" x2="435" y2="316" stroke="#53677A" stroke-width="2.5" marker-end="url(#arr)"/>
+<rect x="210" y="323" width="450" height="102" rx="12" fill="#FFF1D9" stroke="#AE6500" stroke-width="1.5"/>
+<text x="234" y="359" font-size="26" fill="#AE6500" font-weight="700" text-anchor="start">进入 L21 前按请求裁剪</text>
+<text x="234" y="397" font-size="21" fill="#142B43" font-weight="400" text-anchor="start">hidden / mHC / IDs / positions</text>
+<line x1="435" y1="428" x2="435" y2="481" stroke="#53677A" stroke-width="2.5" marker-end="url(#arr)"/>
+<rect x="48" y="489" width="530" height="140" rx="12" fill="#E9EDF1" stroke="#CFD9E2" stroke-width="1.5"/>
+<text x="74" y="530" font-size="25" fill="#53677A" font-weight="700" text-anchor="start">位置 0 … 8063</text>
+<text x="74" y="568" font-size="21" fill="#53677A" font-weight="400" text-anchor="start">不计算这些行的 L21–L39</text>
+<text x="74" y="598" font-size="21" fill="#53677A" font-weight="400" text-anchor="start">不能读它们的完整 prompt logits</text>
+<rect x="620" y="489" width="208" height="140" rx="12" fill="#E7F1FD" stroke="#156CBB" stroke-width="1.5"/>
+<text x="643" y="529" font-size="23" fill="#156CBB" font-weight="700" text-anchor="start">8064 … 8191</text>
+<text x="644" y="568" font-size="23" fill="#142B43" font-weight="400" text-anchor="start">最后 128 行</text>
+<text x="644" y="603" font-size="21" fill="#142B43" font-weight="400" text-anchor="start">绝对位置保留</text>
+<line x1="660" y1="394" x2="725" y2="483" stroke="#53677A" stroke-width="2.5" marker-end="url(#arr)"/>
+<rect x="895" y="390" width="455" height="239" rx="12" fill="#FFFFFF" stroke="#156CBB" stroke-width="1.5"/>
+<text x="920" y="431" font-size="27" fill="#156CBB" font-weight="700" text-anchor="start">L21–L39  ·  19 层</text>
+<text x="920" y="473" font-size="22" fill="#142B43" font-weight="400" text-anchor="start">每层只对保留行做前向</text>
+<text x="920" y="509" font-size="22" fill="#142B43" font-weight="400" text-anchor="start">读取共享全局历史 KV</text>
+<text x="920" y="545" font-size="22" fill="#142B43" font-weight="400" text-anchor="start">生成该层局部 SWA KV</text>
+<text x="920" y="581" font-size="22" fill="#142B43" font-weight="400" text-anchor="start">局部读取下界固定为 8064</text>
+<line x1="831" y1="557" x2="889" y2="557" stroke="#156CBB" stroke-width="2.5" marker-end="url(#arr)"/>
+<line x1="1115" y1="303" x2="1115" y2="384" stroke="#127A65" stroke-width="2.5" marker-end="url(#arr)"/>
+<rect x="48" y="685" width="1302" height="110" rx="12" fill="#FFFFFF" stroke="#CFD9E2" stroke-width="1.5"/>
+<text x="72" y="726" font-size="25" fill="#142B43" font-weight="700" text-anchor="start">少算的是晚层输入行；新生成 token 仍走完整 40 层</text>
+<text x="72" y="766" font-size="22" fill="#53677A" font-weight="400" text-anchor="start">327680 → 174464 token×layer，减少 46.7578% · 这是工作量计数，不是实测加速</text>
+</g></svg>
