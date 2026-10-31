@@ -471,12 +471,13 @@ html.contact-open{overflow:hidden}
 /* Only the inner panel sticks: the sidebar itself stretches with the editor. */
 .sidebar-inner{position:sticky;top:24px;max-height:calc(100vh - 48px);max-height:calc(100dvh - 48px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;padding:28px 0}
 .files a.active{box-shadow:inset 2px 0 var(--blue)}
-.theme-picker{display:flex;align-items:center;gap:3px;padding:3px;border:1px solid var(--line);border-radius:6px;background:var(--tabs)}
+.theme-picker{display:flex;align-items:center;gap:3px;padding:0;border:0;background:transparent}
 .theme-picker button{appearance:none;border:1px solid transparent;border-radius:4px;background:transparent;color:var(--muted);display:grid;place-items:center;width:34px;height:34px;padding:7px;cursor:pointer}
 .theme-picker svg{display:block;width:18px;height:18px;pointer-events:none}
 .theme-picker button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .theme-picker button:hover{background:var(--hover);color:var(--fg)}
-.theme-picker button[aria-pressed="true"]{background:var(--active);color:var(--active-fg);border-color:var(--button-line);font-weight:600}
+.theme-picker button[aria-pressed="true"]{background:transparent;color:var(--blue);border-color:transparent}
+.theme-picker button[aria-pressed="true"] svg{stroke-width:2.2}
 .mobile-nav{display:none}
 /* Give the last chapter enough space to reach the same top reading position. */
 .content>.section:last-of-type{min-height:calc(100svh - var(--anchor-offset) - 110px)}
