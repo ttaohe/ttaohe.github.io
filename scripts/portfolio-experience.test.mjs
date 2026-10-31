@@ -24,7 +24,7 @@ test('profile Experience contains only the approved companies and inference dire
     assert(items[index].includes(`class="company-direction">${direction}</span>`));
   }
   assert.doesNotMatch(experience, /\b(?:Current|Internship|Engineer)\b/i);
-  assert.match(html, /id="experience"[^]*?经历与项目[^]*?id="mla-tp-l2-cache-deduplication"/);
+  assert.match(html, /id="experience"[^]*?经历与项目[^]*?class="project-card project-placeholder"/);
 });
 
 test('company marks preserve the original official bytes and avoid repeated accessible names', async () => {

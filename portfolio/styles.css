@@ -523,3 +523,5 @@ html.contact-open{overflow:hidden}
   .research-panel{padding:17px}
   .research-context .countdown{max-width:100%;grid-column:auto}
 }
+
+.project-placeholder{min-height:80px;display:flex;align-items:center;justify-content:center;color:var(--dim)}

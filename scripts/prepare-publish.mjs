@@ -2,8 +2,6 @@ import { cp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import ts from 'typescript';
-import { shanghaiTimestamp } from '../lib/update-schedule.ts';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const config = JSON.parse(await readFile(path.join(root, 'lib/site-config.json'), 'utf8'));
 const content = JSON.parse(await readFile(path.join(root, 'lib/blog/content.json'), 'utf8'));
@@ -45,9 +43,6 @@ async function publishAsset(name, content) {
   await writeFile(path.join(publish, 'assets', name), content);
   return `/assets/${filename}`;
 }
-const scheduleModel = await readFile(path.join(root, 'lib/update-schedule.ts'), 'utf8');
-const schedulePath = await publishAsset('update-schedule.js', ts.transpileModule(scheduleModel, { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.ES2020 } }).outputText);
-const countdownSource = (await readFile(path.join(root, 'portfolio/countdown.mjs'), 'utf8')).replace("'./update-schedule.js'", `'./${path.basename(schedulePath)}'`);
 const assets = {
   '/assets/wechat-qr.png': await publishAsset('wechat-qr.png', await readFile(path.join(root, 'portfolio/contact/wechat-qr.png'))),
   '/assets/ttaohe-resume.pdf': await publishAsset('ttaohe-resume.pdf', await readFile(path.join(root, 'portfolio/resume/ttaohe-resume.pdf'))),
@@ -60,31 +55,16 @@ const assets = {
   '/assets/portfolio-avatar.jpg': await publishAsset('portfolio-avatar.jpg', await readFile(path.join(root, 'portfolio/avatar.jpg'))),
   '/assets/portfolio.css': await publishAsset('portfolio.css', await readFile(path.join(root, 'portfolio/styles.css'))),
   '/assets/portfolio-ui.js': await publishAsset('portfolio-ui.js', await readFile(path.join(root, 'portfolio/ui.mjs'))),
-  '/assets/portfolio-countdown.js': await publishAsset('portfolio-countdown.js', countdownSource),
   '/assets/portfolio-visits.js': await publishAsset('portfolio-visits.js', await readFile(path.join(root, 'portfolio/visits.mjs'))),
 };
 let landing = (await readFile(path.join(root, 'portfolio/index.html'), 'utf8'))
-  .replaceAll('{{CONTENT_UPDATED_AT}}', escapeHtml(content.updatedAt))
-  .replaceAll('{{LAST_CONTENT_UPDATE}}', escapeHtml(shanghaiTimestamp(content.updatedAt)))
   .replaceAll('{{NOTE_COUNT}}', String(researchPosts.length))
   .replace('<!-- FOCUS_DATE -->', focusDate ? `<time datetime="${escapeHtml(focusDate)}">${escapeHtml(focusDate)}</time>` : '')
   .replace('<!-- SELECTED_NOTES -->', noteMarkup)
   .replace('<!-- TOPIC_LINKS -->', topicMarkup)
   .replace('<!-- RECENT_FOCUS -->', focusMarkup);
-// Respect public project visibility without changing the original visual design.
-if (config.publicContentOrigin && !content.posts.some(post => post.kind === 'project' && post.slug === 'mla-tp-l2-cache-deduplication')) {
-  landing = landing.replace(/<section[^>]+id="experience"[^]*?<\/section>/, '');
-}
 for (const [unversioned, versioned] of Object.entries(assets)) landing = landing.replaceAll(unversioned, versioned);
 await writeFile(path.join(publish, 'index.html'), landing);
-// Project documents have stable, independent URLs and share the same theme assets.
-for (const slug of ['mla-tp-l2-cache-deduplication']) {
-  let document = await readFile(path.join(root, 'portfolio/projects', slug, 'index.html'), 'utf8');
-  for (const [unversioned, versioned] of Object.entries(assets)) document = document.replaceAll(unversioned, versioned);
-  const directory = path.join(publish, 'projects', slug);
-  await mkdir(directory, { recursive: true });
-  await writeFile(path.join(directory, 'index.html'), document);
-}
 if (!config.publicContentOrigin) await cp(path.join(root, 'out/404.html'), path.join(publish, '404.html'));
 await writeFile(path.join(publish, '.nojekyll'), '');
 // Keep the first publication's direct article links useful after moving the section.

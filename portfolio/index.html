@@ -83,11 +83,7 @@
         </section>
         <section tabindex="-1" id="experience" class="section" aria-labelledby="experience-title">
           <div class="section-heading"><span class="hash" aria-hidden="true">#</span><h2 id="experience-title">经历与项目</h2><span class="filename">experience.md</span></div>
-          <article tabindex="-1" id="mla-tp-l2-cache-deduplication" class="project-card" aria-labelledby="mla-project-title">
-            <h3 id="mla-project-title"><a href="/projects/mla-tp-l2-cache-deduplication/" aria-label="项目 01：MLA L2 Host Cache Deduplication 研究记录"><span class="project-index" aria-hidden="true">01</span><span lang="en">MLA L2 Host Cache Deduplication</span></a></h3>
-            <ul class="project-keywords" lang="en" aria-label="项目关键词"><li>KV Cache</li><li>HiCache</li><li>Tensor Parallelism</li><li>Kimi 2.6 / 2.7</li></ul>
-            <p class="project-summary">针对 MLA Prefill 的 TP 部署中 Host KV Cache 重复保存的容量瓶颈，采用 <strong>TP0 单副本管理与统一命中判定</strong>，命中后由 TP0 从 L2 加载至 L1，再广播到其余 Rank。项目实测中，<strong>L2 有效容量达到原来的 8×，命中率由 80% 多提升至约 94%</strong>（理论约 95%）；相同并发下，<strong>高峰期一小时吞吐提升约 40%</strong>。完整负载、硬件与统计口径待补充。</p>
-          </article>
+          <div class="project-card project-placeholder" role="note" aria-label="项目经历暂未填写"><span aria-hidden="true">—</span></div>
         </section>
         <section tabindex="-1" id="research" class="section" aria-labelledby="research-title">
           <div class="section-heading"><span class="hash" aria-hidden="true">#</span><h2 id="research-title">研究笔记</h2><span class="filename">infra-notes/</span></div>
@@ -112,28 +108,6 @@
                 <ul class="focus-items"><!-- RECENT_FOCUS --></ul>
                 <a class="panel-more" href="/ai-infra-daily-notes/daily/">查看每日简报 <span aria-hidden="true">↗</span></a>
               </section>
-          <section class="countdown" data-review-countdown data-updated-at="{{CONTENT_UPDATED_AT}}" aria-label="资料更新计划">
-            <div class="countdown-top">
-              <div class="clock-face">
-                <svg viewBox="0 0 144 144" fill="none" aria-hidden="true" focusable="false">
-                  <circle cx="72" cy="72" r="70" fill="var(--clock-face)" stroke="var(--clock-ring)"/>
-                  <circle cx="72" cy="72" r="61" stroke="var(--clock-inner)"/>
-                  <g stroke="var(--clock-tick)" stroke-linecap="round">
-                    <path d="M72 13v5M72 126v5M13 72h5M126 72h5"/>
-                    <path d="M72 15v3M72 126v3" transform="rotate(30 72 72)"/>
-                    <path d="M72 15v3M72 126v3" transform="rotate(60 72 72)"/>
-                    <path d="M72 15v3M72 126v3" transform="rotate(120 72 72)"/>
-                    <path d="M72 15v3M72 126v3" transform="rotate(150 72 72)"/>
-                  </g>
-                  <path d="M58 52l14 12 19-23" stroke="var(--clock-hand)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                  <circle cx="72" cy="64" r="3" fill="var(--clock-fg)"/>
-                </svg>
-                <div class="clock-readout"><p class="clock" data-clock role="timer" aria-labelledby="countdown-label" aria-live="off">--:--:--</p><span class="clock-unit" aria-hidden="true">时 · 分 · 秒</span></div>
-              </div>
-              <div class="countdown-details"><p class="countdown-label" id="countdown-label">距离下次资料检查</p><div class="last-update">上次内容更新<time datetime="{{CONTENT_UPDATED_AT}}">{{LAST_CONTENT_UPDATE}}</time></div></div>
-            </div>
-            <p class="cadence">计划每 4 小时检查，实际发布可能延迟；没有实质新内容时不会更新。</p>
-          </section>
             </aside>
           </div>
         </section>
@@ -160,7 +134,6 @@
 </dialog>
 <footer class="outer-foot"><span>TaoHe / 何涛</span><span>Keep questions close to the source.</span></footer>
 <script type="module" src="/assets/portfolio-ui.js"></script>
-<script type="module" src="/assets/portfolio-countdown.js"></script>
 <script type="module" src="/assets/portfolio-visits.js"></script>
 </body>
 </html>

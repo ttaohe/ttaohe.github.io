@@ -31,15 +31,12 @@ async function render(content, { cssSuffix = '', verifyAssets = false } = {}) {
       const assetDir = path.join(fixture, 'publish/assets');
       const filenames = await readdir(assetDir);
       const hashed = filenames.filter(name => /\.[a-f0-9]{16}\.(css|js|jpg|gif|png|ico)$/.test(name));
-      assert.equal(hashed.length, 12);
+      assert.equal(hashed.length, 10);
       for (const name of hashed) {
         const bytes = await readFile(path.join(assetDir, name));
         assert.equal(name.match(/\.([a-f0-9]{16})\./)[1], createHash('sha256').update(bytes).digest('hex').slice(0, 16));
       }
-      const countdownName = hashed.find(name => name.startsWith('portfolio-countdown.'));
-      const countdown = await readFile(path.join(assetDir, countdownName), 'utf8');
-      const scheduleName = countdown.match(/from '\.\/(update-schedule\.[a-f0-9]{16}\.js)'/)?.[1];
-      assert(scheduleName && filenames.includes(scheduleName));
+      assert(!filenames.some(name => /countdown|update-schedule/.test(name)));
     }
     return landing;
   } finally {
@@ -47,11 +44,11 @@ async function render(content, { cssSuffix = '', verifyAssets = false } = {}) {
   }
 }
 
-test('research reading precedes the supporting rail and clock in semantic order', () => {
+test('research reading keeps its supporting rail without the retired clock', () => {
   assert(html.includes('class="research-grid"'));
   assert(css.includes('.research-context .countdown{display:block;width:100%;max-width:none;margin:0;justify-self:stretch;'));
   assert(html.indexOf('class="research-reading"') < html.indexOf('class="research-context"'));
-  assert(html.indexOf('RECENT_FOCUS') < html.indexOf('data-review-countdown'));
+  assert(!html.includes('data-review-countdown') && !html.includes('portfolio-countdown'));
   for (const id of ['mini-map-title', 'recent-focus-title']) {
     assert(html.includes(`aria-labelledby="${id}"`));
     assert(html.includes(`id="${id}"`));
@@ -138,7 +135,7 @@ test('fresh HTML references exact content hashes and CSS edits change only its a
   assert.notEqual(cssUrl(initial), cssUrl(changed));
   const modules = html => [...html.matchAll(/src="(\/assets\/[^"?#]+\.js)"/g)].map(match => match[1]);
   assert.deepEqual(modules(initial), modules(changed));
-  assert.equal(modules(initial).length, 3);
+  assert.equal(modules(initial).length, 2);
   for (const url of modules(initial)) assert(/\.[a-f0-9]{16}\.js$/.test(url));
   assert(!initial.includes('href="/assets/portfolio.css"'));
 });
