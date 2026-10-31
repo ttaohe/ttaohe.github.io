@@ -2,7 +2,7 @@
 
 一个介绍个人经历、连接技术写作的个人网站。它以代码编辑器作为视觉线索，把个人简介、教育与工作经历、研究笔记入口和 PDF 简历放在同一个阅读空间中。
 
-[访问个人主页](https://ttaohe.github.io/) · [了解网站设计](docs/ARCHITECTURE.md) · [整理与维护内容](docs/CONTENT-MAINTENANCE.md) · [本地预览与发布](docs/MANUAL-PUBLISHING.md) · [维护路线](ROADMAP.md)
+[访问个人主页](https://www.ttaoai.cn/) · [了解网站设计](docs/ARCHITECTURE.md) · [整理与维护内容](docs/CONTENT-MAINTENANCE.md) · [本地预览与发布](docs/MANUAL-PUBLISHING.md) · [维护路线](ROADMAP.md)
 
 ## 从主页开始阅读
 
