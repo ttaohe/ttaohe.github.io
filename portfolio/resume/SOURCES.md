@@ -2,7 +2,7 @@
 
 Updated 2026-10-31 at the owner's request: remove the complete project-experience section. Education, employment dates, contacts, technical focus, quotation and typography are preserved from the approved fifth revision.
 
-The original editable source archive is linked in Git history. The updated reproducible LaTeX source and licensed fonts are stored in the private ttaohe/notes repository under private/resume/source/. No template example identity was used.
+The editable LaTeX source and licensed fonts are maintained separately from this website asset. This directory holds the compiled PDF used by the homepage. No template example identity was used.
 
 Template: ttaohe/resume-ng at 8fb52d64342171d0e3c3ec166495e31fc25271c2, derived from fky2015/resume-ng, LPPL 1.3c; see LICENSE.
 Contact fonts: Font Awesome Free 5.15.4, OFL 1.1; original license files retained with the source.
