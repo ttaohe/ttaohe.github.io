@@ -1,3 +1,5 @@
+> 当前发布方式（2026-10-31）：手动生成静态网页并推送到 `gh-pages` 分支，仓库 Actions 保持关闭。正文与历史日报的 Markdown、图源、简历源文件保存在私有 `ttaohe/notes` 仓库；日报经用户逐期同意后才发布。操作见 [手动发布说明](docs/MANUAL-PUBLISHING.md)。下方早期架构说明保留作历史参考，涉及自动工作流的描述不代表当前配置。
+
 # Personal homepage
 This repository deploys https://ttaohe.github.io/ (profile, experience summaries and resume).
 Research articles, project details, daily reports and experiments are served by https://8.159.157.10/.
