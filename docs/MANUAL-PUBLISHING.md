@@ -26,4 +26,4 @@ Verify Pages reports built, verify the live HTML and PDF, and recheck repository
 
 The private ttaohe/notes repository retains Markdown articles, daily archives, referenced diagrams, the complete imported public snapshot, and reproducible resume source. See BLOG-STRUCTURE.md there. Website and VPS content are generated outputs. Do not automatically publish new material. Daily briefings are delivered in chat and published only after the owner approves that issue.
 
-The old JSON/VPS-based excerpt adapter remains for compatibility during the research site's static migration. Do not treat unfinished VPS admin retirement or the new domain cutover as completed merely because the personal homepage was published.
+The VPS now renders an approved static JSON projection through its existing reading frontend. Project, experiment and admin routes are retired; the editing backend is stopped and disabled. The private repository retains recovery data and deployment notes. A complete HTML export of the research frontend and the new domain cutover remain separate follow-up work.
