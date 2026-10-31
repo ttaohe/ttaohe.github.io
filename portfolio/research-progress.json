@@ -1,0 +1,54 @@
+{
+  "tracks": [
+    {
+      "title": "缓存与状态",
+      "question": "命中的状态，什么时候才能安全复用？",
+      "slugs": [
+        "state-recovery",
+        "direct-linker",
+        "sglang-deepseek-v41-decoder-swa-bounded-replay"
+      ]
+    },
+    {
+      "title": "调度与请求路径",
+      "question": "局部更快，怎样变成端到端的收益？",
+      "slugs": [
+        "pd-c2c-coordination",
+        "waiting-prefix-refresh-prefill-load-balance"
+      ]
+    },
+    {
+      "title": "硬件与算子",
+      "question": "数据怎样经过链路，进入真正的计算？",
+      "slugs": [
+        "pcie-rdma-networking-foundations",
+        "vllm-fp4-moe-live-rows",
+        "vllm-aiter-a4w4-opt-in"
+      ]
+    }
+  ],
+  "milestones": [
+    {
+      "slug": "sglang-deepseek-v41-decoder-swa-bounded-replay",
+      "summary": "梳理混合注意力中的尾部重放边界"
+    },
+    {
+      "slug": "waiting-prefix-refresh-prefill-load-balance",
+      "summary": "把热前缀刷新与 Prefill 负载联系起来"
+    },
+    {
+      "slug": "pcie-rdma-networking-foundations",
+      "summary": "补齐 PCIe、RDMA 与 NUMA 的链路基础"
+    }
+  ],
+  "labels": {
+    "state-recovery": "状态恢复",
+    "direct-linker": "LOAD → COMMIT",
+    "sglang-deepseek-v41-decoder-swa-bounded-replay": "SWA 尾部重放",
+    "pd-c2c-coordination": "PD 与 C2C",
+    "waiting-prefix-refresh-prefill-load-balance": "热前缀调度",
+    "pcie-rdma-networking-foundations": "PCIe 与 RDMA",
+    "vllm-fp4-moe-live-rows": "FP4 MoE",
+    "vllm-aiter-a4w4-opt-in": "AITER a4w4"
+  }
+}

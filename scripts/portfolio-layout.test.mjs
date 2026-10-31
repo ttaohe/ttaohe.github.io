@@ -25,7 +25,7 @@ test('content insets are bounded on wide screens and remain readable on phones',
 
 test('research rhythm aligns natural-size panels without forced rail heights', () => {
   assert.match(css, /\.research-grid\{[^}]*align-items:stretch/);
-  assert.match(css, /\.research-context\{display:grid;gap:16px;align-content:space-between\}/);
+  assert.match(css, /\.research-context\{display:grid;gap:16px;align-content:start\}/);
   assert(css.includes('.research-context .clock-face{width:100px}'));
   assert(!/\.(research-context|research-panel|note|notes|countdown)\{[^}]*(?:min-)?height:/.test(css));
   assert(css.includes('align-items:start;align-content:start'));

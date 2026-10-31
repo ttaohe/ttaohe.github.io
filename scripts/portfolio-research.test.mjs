@@ -49,7 +49,7 @@ test('research reading keeps its supporting rail without the retired clock', () 
   assert(css.includes('.research-context .countdown{display:block;width:100%;max-width:none;margin:0;justify-self:stretch;'));
   assert(html.indexOf('class="research-reading"') < html.indexOf('class="research-context"'));
   assert(!html.includes('data-review-countdown') && !html.includes('portfolio-countdown'));
-  for (const id of ['mini-map-title', 'recent-focus-title']) {
+  for (const id of ['research-tracks-title', 'research-progress-title']) {
     assert(html.includes(`aria-labelledby="${id}"`));
     assert(html.includes(`id="${id}"`));
   }
@@ -59,70 +59,52 @@ test('research reading keeps its supporting rail without the retired clock', () 
   assert(css.includes('.research-context{grid-template-columns:minmax(0,1fr)'));
 });
 
-test('homepage panels render full sourced content and six working topic shortcuts', async () => {
+test('research tracks connect questions to public notes and the progress log uses their dates', async () => {
   const rendered = await render(source);
-  const text = decode(rendered);
-  assert(rendered.includes(`class="research-tag">${source.posts.length} 篇笔记</span>`));
-  const notes = [...source.posts].reverse().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3);
-  for (const post of notes) {
-    assert(text.includes(post.title));
-    assert(text.includes(post.summary));
-    assert(rendered.includes(`href="/ai-infra-daily-notes/notes/${post.slug}/"`));
-  }
-  const branches = rendered.match(/<ul class="topic-branches">([^]*?)<\/ul>/)[1];
-  assert.equal([...branches.matchAll(/<li>/g)].length, 6);
-  for (const [, slug] of branches.matchAll(/href="\/ai-infra-daily-notes\/notes\/([^/]+)\/"/g)) {
-    assert(source.posts.some(post => post.slug === slug));
-  }
-  const latest = [...source.daily.dates].sort((a, b) => b.key.localeCompare(a.key))[0].key;
-  const focus = rendered.match(/<ul class="focus-items">([^]*?)<\/ul>/)[1];
-  assert.equal([...focus.matchAll(/<li>/g)].length, 2);
-  assert(rendered.includes(`datetime="${source.daily.year}-${latest.replace('.', '-')}"`));
-  for (const item of source.daily.reports[latest].slice(0, 2)) {
-    assert(decode(focus).includes(item.title));
-    assert(decode(focus).includes(item.source));
-    assert(decode(focus).includes(item.sourceLabel));
-  }
-  assert(!rendered.includes('{{'));
-  assert(!rendered.includes('<!-- RECENT_FOCUS -->'));
-  assert(/portfolio-visits\.[a-f0-9]{16}\.js/.test(rendered));
+  assert(rendered.includes(`class="research-tag">${source.posts.filter(p => p.kind !== 'project').length} 篇笔记</span>`));
+  const tracks = rendered.match(/<ol class="research-track-list">([^]*?)<\/ol>/)[1];
+  assert.equal([...tracks.matchAll(/<li>/g)].length, 3);
+  for (const [, slug] of tracks.matchAll(/href="\/ai-infra-daily-notes\/notes\/([^/]+)\/"/g)) assert(source.posts.some(post => post.kind !== 'project' && post.slug === slug));
+  const timeline = rendered.match(/<ol class="progress-timeline">([^]*?)<\/ol>/)[1];
+  assert.equal([...timeline.matchAll(/<li>/g)].length, 3);
+  for (const [, date] of timeline.matchAll(/datetime="([^"]+)"/g)) assert(source.posts.some(post => post.date === date || post.lastRevisedAt?.startsWith(date)));
+  assert(rendered.includes('href="/ai-infra-daily-notes/daily/"'));
+  assert(!rendered.includes('{{') && !rendered.includes('<!-- RESEARCH_PROGRESS -->'));
 });
 
-test('focus uses the latest populated issue even when the archive order changes', async () => {
-  const content = structuredClone(source);
-  content.daily.dates.reverse();
-  content.daily.dates.unshift({ key: '12.31', day: '31', week: 'THU' });
-  content.daily.reports['12.31'] = [];
-  const rendered = await render(content);
-  const latest = [...source.daily.dates].sort((a, b) => b.key.localeCompare(a.key))[0].key;
-  assert(rendered.includes(`datetime="${source.daily.year}-${latest.replace('.', '-')}"`));
-  assert(!rendered.includes('datetime="2026-12-31"'));
+test('news updates and build timestamps never become personal progress', async () => {
+  const changed = structuredClone(source);
+  changed.updatedAt = '2030-12-31T00:00:00Z';
+  changed.daily.dates.unshift({key:'12.31',day:'31',week:'THU'});
+  changed.daily.reports['12.31'] = [{...changed.daily.reports[changed.daily.dates[1].key][0], title:'NEWS_ONLY_MARKER'}];
+  const first = await render(source), second = await render(changed);
+  const log = value => value.match(/<ol class="progress-timeline">([^]*?)<\/ol>/)[1];
+  assert.equal(log(first),log(second));
+  assert(!second.includes('NEWS_ONLY_MARKER') && !second.includes('2030-12-31'));
 });
 
-test('missing articles lead to the full map and absent Daily has an honest empty state', async () => {
-  const content = structuredClone(source);
-  content.posts = [];
-  delete content.daily;
-  const rendered = await render(content);
-  const branches = rendered.match(/<ul class="topic-branches">([^]*?)<\/ul>/)[1];
-  assert.equal([...branches.matchAll(/href="\/ai-infra-daily-notes\/"/g)].length, 6);
-  assert(!branches.includes('/notes/'));
-  assert(rendered.includes('暂未收录每日简报'));
-  assert(!rendered.includes('datetime=""'));
+test('hidden notes disappear from both tracks and progress; empty states make no claims', async () => {
+  const changed = structuredClone(source);
+  changed.posts=[];delete changed.daily;
+  const rendered=await render(changed);
+  assert(rendered.includes('研究主线会随公开笔记逐步展开'));
+  assert(rendered.includes('有新的公开笔记后，会记录在这里'));
+  assert(!rendered.includes('/notes/') && !rendered.includes('datetime=""'));
 });
 
-test('feed titles, summaries, tags and original source attributes are escaped', async () => {
-  const content = structuredClone(source);
-  content.posts.at(-1).summary = '<script>alert("unsafe")</script>';
-  content.posts.at(-1).tags = ['<unsafe>'];
-  const latest = [...content.daily.dates].sort((a, b) => b.key.localeCompare(a.key))[0].key;
-  content.daily.reports[latest][0].title = '<unsafe title>';
-  content.daily.reports[latest][0].source = 'https://example.test/?a=1&b="quote"';
-  const rendered = await render(content);
-  assert(rendered.includes('&lt;script&gt;alert(&quot;unsafe&quot;)&lt;/script&gt;'));
-  assert(rendered.includes('&lt;unsafe&gt;'));
-  assert(rendered.includes('&lt;unsafe title&gt;'));
-  assert(rendered.includes('href="https://example.test/?a=1&amp;b=&quot;quote&quot;"'));
+test('a reviewed revision appears on its own date with escaped descriptive text', async () => {
+  const changed=structuredClone(source);
+  const post=changed.posts.find(p=>p.kind !== 'project');
+  post.lastRevisedAt='2026-10-30T10:00:00Z';
+  post.progressSummary='<script>untrusted</script>';
+  post.summary='<unsafe summary>';post.tags=['<unsafe tag>'];
+  post.date='2026-10-29';
+  const rendered=await render(changed);
+  const log=rendered.match(/<ol class="progress-timeline">([^]*?)<\/ol>/)[1];
+  assert(log.includes('datetime="2026-10-30"') && log.includes('<span>修订</span>'));
+  assert(log.includes('&lt;script&gt;untrusted&lt;/script&gt;'));
+  assert(!log.includes('<script>untrusted'));
+  assert(rendered.includes('&lt;unsafe summary&gt;') && rendered.includes('&lt;unsafe tag&gt;'));
 });
 
 

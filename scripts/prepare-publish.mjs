@@ -13,25 +13,27 @@ const escapeHtml = value => String(value).replaceAll('&', '&amp;').replaceAll('<
 const researchPosts = content.posts.filter(post => post.kind !== 'project');
 const selected = [...researchPosts].reverse().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3);
 const noteMarkup = selected.map((post, index) => `<li class="note"><span class="note-number">0${index + 1}</span><article><a href="${config.basePath}/notes/${post.slug}/">${escapeHtml(post.title)}</a><p class="note-meta">${escapeHtml(post.category)} · <time datetime="${escapeHtml(post.date)}">${escapeHtml(post.date)}</time></p><p class="note-summary">${escapeHtml(post.summary)}</p><div class="note-tags">${post.tags.slice(0, 3).map(tag => `<span>${escapeHtml(tag)}</span>`).join('')}</div></article></li>`).join('');
-// Topic shortcuts lead to real related articles. A missing article falls back to the full map.
-const topics = [
-  ['引擎与调度', 'pd-c2c-coordination'],
-  ['缓存与状态', 'state-recovery'],
-  ['通信与流水', 'pd-c2c-coordination'],
-  ['异构内存', 'pd-c2c-coordination'],
-  ['混合注意力', 'direct-linker'],
-  ['MoE 与算子', 'vllm-fp4-moe-live-rows'],
-];
-const topicMarkup = topics.map(([label, slug]) => {
-  const post = content.posts.find(post => post.slug === slug);
-  const href = post ? `${config.basePath}/notes/${post.slug}/` : `${config.basePath}/`;
-  const accessibleLabel = post ? `${label}：${post.title}` : `${label}：查看完整知识地图`;
-  return `<li><a href="${href}" aria-label="${escapeHtml(accessibleLabel)}">${label}</a></li>`;
-}).join('');
-const daily = content.daily;
-const latestDaily = daily && [...daily.dates].sort((a, b) => b.key.localeCompare(a.key)).find(date => daily.reports[date.key]?.length);
-const focusDate = latestDaily ? `${daily.year}-${latestDaily.key.replace('.', '-')}` : '';
-const focusMarkup = latestDaily ? daily.reports[latestDaily.key].slice(0, 2).map(item => `<li><a class="focus-title" href="${escapeHtml(item.source)}">${escapeHtml(item.title)} <span aria-hidden="true">↗</span></a><span class="focus-source">${escapeHtml(item.sourceLabel)} · 简报收录</span></li>`).join('') : '<li class="panel-caption">暂未收录每日简报</li>';
+// Curated questions connect only to currently public notes. News is kept out of the progress log.
+const progress = JSON.parse(await readFile(path.join(root, 'portfolio/research-progress.json'), 'utf8'));
+const articleHref = post => `${config.basePath}/notes/${post.slug}/`;
+const byDate = (a, b) => b.date.localeCompare(a.date) || a.slug.localeCompare(b.slug);
+const trackMarkup = progress.tracks.map(track => {
+  const posts = track.slugs.map(slug => researchPosts.find(post => post.slug === slug)).filter(Boolean);
+  if (!posts.length) return '';
+  return `<li><span class="track-label">${escapeHtml(track.title)}</span><p class="track-question">${escapeHtml(track.question)}</p><div class="track-notes">${posts.map(post => `<a href="${articleHref(post)}" title="${escapeHtml(post.title)}" aria-label="${escapeHtml(post.title)}">${escapeHtml(progress.labels?.[post.slug] || post.title)} <span aria-hidden="true">↗</span></a>`).join('')}</div></li>`;
+}).join('') || '<li class="progress-empty">研究主线会随公开笔记逐步展开</li>';
+const noteUpdateDate = post => {
+  const revised = typeof post.lastRevisedAt === 'string' ? post.lastRevisedAt.slice(0, 10) : '';
+  return /^\d{4}-\d{2}-\d{2}$/.test(revised) && Number.isFinite(Date.parse(revised)) && revised > post.date ? revised : post.date;
+};
+const updates = [...researchPosts].sort((a, b) => noteUpdateDate(b).localeCompare(noteUpdateDate(a)) || byDate(a, b)).slice(0, 3);
+const progressMarkup = updates.map(post => {
+  const entry = progress.milestones.find(item => item.slug === post.slug);
+  const summary = post.progressSummary || entry?.summary || post.title;
+  const date = noteUpdateDate(post);
+  const kind = date > post.date ? '修订' : '笔记';
+  return `<li><div class="progress-meta"><time datetime="${escapeHtml(date)}">${escapeHtml(date.replaceAll('-', '.'))}</time><span>${kind}</span></div><a href="${articleHref(post)}" aria-label="${escapeHtml(summary + '：' + post.title)}">${escapeHtml(summary)} <span aria-hidden="true">↗</span></a></li>`;
+}).join('') || '<li class="progress-empty">有新的公开笔记后，会记录在这里</li>';
 // Content-addressed filenames keep fresh HTML from reusing an older cached asset.
 await mkdir(path.join(publish, 'assets'), { recursive: true });
 async function publishAsset(name, content) {
@@ -59,10 +61,9 @@ const assets = {
 };
 let landing = (await readFile(path.join(root, 'portfolio/index.html'), 'utf8'))
   .replaceAll('{{NOTE_COUNT}}', String(researchPosts.length))
-  .replace('<!-- FOCUS_DATE -->', focusDate ? `<time datetime="${escapeHtml(focusDate)}">${escapeHtml(focusDate)}</time>` : '')
   .replace('<!-- SELECTED_NOTES -->', noteMarkup)
-  .replace('<!-- TOPIC_LINKS -->', topicMarkup)
-  .replace('<!-- RECENT_FOCUS -->', focusMarkup);
+  .replace('<!-- RESEARCH_TRACKS -->', trackMarkup)
+  .replace('<!-- RESEARCH_PROGRESS -->', progressMarkup);
 for (const [unversioned, versioned] of Object.entries(assets)) landing = landing.replaceAll(unversioned, versioned);
 await writeFile(path.join(publish, 'index.html'), landing);
 if (!config.publicContentOrigin) await cp(path.join(root, 'out/404.html'), path.join(publish, '404.html'));
