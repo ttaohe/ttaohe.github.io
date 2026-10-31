@@ -9,3 +9,5 @@
 - Public docs must not contain personal server IPs, private repository paths or credentials. Deployment details belong in private maintenance documentation.
 - Only modify repositories assigned by the owner. Never push third-party repositories.
 - Update ROADMAP.md with actual completed work and explicit blockers. Do not claim DNS, publication, backup or all-session access without verification.
+
+- Before computer or remote operations, confirm whether the owner wants the home Mac or office Mac, then verify each tool connection. Keep that choice for the task and reconfirm before switching devices.

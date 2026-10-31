@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 const root=process.cwd(), out=path.join(root,'publish');
 const config=JSON.parse(await readFile('lib/site-config.json','utf8'));
 const origin=new URL(config.publicContentOrigin).origin;
+// Preserve the custom domain on every generated publication.
+await writeFile(path.join(out,'CNAME'),new URL(config.siteOrigin).hostname+'\n');
 const content=JSON.parse(await readFile('lib/blog/content.json','utf8'));
 const oldSlugs=JSON.parse(await readFile('lib/blog/legacy-slugs.json','utf8'));
 let html=await readFile(path.join(out,'index.html'),'utf8');
