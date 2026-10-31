@@ -16,6 +16,7 @@
 node scripts/prepare-publish.mjs
 node scripts/finalize-homepage.mjs
 node --test scripts/portfolio-*.test.mjs
+node scripts/check-maintenance.mjs
 ```
 
 生成结果位于 `publish/`。它是构建输出，下一次生成时会被重建，文字和样式修改应回到 `portfolio/`，内容快照修改应回到 `lib/blog/`。
@@ -36,27 +37,30 @@ python3 -m http.server 4173 --directory publish
 
 ## 更新发布分支
 
-先将经过审阅的源文件提交到 `main`。随后为发布分支创建独立工作目录，避免把源码目录直接当成网页目录发布。
-
-以下示例假设尚不存在 `../homepage-publish`，并且远端已经有 `gh-pages` 分支：
+先提交经过审阅的源码，确保工作目录干净。发布工具需要 Git 和已登录的 GitHub CLI，且只允许操作本主页仓库。
 
 ```bash
-git fetch origin gh-pages
-git worktree add --detach ../homepage-publish origin/gh-pages
-rsync -av --delete --exclude=.git publish/ ../homepage-publish/
-git -C ../homepage-publish status --short
-git -C ../homepage-publish diff --stat
+node scripts/publish-homepage.mjs
 ```
 
-`rsync --delete` 会删除目标工作目录中不属于本次输出的旧文件，因此目标必须是专门用于发布的工作目录。核对差异后，提交并推送：
+默认只检查、重新生成页面并展示发布差异，不推送。核对 publish/ 中的页面和差异后，再明确执行：
 
 ```bash
-git -C ../homepage-publish add .
-git -C ../homepage-publish commit -m "Publish reviewed homepage"
-git -C ../homepage-publish push origin HEAD:gh-pages
+node scripts/publish-homepage.mjs --apply
 ```
 
-输出中的 `.nojekyll` 需要保留。发布分支只接收生成结果，不接收源码工作流、草稿或发布凭据。
+工具使用自己创建的临时工作目录准备 gh-pages，随后对齐到本次完整生成结果，保留 .nojekyll，不携带源码工作流、草稿或凭据。临时目录在操作结束后清理；不会强制推送，也不会覆盖未提交的源码。旧资源版本通过 Git 保留，不在当前发布目录里无限累积。
+
+## 同步简历发布副本
+
+先在独立简历仓库中完成正文修改、PDF 编译与检查，并提交对应文件。然后在本仓库中查看将同步的来源：
+
+```bash
+node scripts/sync-resume.mjs ../resume-ng
+node scripts/sync-resume.mjs ../resume-ng --apply
+```
+
+此操作更新固定的 PDF 路径与 source.json，记录来源仓库提交和 PDF 校验值，不发布网站。主页改动审阅并提交后，再执行发布步骤。源文件有未提交改动时，工具会拒绝同步，避免记录与实际内容不一致。
 
 ## 确认线上版本
 

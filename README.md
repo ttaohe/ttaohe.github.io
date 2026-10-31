@@ -2,7 +2,7 @@
 
 一个介绍个人经历、连接技术写作的个人网站。它以代码编辑器作为视觉线索，把个人简介、教育与工作经历、研究笔记入口和 PDF 简历放在同一个阅读空间中。
 
-[访问个人主页](https://ttaohe.github.io/) · [了解网站设计](docs/ARCHITECTURE.md) · [整理与维护内容](docs/CONTENT-MAINTENANCE.md) · [本地预览与发布](docs/MANUAL-PUBLISHING.md)
+[访问个人主页](https://ttaohe.github.io/) · [了解网站设计](docs/ARCHITECTURE.md) · [整理与维护内容](docs/CONTENT-MAINTENANCE.md) · [本地预览与发布](docs/MANUAL-PUBLISHING.md) · [维护路线](ROADMAP.md)
 
 ## 从主页开始阅读
 
@@ -52,7 +52,7 @@ node --test scripts/portfolio-*.test.mjs
 
 内容先整理、核对，再进入公开页面。研究笔记保留可追溯的来源；日报先形成待审稿，经确认后再收录到网站。尚未确认的草稿不会因为一次构建而自动发布。
 
-个人主页采用手动生成、审阅后发布的方式。修改 `main` 本身不会更新线上页面；确认生成结果后，再将静态文件发布到 `gh-pages`。仓库 Actions 当前关闭，具体操作见[发布指南](docs/MANUAL-PUBLISHING.md)。
+个人主页采用手动生成、审阅后发布的方式。修改 `main` 本身不会更新线上页面；确认生成结果后，再将静态文件发布到 `gh-pages`。发布工具会将输出与当前生成结果对齐，历史页面通过 Git 保存，避免资源副本不断累积。仓库 Actions 当前关闭，具体操作见[发布指南](docs/MANUAL-PUBLISHING.md)。
 
 正文、图源和发布页面各有用途：可编辑材料适合长期维护，生成的网页便于阅读。保留材料与版本记录，才能在调整页面或迁移托管环境时继续使用同一份内容。这部分约定在[内容维护指南](docs/CONTENT-MAINTENANCE.md)中展开。
 

@@ -2,7 +2,7 @@
 
 Updated 2026-10-31 at the owner's request: remove the complete project-experience section. Education, employment dates, contacts, technical focus, quotation and typography are preserved from the approved fifth revision.
 
-The editable LaTeX source and licensed fonts are maintained separately from this website asset. This directory holds the compiled PDF used by the homepage. No template example identity was used.
+The canonical editable source and current PDF are maintained in [ttaohe/resume-ng](https://github.com/ttaohe/resume-ng). This directory contains only the published website PDF and its [source reference](source.json). Synchronize it with scripts/sync-resume.mjs after reviewing and committing a resume change. No template example identity was used.
 
 Template: ttaohe/resume-ng at 8fb52d64342171d0e3c3ec166495e31fc25271c2, derived from fky2015/resume-ng, LPPL 1.3c; see LICENSE.
 Contact fonts: Font Awesome Free 5.15.4, OFL 1.1; original license files retained with the source.
