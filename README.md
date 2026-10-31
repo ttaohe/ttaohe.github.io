@@ -1,36 +1,23 @@
-# ttaohe · Personal Homepage
+# TaoHe · 个人主页
 
-一个介绍个人经历、连接技术写作的个人网站。它以代码编辑器作为视觉线索，把个人简介、教育与工作经历、研究笔记入口和 PDF 简历放在同一个阅读空间中。
+个人介绍、经历、研究入口与 PDF 简历。关注 LLM Inference。
 
-[访问个人主页](https://www.ttaoai.cn/) · [了解网站设计](docs/ARCHITECTURE.md) · [整理与维护内容](docs/CONTENT-MAINTENANCE.md) · [本地预览与发布](docs/MANUAL-PUBLISHING.md) · [维护路线](ROADMAP.md)
+[主页](https://www.ttaoai.cn/) · [研究站](https://lab.ttaoai.cn/) · [发布](docs/MANUAL-PUBLISHING.md) · [待办](ROADMAP.md)
 
-## 从主页开始阅读
-
-主页首先回答“我是谁、在关注什么”，再把读者引向具体的笔记和资料。技术写作主要围绕 **LLM Inference** 展开：推理引擎如何调度请求，KV Cache 如何组织与复用，计算、内存和通信又如何共同影响系统表现。
-
-研究笔记用于展开一个问题，串联源码、论文、机制与证据；日报则提供较短的近期进展摘要，并保留原始来源。两者通过主页上的最近文章、主题入口和近期关注相互连接。网站中的结论会区分来源报告、个人判断与实际验证，方便读者沿着引用继续查阅。
-
-个人主页与长文阅读区域各自承担不同的任务：前者提供简洁的介绍和导航，后者留出适合连续阅读的空间。本文档介绍它们之间的关系，网站导航提供具体的阅读入口。
-
-## 这个仓库保存什么
-
-这里保存个人主页的源文件、公开资源，以及生成发布页面所需的内容快照。`main` 用于维护源码，`gh-pages` 保存已经生成的静态网页。
-
-| 位置 | 阅读或修改它的时机 |
+| 位置 | 用途 |
 | --- | --- |
-| [`portfolio/index.html`](portfolio/index.html) | 了解首页结构，修改个人介绍、章节与导航 |
-| [`portfolio/styles.css`](portfolio/styles.css) | 调整主题、排版和不同屏幕下的布局 |
-| [`portfolio/ui.mjs`](portfolio/ui.mjs) | 理解主题切换、章节导航和联系信息交互 |
-| [`portfolio/resume/`](portfolio/resume/) | 查看网页使用的简历 PDF 及来源说明 |
-| [`lib/blog/`](lib/blog/) | 了解首页文章摘要所使用的数据快照与字段 |
-| [`scripts/`](scripts/) | 查看页面生成、资源校验和相关检查 |
-| [`docs/`](docs/) | 继续阅读设计、内容维护与发布文档 |
+| portfolio/index.html | 页面结构与文字 |
+| portfolio/styles.css | 排版与主题 |
+| portfolio/ui.mjs | 主题、导航与交互 |
+| portfolio/resume/ | PDF 发布副本与来源 |
+| lib/blog/ | 已确认的内容快照 |
+| lib/site-config.json | 域名与链接配置 |
+| scripts/ | 生成、检查、发布 |
 
-`app/`、`components/` 中还保留着早期研究站的实现，便于追溯已有页面和内容格式。初次阅读本仓库，或只是修改个人主页时，可以从 `portfolio/` 开始。
+main 保存源码，gh-pages 保存静态网页。Actions 保持关闭，审阅后手动发布。
+正文在独立内容仓库维护；简历主版本在 resume-ng，Drive 只作备份。app/、components/ 保留旧研究站实现。
 
-## 先在本地看一看
-
-使用 **Node.js 24**。当前个人主页生成器读取仓库内已有的内容快照，本地预览不需要连接私人内容仓库，也不需要配置发布凭据。
+本地预览需 Node.js 24：
 
 ```bash
 node scripts/prepare-publish.mjs
@@ -38,26 +25,8 @@ node scripts/finalize-homepage.mjs
 python3 -m http.server 4173 --directory publish
 ```
 
-打开 `http://localhost:4173` 即可预览生成后的主页。笔记、日报等外部阅读链接仍指向站点配置中的目标；这些命令不会启动完整的研究站。
+访问 http://localhost:4173。这只预览主页，文章链接仍去研究站。
 
-修改后，可以运行主页相关检查：
+[设计](docs/ARCHITECTURE.md) · [内容维护](docs/CONTENT-MAINTENANCE.md)
 
-```bash
-node --test scripts/portfolio-*.test.mjs
-```
-
-检查覆盖章节导航、主题、布局约束、内容转义和资源引用。排版变化仍需要在浏览器中查看，简历变化也需要核对生成后的 PDF。
-
-## 内容如何成为网页
-
-内容先整理、核对，再进入公开页面。研究笔记保留可追溯的来源；日报先形成待审稿，经确认后再收录到网站。尚未确认的草稿不会因为一次构建而自动发布。
-
-个人主页采用手动生成、审阅后发布的方式。修改 `main` 本身不会更新线上页面；确认生成结果后，再将静态文件发布到 `gh-pages`。发布工具会将输出与当前生成结果对齐，历史页面通过 Git 保存，避免资源副本不断累积。仓库 Actions 当前关闭，具体操作见[发布指南](docs/MANUAL-PUBLISHING.md)。
-
-正文、图源和发布页面各有用途：可编辑材料适合长期维护，生成的网页便于阅读。保留材料与版本记录，才能在调整页面或迁移托管环境时继续使用同一份内容。这部分约定在[内容维护指南](docs/CONTENT-MAINTENANCE.md)中展开。
-
-## 图片、字体与引用
-
-页面中的学校与公司标识、联系图标、简历模板和字体有各自的来源与授权说明，保存在相应资源目录的 `SOURCES.md` 或许可证文件中。复用页面时，请同时查看这些说明，并将个人资料、二维码和简历替换成自己的内容。
-
-文章引用的论文、代码与技术博客归原作者所有。本站的整理与评述保留来源，便于继续阅读和核验。
+复用资源前查看对应 SOURCES.md 和许可证；引用保留来源，个人资料自行替换。

@@ -1,13 +1,11 @@
-# Personal website maintenance
+# 维护约定
 
-- Preserve the established homepage design. Change only the requested area; keep project slots empty until approved content is provided.
-- Public research updates require owner approval. Scheduled briefings and retrospectives never publish or change repositories automatically.
-- Edit canonical source paths, not dated/final/backup variants. Git preserves revisions. Daily issue identities and content hashes are legitimate exceptions.
-- Resume source and main.pdf are canonical in the dedicated resume repository. Use scripts/sync-resume.mjs; keep portfolio/resume/source.json aligned.
-- Run scripts/check-maintenance.mjs and the portfolio checks. Inspect rendered changes, including a narrow viewport, when UI changes.
-- Publish using scripts/publish-homepage.mjs after reviewing output. It replaces generated output in a temporary worktree and never force-pushes. Keep Actions disabled.
-- Public docs must not contain personal server IPs, private repository paths or credentials. Deployment details belong in private maintenance documentation.
-- Only modify repositories assigned by the owner. Never push third-party repositories.
-- Update ROADMAP.md with actual completed work and explicit blockers. Do not claim DNS, publication, backup or all-session access without verification.
-
-- Before computer or remote operations, confirm whether the owner wants the home Mac or office Mac, then verify each tool connection. Keep that choice for the task and reconfirm before switching devices.
+- 保留主页排版，只改指定区域；项目区待本人提供并确认内容后再填写。
+- 内容须本人确认后公开；定时任务不自动发布或改仓库。文档和回复言简意赅。
+- 固定主路径，版本交给 Git；日报日期和资源哈希除外，不新增 final、备份或日期副本。
+- 简历主版本在 resume-ng；用 scripts/sync-resume.mjs 同步 PDF 和 source.json。
+- 执行 check-maintenance.mjs 与相关 portfolio 检查；UI 改动查看实际页面和窄屏。
+- 审阅后用 publish-homepage.mjs 发布，完整对齐输出，不强推；保留 CNAME，Actions 关闭。
+- 公开文档不写私人服务器地址、私有路径和凭据。只操作本人指定仓库，禁止 push 第三方仓库。
+- 电脑操作前确认家里或办公室 Mac，核对各工具连接；同一任务沿用，切换或身份不明时再确认。
+- 更新 ROADMAP，如实记录结果与阻塞，不虚报发布、备份或跨会话覆盖。
