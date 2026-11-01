@@ -34,6 +34,30 @@ export function applyTheme(root, buttons, value) {
   return theme;
 }
 
+export function initTitlebarClock(doc, win) {
+  const clock = doc.querySelector?.('[data-titlebar-clock]');
+  if (!clock) return;
+  const formatter = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
+  });
+  const update = () => {
+    const now = new Date();
+    clock.textContent = `${formatter.format(now)} · UTC+8`;
+    clock.dateTime = now.toISOString();
+    clock.hidden = false;
+  };
+  let timer;
+  const resume = () => {
+    win.clearInterval(timer);
+    if (doc.hidden) return;
+    update();
+    timer = win.setInterval(update, 1000);
+  };
+  doc.addEventListener('visibilitychange', resume);
+  resume();
+}
+
 // Native dialog supplies focus containment and Escape; links remain useful
 // without JavaScript or on browsers without dialog support.
 export function initContactDialog(doc) {
@@ -62,6 +86,7 @@ export function initContactDialog(doc) {
 
 export function initPortfolio(doc = document, win = window) {
   initContactDialog(doc);
+  initTitlebarClock(doc, win);
   const root = doc.documentElement;
   const buttons = [...doc.querySelectorAll('[data-theme-choice]')];
   // The blocking head bootstrap has already applied the saved palette before
