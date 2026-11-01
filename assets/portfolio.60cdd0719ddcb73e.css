@@ -410,7 +410,7 @@ html.contact-open{overflow:hidden}
 .hero h1{font-size:clamp(32px,4.3vw,40px)}
 .hero h1 span{display:inline-block;margin-left:12px;font-size:20px}
 }
-@media(max-width:650px){body{font-size:16px}
+@media(max-width:900px){body{font-size:16px}
 .shell{margin:12px 10px 20px;border-radius:9px}
 .workspace{display:block}
 .sidebar{display:none}
@@ -482,16 +482,28 @@ html.contact-open{overflow:hidden}
 .mobile-nav{display:none}
 /* Give the last chapter enough space to reach the same top reading position. */
 .content>.section:last-of-type{min-height:calc(100svh - var(--anchor-offset) - 110px)}
-@media(max-width:650px){
+@media(max-width:900px){
   :root{--anchor-offset:64px}
-  .titlebar{gap:8px}
-  .titlebar-clock{order:1;flex-basis:100%;text-align:center;font-size:11px}
+  .titlebar{flex-wrap:nowrap;gap:8px;padding:6px 12px}
+  .lights{gap:5px}
+  .lights i{width:7px;height:7px}
+  .window-title{display:none}
+  .titlebar-clock{margin:0 auto;font-size:11px}
+  .titlebar-clock-date{display:none}
+  .site-nav{display:none}
   .theme-picker{margin-left:auto}
   .theme-picker button{width:36px;height:36px;padding:8px}
   .mobile-nav{position:sticky;top:0;z-index:5;display:flex;gap:4px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;padding:7px 9px;background:var(--sidebar);border-bottom:1px solid var(--line)}
   .mobile-nav a{flex:none;border-radius:4px;padding:7px 10px;font:12px/1.6 var(--sans);color:var(--muted)}
   .mobile-nav a.active{background:var(--active);color:var(--active-fg);box-shadow:inset 0 -2px var(--blue)}
   .mobile-nav a:hover{color:var(--fg);background:var(--hover)}
+}
+.focus-code code .value{white-space:nowrap}
+@media(min-width:651px) and (max-width:900px){
+  .window-title{display:inline;margin:auto;font-size:11px}
+  .titlebar-clock-date{display:inline}
+  .content{padding:31px 28px 25px}
+  .hero{grid-template-columns:minmax(0,1fr) 120px;gap:24px}
 }
 
 /* Research context stays beside the reading column only when both have room. */

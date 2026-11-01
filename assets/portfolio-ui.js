@@ -37,13 +37,20 @@ export function applyTheme(root, buttons, value) {
 export function initTitlebarClock(doc, win) {
   const clock = doc.querySelector?.('[data-titlebar-clock]');
   if (!clock) return;
+  const date = clock.querySelector('[data-clock-date]');
+  const time = clock.querySelector('[data-clock-time]');
   const formatter = new Intl.DateTimeFormat('sv-SE', {
     timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit',
     hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
   });
   const update = () => {
     const now = new Date();
-    clock.textContent = `${formatter.format(now)} · UTC+8`;
+    const parts = Object.fromEntries(formatter.formatToParts(now).map(({ type, value }) => [type, value]));
+    const dateValue = `${parts.year}-${parts.month}-${parts.day}`;
+    const timeValue = `${parts.hour}:${parts.minute}:${parts.second} · UTC+8`;
+    date.textContent = `${dateValue} `;
+    time.textContent = timeValue;
+    clock.setAttribute('aria-label', `${dateValue} ${timeValue}`);
     clock.dateTime = now.toISOString();
     clock.hidden = false;
   };
