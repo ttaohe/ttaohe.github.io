@@ -243,9 +243,10 @@ html.contact-open{overflow:hidden}
 .intro{max-width:650px}
 .intro p{text-wrap:pretty}
 .intro p+p{margin-top:5px}
-.profile-motto{max-width:650px;margin:18px 0 0;padding:0 0 0 15px;border-left:2px solid var(--green)}
-.hero .profile-motto p{font-size:15px;line-height:1.9;color:var(--muted);text-wrap:pretty}
-.hero .profile-motto strong{color:var(--green);font-weight:500}
+.profile-motto{display:flex;align-items:flex-start;gap:8px;max-width:650px;margin:22px 0 4px;padding:0}
+.motto-mark{flex:none;font:36px/1 Georgia,"Times New Roman",serif;color:var(--dim);opacity:.6}
+.hero .profile-motto p{padding-top:2px;font-family:"Songti SC","Noto Serif CJK SC",serif;font-size:16px;line-height:1.9;letter-spacing:.025em;color:var(--muted);text-wrap:balance}
+.motto-close{margin-left:3px;font-family:Georgia,"Times New Roman",serif;color:var(--dim)}
 .profile-experience{margin-top:22px;padding-top:16px;border-top:1px solid var(--line)}
 .profile-experience h2{margin:0 0 13px;font:500 11px/1.7 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
 .company-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:minmax(0,1fr);gap:15px}
