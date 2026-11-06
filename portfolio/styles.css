@@ -243,6 +243,9 @@ html.contact-open{overflow:hidden}
 .intro{max-width:650px}
 .intro p{text-wrap:pretty}
 .intro p+p{margin-top:5px}
+.profile-motto{max-width:650px;margin:18px 0 0;padding:0 0 0 15px;border-left:2px solid var(--green)}
+.hero .profile-motto p{font-size:15px;line-height:1.9;color:var(--muted);text-wrap:pretty}
+.hero .profile-motto strong{color:var(--green);font-weight:500}
 .profile-experience{margin-top:22px;padding-top:16px;border-top:1px solid var(--line)}
 .profile-experience h2{margin:0 0 13px;font:500 11px/1.7 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
 .company-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:minmax(0,1fr);gap:15px}
@@ -433,6 +436,7 @@ html.contact-open{overflow:hidden}
 .hero h1{grid-column:1;margin-bottom:0}
 .profile-avatar{grid-column:2;grid-row:1;border-radius:9px}
 .hero .intro,.hero .focus-code,.hero .actions{grid-column:1/-1}
+.hero .profile-motto{grid-column:1/-1;margin:0}
 .hero .profile-experience{grid-column:1/-1;margin-top:0;padding-top:16px}
 .hero .focus-code,.hero .actions{margin-top:0}
 .hero h1{font-size:42px}
